@@ -1,20 +1,31 @@
 package com.example.wealthmaster.meta;
 
-import java.util.Map;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/meta")
 public class MetaController {
 
-    @GetMapping
-    public Map<String, String> meta() {
+    private final JdbcTemplate jdbcTemplate;
+
+    public MetaController(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @GetMapping("/status")
+    public Map<String, Object> status() {
+        Integer databaseResult =
+                jdbcTemplate.queryForObject("SELECT 1", Integer.class);
+
         return Map.of(
-            "name", "Wealth Master API",
-            "status", "scaffold",
-            "apiVersion", "v1"
+                "application", "WealthMaster",
+                "backend", "UP",
+                "database", databaseResult != null && databaseResult == 1 ? "UP" : "DOWN"
         );
     }
 }
