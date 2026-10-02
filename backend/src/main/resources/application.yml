@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: wealthmaster
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/wealthmaster}
+    username: ${DB_USER:admin}
+    password: ${DB_PASSWORD:change-me-in-production}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+server:
+  shutdown: graceful

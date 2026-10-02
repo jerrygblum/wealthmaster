@@ -1,0 +1,149 @@
+# Architecture
+
+## Style
+
+A modular monolith with a React SPA and Spring Boot REST API backed by PostgreSQL.
+
+```text
+Browser
+  |
+React / TypeScript
+  |
+REST /api/v1
+  |
+Spring Boot modular monolith
+  |-- identity/security
+  |-- accounts
+  |-- ledger
+  |-- budgets
+  |-- imports
+  |-- investments
+  |-- market data
+  |-- net worth
+  |-- audit
+  |
+PostgreSQL
+```
+
+Deployment is Docker Compose on a Synology NAS. Scale is intentionally modest; correctness, maintainability, security, and traceability are prioritized over distributed architecture.
+
+## Source of truth
+
+The ledger is authoritative for ordinary financial activity.
+
+```text
+opening balance + ledger movements = account balance
+```
+
+Investment positions are derived from investment transactions/lots. Current valuation combines positions with latest available market price and FX data.
+
+Net worth is derived from account balances, investment values, and liabilities.
+
+## Domain principles
+
+### Money
+- Java `BigDecimal`, PostgreSQL `NUMERIC`.
+- Currency always explicit.
+- No binary floating-point persistence/calculation for financial amounts.
+
+### Transfers
+A transfer represents linked movements between owned accounts and has zero impact on spending/income totals.
+
+### Credit cards
+Credit-card purchases generate expenses/liability. Card repayment reduces the card liability and bank asset through a transfer; it is not a second expense.
+
+### Investments
+Buying/selling an asset changes portfolio composition; it is not ordinary spending/income. Fees/taxes are tracked separately. Acquisition lots are retained.
+
+### Imports
+Imports create staged normalized records before committing ledger/investment activity. Original source representation and lineage are preserved.
+
+## Multi-tenancy
+
+Application-level multi-user isolation. All aggregate roots are owned directly or transitively by a user. Authorization is enforced server-side.
+
+Do not accept a frontend-provided user ID as proof of ownership.
+
+## API
+
+REST under `/api/v1`.
+
+Initial planned resources:
+
+```text
+/api/v1/accounts
+/api/v1/transactions
+/api/v1/transfers
+/api/v1/categories
+/api/v1/budgets
+/api/v1/expected-transactions
+/api/v1/imports
+/api/v1/investments
+/api/v1/securities
+/api/v1/net-worth
+```
+
+DTOs form the external contract; JPA entities are internal persistence details.
+
+## Database migrations
+
+Flyway owns production schema evolution.
+
+```text
+V001__baseline.sql
+V002__users_and_auth.sql
+V003__accounts.sql
+...
+```
+
+Hibernate automatic schema mutation is disabled outside disposable development contexts.
+
+## Dates
+
+- Business dates: SQL `DATE` / Java `LocalDate`.
+- System events: UTC timestamp / Java `Instant`.
+- Never manufacture a timezone for a bank transaction that only provides a date.
+
+## Import architecture
+
+```text
+CSV/XLSX/PDF/API
+      |
+     parser
+      |
+ raw import records (immutable lineage)
+      |
+ normalization
+      |
+ validation
+      |
+ duplicate detection
+      |
+ categorization
+      |
+ review / preview
+      |
+ commit service
+      |
+ ledger / investment activity
+```
+
+A parser must not directly write final ledger rows.
+
+## Audit
+
+Audit events cover meaningful financial/business-data changes and import lifecycle changes. Logs and audit history are distinct concerns: application logs are operational; audit events describe business changes.
+
+## Operations
+
+Containers initially:
+
+```text
+frontend
+backend
+postgres
+```
+
+A worker/queue may be introduced only once asynchronous work (large PDF imports, scheduled market refreshes, etc.) creates a demonstrated need.
+
+See `docs/operations/`.
