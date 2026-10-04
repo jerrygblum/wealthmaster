@@ -89,6 +89,24 @@ function AccountsPage({ user, onExpired, onLogout }: { user: User; onExpired: ()
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<FinancialAccount | undefined>();
+  const [archived, setArchived] = useState(false);
+  const [deleting, setDeleting] = useState<FinancialAccount | null>(null);
+  const [actionPending, setActionPending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
+  const visibleAccounts = accounts.filter(account => account.active !== archived);
+  async function manage(account: FinancialAccount, operation: "archive" | "restore" | "delete") {
+    setActionPending(true); setActionError(null); setStale(false);
+    try {
+      if (operation === "delete") { await api.deleteAccount(account); setAccounts(previous => previous.filter(item => item.id !== account.id)); setDeleting(null); }
+      else { const changed = await (operation === "archive" ? api.archiveAccount(account) : api.restoreAccount(account)); setAccounts(previous => previous.map(item => item.id === changed.id ? changed : item)); }
+      setNotice(`${account.name} ${operation === "delete" ? "deleted" : operation === "archive" ? "archived" : "restored"}.`);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) onExpired();
+      else { setActionError(errorMessage(err)); setStale(err instanceof ApiError && err.status === 412); }
+    } finally { setActionPending(false); }
+  }
   const [loggingOut, setLoggingOut] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const load = useCallback(async () => {
@@ -110,46 +128,53 @@ function AccountsPage({ user, onExpired, onLogout }: { user: User; onExpired: ()
   }
   return <main className="workspace">
     <div className="workspace-heading"><div><p className="eyebrow">Your workspace</p><h1>Accounts</h1><p className="muted">{user.email}</p></div><button className="secondary" disabled={loggingOut} onClick={() => void logout()}>{loggingOut ? "Signing out…" : "Sign out"}</button></div>
-    <div className="section-heading"><p>Keep track of where your money lives.</p><button disabled={showForm || loggingOut || loading || !!error} onClick={() => { setShowForm(true); setNotice(null); }}>Create account</button></div>
+    <div className="section-heading"><p>Keep track of where your money lives.</p><button disabled={showForm || actionPending || loggingOut || loading || !!error} onClick={() => { setEditing(undefined); setShowForm(true); setNotice(null); }}>Create account</button></div>
+    <div className="account-filter" role="group" aria-label="Account status"><button className="secondary" aria-pressed={!archived} disabled={showForm || actionPending} onClick={() => setArchived(false)}>Active accounts</button><button className="secondary" aria-pressed={archived} disabled={showForm || actionPending} onClick={() => setArchived(true)}>Archived accounts</button></div>
     {notice && <p role="status" className="notice">{notice}</p>}
-    {showForm && <AccountForm onCancel={() => setShowForm(false)} onExpired={onExpired} onCreated={(account) => { setAccounts((existing) => [account, ...existing]); setShowForm(false); setNotice(`${account.name} created.`); }} />}
+    {actionError && <div role="alert" className="error"><p>{actionError}</p>{stale && <button onClick={() => { setDeleting(null); setActionError(null); void load(); }}>Reload accounts</button>}</div>}
+    {deleting && <section className="panel" aria-labelledby="delete-heading"><h2 id="delete-heading">Delete {deleting.name}?</h2><p>This permanently removes the account. Its audit history is retained.</p><div className="form-actions"><button disabled={actionPending || stale} onClick={() => void manage(deleting, "delete")}>Confirm deletion</button><button className="secondary" disabled={actionPending} onClick={() => { setDeleting(null); setActionError(null); }}>Cancel deletion</button></div></section>}
+    {showForm && <AccountForm account={editing} onCancel={() => { setShowForm(false); if (editing) void load(); }} onExpired={onExpired} onCreated={(account) => { setAccounts((existing) => editing ? existing.map(item => item.id === account.id ? account : item) : [account, ...existing]); setShowForm(false); setNotice(`${account.name} ${editing ? "updated" : "created"}.`); setEditing(undefined); if (!editing) setArchived(false); }} />}
     {error && <div className="error" role="alert"><p>{error}</p><button className="secondary" onClick={() => void load()}>Reload accounts</button></div>}
-    {loading ? <p role="status">Loading accounts…</p> : !error && accounts.length === 0 ? <section className="panel empty-state"><h2>Your first account starts here</h2><p>Add a bank account, cash balance, credit card, or investment account.</p><button disabled={showForm} onClick={() => setShowForm(true)}>Create your first account</button></section> : <div className="account-grid">{accounts.map((account) => {
+    {loading ? <p role="status">Loading accounts…</p> : !error && visibleAccounts.length === 0 ? <section className="panel empty-state"><h2>{archived ? "No archived accounts" : accounts.length ? "No active accounts" : "Your first account starts here"}</h2><p>{archived ? "Archived accounts will appear here. You can restore them at any time." : "Add a bank account, cash balance, credit card, or investment account."}</p>{!archived && <button disabled={showForm} onClick={() => { setEditing(undefined); setShowForm(true); }}>Create your first account</button>}</section> : <div className="account-grid">{visibleAccounts.map((account) => {
       const owed = account.type === "CREDIT_CARD" && account.openingBalance.startsWith("-");
-      return <article className="panel account-card" key={account.id}><p className="eyebrow">{accountTypes[account.type]}</p><h2>{account.name}</h2>{account.institution && <p className="muted">{account.institution}</p>}<p className="balance">{account.currency} {displayAmount(owed ? account.openingBalance.slice(1) : account.openingBalance)}</p><p className="muted">Opening {owed ? "amount owed" : "balance"} · <time dateTime={account.openingDate}>{account.openingDate}</time></p></article>;
+      return <article className="panel account-card" key={account.id}><p className="eyebrow">{accountTypes[account.type]}</p><h2>{account.name}</h2>{account.institution && <p className="muted">{account.institution}</p>}<p className="balance">{account.currency} {displayAmount(owed ? account.openingBalance.slice(1) : account.openingBalance)}</p><p className="muted">Opening {owed ? "amount owed" : account.type === "INVESTMENT" ? "cash balance" : "balance"} · <time dateTime={account.openingDate}>{account.openingDate}</time></p>{!account.active && <p className="muted">Archived</p>}<div className="form-actions"><button className="secondary" disabled={showForm || actionPending || !!deleting} onClick={() => { setEditing(account); setShowForm(true); setNotice(null); }}>Edit</button><button className="secondary" disabled={showForm || actionPending || !!deleting} onClick={() => void manage(account, account.active ? "archive" : "restore")}>{account.active ? "Archive" : "Restore"}</button><button className="secondary" disabled={showForm || actionPending || !!deleting || account.hasActivity} onClick={() => { setDeleting(account); setActionError(null); setStale(false); }}>Delete</button></div>{account.hasActivity && <p className="help">Financial history is preserved. Archive this account instead of deleting it.</p>}</article>;
     })}</div>}
   </main>;
 }
-function AccountForm({ onCancel, onCreated, onExpired }: { onCancel: () => void; onCreated: (account: FinancialAccount) => void; onExpired: () => void }) {
-  const [input, setInput] = useState<CreateAccount>({ name: "", type: "CHECKING", institution: "", currency: "", openingAmount: "0", openingDate: today(), balanceMeaning: "BALANCE" });
+function AccountForm({ account, onCancel, onCreated, onExpired }: { account?: FinancialAccount; onCancel: () => void; onCreated: (account: FinancialAccount) => void; onExpired: () => void }) {
+  const [input, setInput] = useState<CreateAccount>(account ? { name: account.name, type: account.type, institution: account.institution ?? "", currency: account.currency, openingAmount: account.type === "CREDIT_CARD" ? account.openingBalance.replace(/^-/, "") : account.openingBalance, openingDate: account.openingDate, balanceMeaning: account.type === "CREDIT_CARD" ? account.openingBalance.startsWith("-") ? "AMOUNT_OWED" : "IN_CREDIT" : "BALANCE" } : { name: "", type: "CHECKING", institution: "", currency: "", openingAmount: "0", openingDate: today(), balanceMeaning: "BALANCE" });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
+  const [stale, setStale] = useState(false);
+  const locked = account?.hasActivity ?? false;
   const creditCard = input.type === "CREDIT_CARD";
   function change<K extends keyof CreateAccount>(key: K, value: CreateAccount[K]) {
     setInput((previous) => ({ ...previous, [key]: value }));
   }
   async function submit(event: FormEvent) {
     event.preventDefault(); setPending(true); setError(null); setFields({});
-    try { onCreated(await api.createAccount({ ...input, name: input.name.trim(), currency: input.currency.trim().toUpperCase() })); }
+    try { const normalized = { ...input, name: input.name.trim(), currency: input.currency.trim().toUpperCase() };
+      onCreated(await (account ? api.updateAccount(account, normalized) : api.createAccount(normalized))); }
     catch (err) {
       if (err instanceof ApiError && err.status === 401) onExpired();
-      else { setError(errorMessage(err)); if (err instanceof ApiError) setFields(err.fields); }
+      else { setError(errorMessage(err)); if (err instanceof ApiError) setFields(err.fields); if (err instanceof ApiError && err.status === 412) setStale(true); }
     } finally { setPending(false); }
   }
   function fieldError(name: string) { return fields[name] ? <span className="field-error" id={`${name}-error`}>{fields[name]}</span> : null; }
   function accessibility(name: string) { return { "aria-invalid": !!fields[name], "aria-describedby": fields[name] ? `${name}-error` : undefined }; }
-  return <section className="panel create-panel" aria-labelledby="create-heading"><h2 id="create-heading">Create account</h2>
+  return <section className="panel create-panel" aria-labelledby="create-heading"><h2 id="create-heading">{account ? "Edit account" : "Create account"}</h2>{locked && <p className="notice">Financial setup is locked because this account has activity. You can change its name and institution.</p>}{stale && <p role="status">Cancel and reload accounts before editing again.</p>}
+    {input.type === "INVESTMENT" && <p className="help">Enter uninvested cash only. Stocks and other holdings will be tracked separately.</p>}
     <form onSubmit={(event) => void submit(event)}><fieldset disabled={pending} className="form-grid">
       <div><label htmlFor="account-name">Account name</label><input id="account-name" autoFocus required maxLength={100} value={input.name} onChange={(event) => change("name", event.target.value)} {...accessibility("name")} />{fieldError("name")}</div>
-      <div><label htmlFor="account-type">Account type</label><select id="account-type" value={input.type} onChange={(event) => { const type = event.target.value as AccountType; setInput((previous) => ({ ...previous, type, balanceMeaning: type === "CREDIT_CARD" ? "AMOUNT_OWED" : "BALANCE", openingAmount: "0" })); }} {...accessibility("type")}>{Object.entries(accountTypes).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>{fieldError("type")}</div>
+      <div><label htmlFor="account-type">Account type</label><select disabled={locked} id="account-type" value={input.type} onChange={(event) => { const type = event.target.value as AccountType; setInput((previous) => ({ ...previous, type, balanceMeaning: type === "CREDIT_CARD" ? (previous.openingAmount.startsWith("-") || /^0(?:\.0+)?$/.test(previous.openingAmount)) ? "AMOUNT_OWED" : "IN_CREDIT" : "BALANCE", openingAmount: type === "CREDIT_CARD" ? previous.openingAmount.replace(/^-/, "") : previous.type === "CREDIT_CARD" && previous.balanceMeaning === "AMOUNT_OWED" && !/^0(?:\.0+)?$/.test(previous.openingAmount) ? `-${previous.openingAmount}` : previous.openingAmount })); }} {...accessibility("type")}>{Object.entries(accountTypes).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>{fieldError("type")}</div>
       <div><label htmlFor="institution">Institution <span className="muted">(optional)</span></label><input id="institution" maxLength={100} value={input.institution} onChange={(event) => change("institution", event.target.value)} {...accessibility("institution")} />{fieldError("institution")}</div>
-      <div><label htmlFor="currency">Currency</label><input id="currency" required list="currency-options" placeholder="Choose or enter a code, e.g. CHF" maxLength={3} pattern="[A-Z]{3}" value={input.currency} onChange={(event) => change("currency", event.target.value.toUpperCase())} {...accessibility("currency")} /><datalist id="currency-options">{["CHF", "EUR", "USD", "GBP", "JPY", "CAD", "AUD"].map((currency) => <option key={currency} value={currency} />)}</datalist>{fieldError("currency")}</div>
-      {creditCard && <div><label htmlFor="balance-meaning">Credit-card position</label><select id="balance-meaning" value={input.balanceMeaning} onChange={(event) => change("balanceMeaning", event.target.value as BalanceMeaning)}><option value="AMOUNT_OWED">Amount owed</option><option value="IN_CREDIT">In credit (overpayment)</option></select>{fieldError("balanceMeaning")}</div>}
-      <div><label htmlFor="opening-amount">{creditCard ? input.balanceMeaning === "AMOUNT_OWED" ? "Opening amount owed" : "Opening credit amount" : "Opening balance"}</label><input id="opening-amount" type="text" inputMode="decimal" required maxLength={30} pattern={creditCard ? "[0-9]{1,20}(\\.[0-9]{1,8})?" : "-?[0-9]{1,20}(\\.[0-9]{1,8})?"} value={input.openingAmount} onChange={(event) => change("openingAmount", event.target.value)} {...accessibility("openingAmount")} /><span className="help">{creditCard ? "Enter a positive amount or zero." : "Use a minus sign for a negative balance."} Use a decimal point.</span>{fieldError("openingAmount")}</div>
-      <div><label htmlFor="opening-date">Opening date</label><input id="opening-date" type="date" required value={input.openingDate} onChange={(event) => change("openingDate", event.target.value)} {...accessibility("openingDate")} />{fieldError("openingDate")}</div>
+      <div><label htmlFor="currency">Currency</label><input disabled={locked} id="currency" required list="currency-options" placeholder="Choose or enter a code, e.g. CHF" maxLength={3} pattern="[A-Z]{3}" value={input.currency} onChange={(event) => change("currency", event.target.value.toUpperCase())} {...accessibility("currency")} /><datalist id="currency-options">{["CHF", "EUR", "USD", "GBP", "JPY", "CAD", "AUD"].map((currency) => <option key={currency} value={currency} />)}</datalist>{fieldError("currency")}</div>
+      {creditCard && <div><label htmlFor="balance-meaning">Credit-card position</label><select disabled={locked} id="balance-meaning" value={input.balanceMeaning} onChange={(event) => change("balanceMeaning", event.target.value as BalanceMeaning)}><option value="AMOUNT_OWED">Amount owed</option><option value="IN_CREDIT">In credit (overpayment)</option></select>{fieldError("balanceMeaning")}</div>}
+      <div><label htmlFor="opening-amount">{creditCard ? input.balanceMeaning === "AMOUNT_OWED" ? "Opening amount owed" : "Opening credit amount" : input.type === "INVESTMENT" ? "Opening cash balance" : "Opening balance"}</label><input disabled={locked} id="opening-amount" type="text" inputMode="decimal" required maxLength={40} pattern={creditCard ? "[0-9]{1,20}(\\.[0-9]{1,8})?" : "-?[0-9]{1,20}(\\.[0-9]{1,8})?"} value={input.openingAmount} onChange={(event) => change("openingAmount", event.target.value)} {...accessibility("openingAmount")} /><span className="help">{creditCard ? "Enter a positive amount or zero." : "Use a minus sign for a negative balance."} Use a decimal point.</span>{fieldError("openingAmount")}</div>
+      <div><label htmlFor="opening-date">Opening date</label><input disabled={locked} id="opening-date" type="date" required value={input.openingDate} onChange={(event) => change("openingDate", event.target.value)} {...accessibility("openingDate")} />{fieldError("openingDate")}</div>
       {error && <p className="error form-wide" role="alert">{error}</p>}
-      <div className="form-actions form-wide"><button type="submit">{pending ? "Saving…" : "Save account"}</button><button className="secondary" type="button" onClick={onCancel}>Cancel</button></div>
+      <div className="form-actions form-wide"><button disabled={stale} type="submit">{pending ? "Saving…" : "Save account"}</button><button className="secondary" type="button" onClick={onCancel}>Cancel</button></div>
     </fieldset></form>
   </section>;
 }

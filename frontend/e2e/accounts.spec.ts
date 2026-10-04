@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { syntheticUser, passwordLogin, enroll } from "./helpers";
 
-test("login, create an account, reload, and log out", async ({ page }, testInfo) => {
+test("create, edit, archive, restore, delete an account and log out", async ({ page }, testInfo) => {
   const name = `Synthetic savings ${testInfo.project.name} ${Date.now()}`;
   const email = await syntheticUser();
   const status = await passwordLogin(page, email);
@@ -19,8 +19,35 @@ test("login, create an account, reload, and log out", async ({ page }, testInfo)
   const account = page.getByRole("article").filter({ has: page.getByRole("heading", { name, exact: true }) });
   await expect(account).toContainText("CHF 1’234.56");
   await expect(account).toContainText("2026-10-04");
+  await account.getByRole("button", { name: "Edit", exact: true }).click();
+  const changedName = `${name} updated`;
+  await page.getByLabel("Account name").fill(changedName);
+  await page.getByLabel("Opening balance", { exact: true }).fill("99999999999999999999.12345678");
+  await page.getByRole("button", { name: "Save account", exact: true }).click();
+  await expect(page.getByRole("heading", { name: changedName, exact: true })).toBeVisible();
+  await page.reload();
+  const changed = page.getByRole("article").filter({ has: page.getByRole("heading", { name: changedName, exact: true }) });
+  await expect(changed).toContainText("CHF 99’999’999’999’999’999’999.12345678");
+  await changed.getByRole("button", { name: "Archive", exact: true }).click();
+  await expect(page.getByRole("heading", { name: changedName, exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Archived accounts" }).click();
+  await expect(changed).toContainText("Archived");
+  await page.reload();
+  await page.getByRole("button", { name: "Archived accounts" }).click();
+  await changed.getByRole("button", { name: "Restore", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "No archived accounts" })).toBeVisible();
+  await page.getByRole("button", { name: "Active accounts" }).click();
+  await expect(changed).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("accounts.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await changed.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Cancel deletion" }).click();
+  await expect(changed).toBeVisible();
+  await changed.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm deletion" }).click();
+  await expect(page.getByRole("heading", { name: "Your first account starts here" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Your first account starts here" })).toBeVisible();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   await page.reload();

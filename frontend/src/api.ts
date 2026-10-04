@@ -12,7 +12,7 @@ export type AccountType = "CHECKING" | "SAVINGS" | "CASH" | "CREDIT_CARD" | "INV
 export type BalanceMeaning = "BALANCE" | "AMOUNT_OWED" | "IN_CREDIT";
 export type FinancialAccount = {
   id: string; name: string; type: AccountType; institution: string | null;
-  currency: string; openingBalance: string; openingDate: string; active: boolean; createdAt: string;
+  currency: string; openingBalance: string; openingDate: string; active: boolean; createdAt: string; version: number; hasActivity: boolean;
 };
 export type CreateAccount = {
   name: string; type: AccountType; institution: string; currency: string;
@@ -44,6 +44,12 @@ async function post<T>(path: string, body?: BodyInit, contentType?: string): Pro
     headers: { [csrf.headerName]: csrf.token, ...(contentType ? { "Content-Type": contentType } : {}) },
   });
 }
+async function mutateAccount<T>(account: FinancialAccount, method: string, suffix = "", input?: CreateAccount): Promise<T> {
+  const csrf = await request<{ headerName: string; token: string }>("/auth/csrf");
+  return request<T>(`/accounts/${account.id}${suffix}`, { method,
+    headers: { [csrf.headerName]: csrf.token, "If-Match": `"${account.version}"`, ...(input ? { "Content-Type": "application/json" } : {}) },
+    body: input ? JSON.stringify(input) : undefined });
+}
 export const api = {
   session: () => request<Session>("/auth/session"),
   login: (email: string, password: string) => post<Session>("/auth/login", new URLSearchParams({ email, password }), "application/x-www-form-urlencoded"),
@@ -58,5 +64,9 @@ export const api = {
   confirmMfa: () => post<Session>("/users/me/mfa/enrollment/confirm", JSON.stringify({ recoveryCodesSaved: true }), "application/json"),
   cancelMfa: () => post<void>("/users/me/mfa/pending/cancel"),
   accounts: () => request<FinancialAccount[]>("/accounts"),
+  updateAccount: (account: FinancialAccount, input: CreateAccount) => mutateAccount<FinancialAccount>(account, "PUT", "", input),
+  deleteAccount: (account: FinancialAccount) => mutateAccount<void>(account, "DELETE"),
+  archiveAccount: (account: FinancialAccount) => mutateAccount<FinancialAccount>(account, "POST", "/archive"),
+  restoreAccount: (account: FinancialAccount) => mutateAccount<FinancialAccount>(account, "POST", "/restore"),
   createAccount: (input: CreateAccount) => post<FinancialAccount>("/accounts", JSON.stringify(input), "application/json"),
 };

@@ -23,6 +23,8 @@ Goal: represent financial accounts and trustworthy manual activity.
 - [x] Multi-user isolation for account creation/listing
 - [x] Financial account creation and owner-scoped listing
 - [x] Opening balances
+- [x] Account editing, unused-account deletion, archive/restore, version checks, and audit snapshots
+- [x] Investment cash/holdings architecture documented (implementation deferred)
 - Manual income/expense transactions
 - Transfers
 - Categories

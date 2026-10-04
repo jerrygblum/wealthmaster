@@ -55,7 +55,9 @@ Supported types initially:
 - Investment/brokerage
 - Other
 
-Each account has owner, name, type, institution (optional), native currency, opening balance, opening date, and active/archive status.
+Each account has owner, name, type, institution (optional), native currency, opening balance, opening date, and active/archive status. Investment opening balances represent uninvested cash only.
+
+Accounts support editing, archive/restore, and confirmed permanent deletion when unused. Financial activity locks type, currency, opening amount, and opening date; name and institution remain editable. A nonzero opening balance alone does not block deletion. Archived accounts preserve financial history and valuation; future transaction/trade entry requires restoration. Changes retain audit snapshots, including after permanent deletion.
 
 ### Ledger transactions
 - Create/edit/delete transactions with auditability.

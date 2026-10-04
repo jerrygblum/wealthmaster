@@ -22,4 +22,20 @@ describe("session API", () => {
     await api.logout(); await api.logout();
     expect(fetch.mock.calls.filter(([path]) => path.endsWith("csrf"))).toHaveLength(2);
   });
+
+  it("sends fresh CSRF and quoted account versions for every account mutation", async () => {
+    const fetch = vi.fn().mockImplementation((path: string) => Promise.resolve(path.endsWith("csrf")
+      ? new Response(JSON.stringify({ headerName: "X-CSRF-TOKEN", token: "token" }))
+      : new Response(null, { status: 204 })));
+    vi.stubGlobal("fetch", fetch);
+    const account = { id: "synthetic", version: 7 } as import("./api").FinancialAccount;
+    const input = { name: "Synthetic" } as import("./api").CreateAccount;
+    await api.updateAccount(account, input); await api.archiveAccount(account); await api.restoreAccount(account); await api.deleteAccount(account);
+    const calls = fetch.mock.calls.filter(([path]) => !path.endsWith("csrf"));
+    expect(calls.map(([path, options]) => [path, options.method])).toEqual([
+      ["/api/v1/accounts/synthetic", "PUT"], ["/api/v1/accounts/synthetic/archive", "POST"],
+      ["/api/v1/accounts/synthetic/restore", "POST"], ["/api/v1/accounts/synthetic", "DELETE"]]);
+    for (const [, options] of calls) { expect(options.headers["If-Match"]).toBe('"7"'); expect(options.headers["X-CSRF-TOKEN"]).toBe("token"); }
+    expect(fetch.mock.calls.filter(([path]) => path.endsWith("csrf"))).toHaveLength(4);
+  });
 });

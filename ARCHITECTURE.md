@@ -55,6 +55,16 @@ Credit-card purchases generate expenses/liability. Card repayment reduces the ca
 ### Investments
 Buying/selling an asset changes portfolio composition; it is not ordinary spending/income. Fees/taxes are tracked separately. Acquisition lots are retained.
 
+### Account lifecycle
+
+An account can be edited or permanently deleted while it has no financial activity. An opening balance alone is not activity. Once activity exists, type, currency, opening balance, and opening date are locked; name and institution remain editable. Archive/restore is reversible. Archived accounts retain their balances and valuation contributions; future writers must reject new activity until restoration.
+
+Mutations require the version returned in the account response, quoted in `If-Match`. Owner-scoped row locks serialize checks and writes; JPA versioning detects stale requests. Account changes and audit snapshots commit together. Audit resource IDs intentionally survive account deletion without a foreign key to the account.
+
+`AccountUsagePolicy.ActivitySource` is the integration point for ledger, imports, and investments. No contributors exist until financial activity is implemented. Before introducing account references, each module must register a history/reference check, including reversed/soft-deleted records, and use restrictive account foreign keys. Future writers must lock referenced accounts before checking active status or writing activity, using UUID order when locking multiple accounts. This prevents activity creation racing with deletion, financial setup edits, or archiving. Never cascade-delete account history.
+
+See [investment cash and holdings design](docs/adr/006-investment-cash-and-holdings.md).
+
 ### Imports
 Imports create staged normalized records before committing ledger/investment activity. Original source representation and lineage are preserved.
 
@@ -91,8 +101,9 @@ Flyway owns production schema evolution.
 
 ```text
 V001__baseline.sql
-V002__users_and_auth.sql
-V003__accounts.sql
+V002__users_and_accounts.sql
+V003__mfa.sql
+V004__account_management.sql
 ...
 ```
 

@@ -102,9 +102,17 @@ class MfaIntegrationTest {
     Enrollment enabled() throws Exception {
         var enrollment = verifiedSetup("test-binding"); mfa.confirm(user.getId(), "test-binding", true); return enrollment;
     }
+    void assertAccountMutationsForbidden(MockHttpSession session) throws Exception {
+        var path = "/api/v1/accounts/" + UUID.randomUUID();
+        for (var request : List.of(put(path).contentType("application/json").content("{}"), delete(path), post(path + "/archive"), post(path + "/restore"))) {
+            mvc.perform(request.session(session).header("X-CSRF-TOKEN", csrf(session)).header("If-Match", "\"0\""))
+                    .andExpect(status().isForbidden());
+        }
+    }
     @Test void productionRequiresVerifiedEnrollmentAndSavedConfirmationBeforeAccounts() throws Exception {
         var session = login("MFA_SETUP_REQUIRED"); var otherSession = login("MFA_SETUP_REQUIRED");
         mvc.perform(get("/api/v1/accounts").session(session)).andExpect(status().isForbidden());
+        assertAccountMutationsForbidden(session);
         mvc.perform(get("/api/v1/users/me/security").session(session)).andExpect(status().isOk()).andExpect(jsonPath("$.required").value(true));
         mvc.perform(post("/api/v1/users/me/mfa/enrollment/start").session(session).contentType("application/json").content("{}"))
                 .andExpect(status().isForbidden());
@@ -124,6 +132,7 @@ class MfaIntegrationTest {
         var enrollment = enabled(); clock.advance(30);
         var session = login("MFA_REQUIRED"); String previousId = session.getId();
         mvc.perform(get("/api/v1/accounts").session(session)).andExpect(status().isForbidden());
+        assertAccountMutationsForbidden(session);
         mvc.perform(get("/api/v1/users/me/security").session(session)).andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/auth/session").session(session)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("MFA_REQUIRED"));
         postJson("/api/v1/auth/mfa/verify", Map.of("code", code(enrollment.setup().setupKey()), "kind", "TOTP"), session)

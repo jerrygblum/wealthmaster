@@ -96,4 +96,88 @@ class AccountsIntegrationTest {
         assertEquals(0, accounts.count());
         assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM audit_events", Integer.class));
     }
+
+    private FinancialAccount fixture() {
+        return accounts.saveAndFlush(new FinancialAccount(users.findByEmail("owner@example.test").orElseThrow().getId(),
+                "Synthetic", AccountType.CHECKING, null, "CHF", new BigDecimal("10.12345678"), java.time.LocalDate.of(2026, 10, 4)));
+    }
+    private String editJson() { return """
+        {"name":"Updated","type":"INVESTMENT","institution":"Synthetic broker","currency":"CHF",
+        "openingAmount":"99999999999999999999.12345678","balanceMeaning":"BALANCE","openingDate":"2026-10-03"}
+        """; }
+    @Test void editArchiveRestoreDeletePersistVersionsAndSurvivingAuditSnapshots() throws Exception {
+        var account = fixture(); var owner = login("owner@example.test"); var path = "/api/v1/accounts/" + account.getId();
+        mvc.perform(put(path).session(owner).header("X-CSRF-TOKEN", csrf(owner)).header("If-Match", "\"0\"")
+                .contentType("application/json").content(editJson())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(1)).andExpect(jsonPath("$.openingBalance").value("99999999999999999999.12345678"));
+        mvc.perform(delete(path).session(owner).header("X-CSRF-TOKEN", csrf(owner)).header("If-Match", "\"0\""))
+                .andExpect(status().isPreconditionFailed());
+        mvc.perform(post(path + "/archive").session(owner).header("X-CSRF-TOKEN", csrf(owner)).header("If-Match", "\"1\""))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.active").value(false)).andExpect(jsonPath("$.version").value(2));
+        mvc.perform(post(path + "/restore").session(owner).header("X-CSRF-TOKEN", csrf(owner)).header("If-Match", "\"2\""))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.active").value(true)).andExpect(jsonPath("$.version").value(3));
+        mvc.perform(delete(path).session(owner).header("X-CSRF-TOKEN", csrf(owner)).header("If-Match", "\"3\""))
+                .andExpect(status().isNoContent());
+        assertFalse(accounts.existsById(account.getId()));
+        assertEquals(4, jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE resource_id=?", Integer.class, account.getId()));
+        assertEquals("Synthetic", jdbc.queryForObject("SELECT details->'before'->>'name' FROM audit_events WHERE event_type='ACCOUNT_UPDATED'", String.class));
+        assertEquals("Updated", jdbc.queryForObject("SELECT details->'before'->>'name' FROM audit_events WHERE event_type='ACCOUNT_DELETED'", String.class));
+    }
+    @Test void everyMutationChecksOwnershipCsrfAndAuthentication() throws Exception {
+        var account = fixture(); var owner = login("owner@example.test");
+        users.findByEmail("second@example.test").orElseGet(() -> users.save(new AppUser("second@example.test", encoder.encode("synthetic-password"))));
+        var other = login("second@example.test"); var path = "/api/v1/accounts/" + account.getId();
+        for (var request : java.util.List.of(put(path).contentType("application/json").content(editJson()), delete(path), post(path + "/archive"), post(path + "/restore"))) {
+            mvc.perform(request.session(other).header("X-CSRF-TOKEN", csrf(other)).header("If-Match", "\"0\""))
+                    .andExpect(status().isNotFound());
+        }
+        mvc.perform(delete(path).session(owner).header("If-Match", "\"0\"")).andExpect(status().isForbidden());
+        mvc.perform(delete(path).session(owner).header("X-CSRF-TOKEN", csrf(owner))).andExpect(status().is(428));
+        var anonymous = new MockHttpSession();
+        mvc.perform(delete(path).session(anonymous).header("X-CSRF-TOKEN", csrf(anonymous)).header("If-Match", "\"0\""))
+                .andExpect(status().isUnauthorized());
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM audit_events", Integer.class));
+        assertTrue(accounts.existsById(account.getId()));
+    }
+    @Test void invalidEditLeavesAccountAndAuditUnchanged() throws Exception {
+        var account = fixture(); var owner = login("owner@example.test");
+        mvc.perform(put("/api/v1/accounts/" + account.getId()).session(owner).header("X-CSRF-TOKEN", csrf(owner))
+                .header("If-Match", "\"0\"").contentType("application/json").content(editJson().replace("CHF", "ZZZ")))
+                .andExpect(status().isBadRequest());
+        assertEquals("Synthetic", accounts.findById(account.getId()).orElseThrow().getName());
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM audit_events", Integer.class));
+    }
+
+    @Test void concurrentEditsWithSameVersionHaveOneWinner() throws Exception {
+        var account = fixture(); var first = login("owner@example.test"); var second = login("owner@example.test");
+        var firstToken = csrf(first); var secondToken = csrf(second);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var executor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            java.util.concurrent.Callable<Integer> editFirst = () -> { start.await(); return mvc.perform(put("/api/v1/accounts/" + account.getId())
+                    .session(first).header("X-CSRF-TOKEN", firstToken).header("If-Match", "\"0\"")
+                    .contentType("application/json").content(editJson())).andReturn().getResponse().getStatus(); };
+            java.util.concurrent.Callable<Integer> editSecond = () -> { start.await(); return mvc.perform(put("/api/v1/accounts/" + account.getId())
+                    .session(second).header("X-CSRF-TOKEN", secondToken).header("If-Match", "\"0\"")
+                    .contentType("application/json").content(editJson().replace("Updated", "Other edit"))).andReturn().getResponse().getStatus(); };
+            var a = executor.submit(editFirst); var b = executor.submit(editSecond); start.countDown();
+            var statuses = java.util.List.of(a.get(15, java.util.concurrent.TimeUnit.SECONDS), b.get(15, java.util.concurrent.TimeUnit.SECONDS));
+            assertTrue(statuses.contains(200)); assertTrue(statuses.contains(412));
+        }
+        assertEquals(1, accounts.findById(account.getId()).orElseThrow().getVersion());
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM audit_events", Integer.class));
+    }
+    @Test void auditFailureRollsBackEditAndDeletion() throws Exception {
+        var account = fixture(); var owner = login("owner@example.test");
+        jdbc.execute("ALTER TABLE audit_events ADD CONSTRAINT synthetic_reject_account_changes CHECK (event_type NOT IN ('ACCOUNT_UPDATED','ACCOUNT_DELETED'))");
+        try {
+            assertThrows(Exception.class, () -> mvc.perform(put("/api/v1/accounts/" + account.getId()).session(owner)
+                    .header("X-CSRF-TOKEN", csrf(owner)).header("If-Match", "\"0\"").contentType("application/json").content(editJson())));
+            assertEquals("Synthetic", accounts.findById(account.getId()).orElseThrow().getName());
+            assertEquals(0, accounts.findById(account.getId()).orElseThrow().getVersion());
+            assertThrows(Exception.class, () -> mvc.perform(delete("/api/v1/accounts/" + account.getId()).session(owner)
+                    .header("X-CSRF-TOKEN", csrf(owner)).header("If-Match", "\"0\"")));
+            assertTrue(accounts.existsById(account.getId()));
+            assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM audit_events", Integer.class));
+        } finally { jdbc.execute("ALTER TABLE audit_events DROP CONSTRAINT synthetic_reject_account_changes"); }
+    }
 }

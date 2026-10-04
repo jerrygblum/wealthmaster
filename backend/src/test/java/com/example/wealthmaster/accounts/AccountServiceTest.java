@@ -15,10 +15,12 @@ class AccountServiceTest {
     private AccountRepository accounts;
     private AuditService audit;
     private AccountService service;
+    private AccountUsagePolicy usage;
     private final UUID owner = UUID.randomUUID();
     @BeforeEach void setup() {
         accounts = mock(AccountRepository.class); audit = mock(AuditService.class);
-        service = new AccountService(accounts, audit);
+        usage = mock(AccountUsagePolicy.class);
+        service = new AccountService(accounts, audit, usage);
         when(accounts.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
     private CreateAccount input(AccountType type, String amount, BalanceMeaning meaning, String currency) {
@@ -67,5 +69,51 @@ class AccountServiceTest {
         service.list(owner);
         verify(accounts).findByOwnerIdOrderByCreatedAtDescIdAsc(owner);
         verifyNoMoreInteractions(accounts);
+    }
+
+    private FinancialAccount existing() {
+        var account = new FinancialAccount(owner, "Existing", AccountType.CHECKING, null, "CHF", new java.math.BigDecimal("5.00"), LocalDate.of(2026, 10, 4));
+        when(accounts.findByIdAndOwnerId(account.getId(), owner)).thenReturn(java.util.Optional.of(account));
+        return account;
+    }
+    @Test void usedAccountsPermitMetadataChangesButLockEachFinancialField() {
+        var account = existing(); when(usage.hasActivity(account.getId())).thenReturn(true);
+        var updated = service.update(owner, account.getId(), "\"0\"", input(AccountType.CHECKING, "5", BalanceMeaning.BALANCE, "CHF"));
+        assertEquals("Test", updated.name()); assertTrue(updated.hasActivity());
+        for (CreateAccount changed : java.util.List.of(
+                input(AccountType.SAVINGS, "5", BalanceMeaning.BALANCE, "CHF"),
+                input(AccountType.CHECKING, "5", BalanceMeaning.BALANCE, "EUR"),
+                input(AccountType.CHECKING, "6", BalanceMeaning.BALANCE, "CHF"),
+                new CreateAccount("Test", AccountType.CHECKING, null, "CHF", "5", BalanceMeaning.BALANCE, LocalDate.of(2025, 1, 1)))) {
+            assertEquals(409, assertThrows(AccountFailure.class, () -> service.update(owner, account.getId(), "\"0\"", changed)).status());
+        }
+        assertEquals(409, assertThrows(AccountFailure.class, () -> service.delete(owner, account.getId(), "\"0\"")).status());
+        verify(accounts, never()).delete(any());
+        assertFalse(service.setActive(owner, account.getId(), "\"0\"", false).active());
+        assertTrue(service.setActive(owner, account.getId(), "\"0\"", true).active());
+    }
+    @Test void unusedAccountsCanChangeTypeAndRetainExactLargeOpeningAmount() {
+        var account = existing();
+        var updated = service.update(owner, account.getId(), "\"0\"", input(AccountType.CREDIT_CARD, "99999999999999999999.12345678", BalanceMeaning.AMOUNT_OWED, "USD"));
+        assertEquals("-99999999999999999999.12345678", updated.openingBalance());
+        verify(audit).accountChanged(eq(owner), eq(account.getId()), eq("ACCOUNT_UPDATED"), any(), eq(updated));
+    }
+    @Test void versionPreconditionsAndUnknownOwnerCannotMutate() {
+        var account = existing();
+        assertEquals(428, assertThrows(AccountFailure.class, () -> service.delete(owner, account.getId(), null)).status());
+        assertEquals(400, assertThrows(AccountFailure.class, () -> service.delete(owner, account.getId(), "*")).status());
+        assertEquals(412, assertThrows(AccountFailure.class, () -> service.delete(owner, account.getId(), "\"1\"")).status());
+        assertEquals(404, assertThrows(AccountFailure.class, () -> service.delete(UUID.randomUUID(), account.getId(), "\"0\"")).status());
+        verifyNoInteractions(audit);
+    }
+    @Test void nonzeroOpeningBalanceDoesNotPreventDeletionAndSnapshotIsAudited() {
+        var account = existing(); service.delete(owner, account.getId(), "\"0\"");
+        verify(accounts).delete(account);
+        verify(audit).accountChanged(eq(owner), eq(account.getId()), eq("ACCOUNT_DELETED"), argThat(snapshot -> snapshot.openingBalance().equals("5.00")), isNull());
+    }
+    @Test void activityPolicyUsesAllContributorsAndDoesNotTreatNoModulesAsActivity() {
+        var id = UUID.randomUUID();
+        assertFalse(new AccountUsagePolicy(java.util.List.of()).hasActivity(id));
+        assertTrue(new AccountUsagePolicy(java.util.List.of(accountId -> false, accountId -> accountId.equals(id))).hasActivity(id));
     }
 }

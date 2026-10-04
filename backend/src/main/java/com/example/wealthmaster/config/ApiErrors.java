@@ -11,6 +11,10 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class ApiErrors {
+    @ExceptionHandler(com.example.wealthmaster.accounts.AccountFailure.class)
+    public ResponseEntity<Map<String, String>> account(com.example.wealthmaster.accounts.AccountFailure error) {
+        return ResponseEntity.status(error.status()).body(Map.of("message", error.getMessage()));
+    }
     @ExceptionHandler(SecurityFailure.class)
     public ResponseEntity<Map<String, Object>> security(SecurityFailure error) {
         var builder = ResponseEntity.status(error.status());

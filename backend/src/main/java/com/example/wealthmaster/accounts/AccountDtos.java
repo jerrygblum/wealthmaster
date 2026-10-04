@@ -17,11 +17,14 @@ public final class AccountDtos {
             @NotNull BalanceMeaning balanceMeaning,
             @NotNull LocalDate openingDate) {}
     public record AccountResponse(UUID id, String name, AccountType type, String institution,
-            String currency, String openingBalance, LocalDate openingDate, boolean active, Instant createdAt) {
+            String currency, String openingBalance, LocalDate openingDate, boolean active, Instant createdAt, long version, boolean hasActivity) {
+        public AccountResponse withActivity(boolean activity) {
+            return new AccountResponse(id, name, type, institution, currency, openingBalance, openingDate, active, createdAt, version, activity);
+        }
         public static AccountResponse from(FinancialAccount account) {
             return new AccountResponse(account.getId(), account.getName(), account.getType(),
                     account.getInstitution(), account.getCurrency(), account.getOpeningBalance().toPlainString(),
-                    account.getOpeningDate(), account.isActive(), account.getCreatedAt());
+                    account.getOpeningDate(), account.isActive(), account.getCreatedAt(), account.getVersion(), false);
         }
     }
 }

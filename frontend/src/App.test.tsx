@@ -6,10 +6,10 @@ import type { FinancialAccount } from "./api";
 
 vi.mock("./api", async (original) => {
   const actual = await original<typeof import("./api")>();
-  return { ...actual, api: { session: vi.fn(), login: vi.fn(), logout: vi.fn(), accounts: vi.fn(), createAccount: vi.fn(), security: vi.fn(), verifyMfa: vi.fn(), startMfa: vi.fn(), verifyEnrollment: vi.fn(), confirmMfa: vi.fn(), cancelMfa: vi.fn() } };
+  return { ...actual, api: { session: vi.fn(), login: vi.fn(), logout: vi.fn(), accounts: vi.fn(), createAccount: vi.fn(), updateAccount: vi.fn(), archiveAccount: vi.fn(), restoreAccount: vi.fn(), deleteAccount: vi.fn(), security: vi.fn(), verifyMfa: vi.fn(), startMfa: vi.fn(), verifyEnrollment: vi.fn(), confirmMfa: vi.fn(), cancelMfa: vi.fn() } };
 });
 const session = { status: "AUTHENTICATED" as const, user: { id: "owner-1", email: "owner@example.test" } };
-const account: FinancialAccount = { id: "account-1", name: "Everyday", type: "CHECKING", institution: null, currency: "CHF", openingBalance: "1234.56000000", openingDate: "2026-10-04", active: true, createdAt: "2026-10-04T00:00:00Z" };
+const account: FinancialAccount = { id: "account-1", name: "Everyday", type: "CHECKING", institution: null, currency: "CHF", openingBalance: "1234.56000000", openingDate: "2026-10-04", active: true, version: 0, hasActivity: false, createdAt: "2026-10-04T00:00:00Z" };
 beforeEach(() => {
   vi.resetAllMocks();
   window.location.hash = "";
@@ -103,5 +103,81 @@ describe("workspace", () => {
   it("formats decimal strings without losing precision", () => {
     expect(displayAmount("99999999999999999999.12345678")).toBe("99’999’999’999’999’999’999.12345678");
     expect(displayAmount("-1.01000000")).toBe("-1.01");
+  });
+
+  it("prefills editing without losing precision, preserves amounts on type changes, and cancels", async () => {
+    vi.mocked(api.session).mockResolvedValue(session);
+    vi.mocked(api.accounts).mockResolvedValue([{ ...account, openingBalance: "-99999999999999999999.12345678" }]);
+    render(<App />); await screen.findByRole("heading", { name: "Everyday" });
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText("Opening balance")).toHaveValue("-99999999999999999999.12345678");
+    fireEvent.change(screen.getByLabelText("Account type"), { target: { value: "CREDIT_CARD" } });
+    expect(screen.getByLabelText("Opening amount owed")).toHaveValue("99999999999999999999.12345678");
+    fireEvent.change(screen.getByLabelText("Account type"), { target: { value: "CHECKING" } });
+    expect(screen.getByLabelText("Opening balance")).toHaveValue("-99999999999999999999.12345678");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Edit account" })).not.toBeInTheDocument());
+    expect(api.updateAccount).not.toHaveBeenCalled();
+  });
+  it("saves edits, archives, restores, and confirms deletion", async () => {
+    vi.mocked(api.session).mockResolvedValue(session); vi.mocked(api.accounts).mockResolvedValue([account]);
+    const changed = { ...account, name: "Renamed", version: 1 };
+    vi.mocked(api.updateAccount).mockResolvedValue(changed);
+    vi.mocked(api.archiveAccount).mockResolvedValue({ ...changed, active: false, version: 2 });
+    vi.mocked(api.restoreAccount).mockResolvedValue({ ...changed, version: 3 });
+    vi.mocked(api.deleteAccount).mockResolvedValue();
+    render(<App />); await screen.findByRole("heading", { name: "Everyday" });
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Account name"), { target: { value: "Renamed" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save account" }));
+    await screen.findByRole("heading", { name: "Renamed" });
+    expect(api.updateAccount).toHaveBeenCalledWith(account, expect.objectContaining({ openingAmount: account.openingBalance }));
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await screen.findByRole("heading", { name: "No active accounts" });
+    fireEvent.click(screen.getByRole("button", { name: "Archived accounts" }));
+    await screen.findByRole("heading", { name: "Renamed" });
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+    await screen.findByRole("heading", { name: "No archived accounts" });
+    fireEvent.click(screen.getByRole("button", { name: "Active accounts" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(api.deleteAccount).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel deletion" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm deletion" }));
+    await screen.findByRole("heading", { name: "Your first account starts here" });
+    expect(api.deleteAccount).toHaveBeenCalledWith(expect.objectContaining({ version: 3 }));
+  });
+  it("locks financial fields and deletion when activity exists", async () => {
+    vi.mocked(api.session).mockResolvedValue(session); vi.mocked(api.accounts).mockResolvedValue([{ ...account, hasActivity: true }]);
+    render(<App />); await screen.findByRole("heading", { name: "Everyday" });
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    for (const label of ["Account type", "Currency", "Opening balance", "Opening date"]) expect(screen.getByLabelText(label)).toBeDisabled();
+    expect(screen.getByLabelText("Account name")).not.toBeDisabled();
+  });
+  it("keeps edits on failure and reloads after cancelling a stale edit", async () => {
+    vi.mocked(api.session).mockResolvedValue(session); vi.mocked(api.accounts).mockResolvedValue([account]);
+    vi.mocked(api.updateAccount).mockRejectedValue(new ApiError(412, "This account changed. Reload accounts and try again."));
+    render(<App />); await screen.findByRole("heading", { name: "Everyday" });
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Account name"), { target: { value: "Unsaved" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save account" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("This account changed");
+    expect(screen.getByLabelText("Account name")).toHaveValue("Unsaved");
+    expect(screen.getByRole("button", { name: "Save account" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(api.accounts).toHaveBeenCalledTimes(2));
+  });
+  it("shows deletion errors and lets a stale deletion reload", async () => {
+    vi.mocked(api.session).mockResolvedValue(session); vi.mocked(api.accounts).mockResolvedValue([account]);
+    vi.mocked(api.deleteAccount).mockRejectedValue(new ApiError(412, "This account changed."));
+    render(<App />); await screen.findByRole("heading", { name: "Everyday" });
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm deletion" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("This account changed");
+    expect(screen.getByRole("button", { name: "Confirm deletion" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Reload accounts" }));
+    await waitFor(() => expect(api.accounts).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("button", { name: "Confirm deletion" })).not.toBeInTheDocument();
   });
 });

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Wealth Master API",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "Session authentication, authenticator 2FA, user security settings, and financial accounts. Enrollment required outside the explicit dev profile; prod always requires it."
   },
   "servers": [
@@ -1011,6 +1011,275 @@
           }
         }
       }
+    },
+    "/accounts/{id}": {
+      "put": {
+        "summary": "Edit account",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency, opening amount/date and prevents deletion. Archiving preserves history.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Single quoted account version from the account response, e.g. \"0\".",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "409": {
+            "description": "Financial history prevents this change"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "428": {
+            "description": "If-Match required"
+          },
+          "200": {
+            "description": "Updated account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccount"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Permanently delete unused account",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency, opening amount/date and prevents deletion. Archiving preserves history.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Single quoted account version from the account response, e.g. \"0\".",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "409": {
+            "description": "Financial history prevents this change"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "428": {
+            "description": "If-Match required"
+          },
+          "204": {
+            "description": "Deleted; audit snapshot retained"
+          }
+        }
+      }
+    },
+    "/accounts/{id}/archive": {
+      "post": {
+        "summary": "Archive account",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency, opening amount/date and prevents deletion. Archiving preserves history.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Single quoted account version from the account response, e.g. \"0\".",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "409": {
+            "description": "Financial history prevents this change"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "428": {
+            "description": "If-Match required"
+          },
+          "200": {
+            "description": "Updated account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{id}/restore": {
+      "post": {
+        "summary": "Restore account",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency, opening amount/date and prevents deletion. Archiving preserves history.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Single quoted account version from the account response, e.g. \"0\".",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "409": {
+            "description": "Financial history prevents this change"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "428": {
+            "description": "If-Match required"
+          },
+          "200": {
+            "description": "Updated account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1202,6 +1471,15 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "hasActivity": {
+            "type": "boolean",
+            "description": "Locks financial setup and prevents deletion when history exists."
           }
         },
         "required": [
@@ -1213,7 +1491,9 @@
           "id",
           "openingBalance",
           "active",
-          "createdAt"
+          "createdAt",
+          "version",
+          "hasActivity"
         ]
       },
       "SecurityStatus": {
