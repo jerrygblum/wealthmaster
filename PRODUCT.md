@@ -61,7 +61,7 @@ Accounts support editing, archive/restore, and confirmed permanent deletion when
 
 ### Ledger transactions
 - Create/edit/delete transactions with auditability.
-- Income and expense.
+- Income, expense, and expense refunds (refunds reduce spending).
 - Date/value date where relevant.
 - Amount/currency.
 - Merchant/payee, description, notes.

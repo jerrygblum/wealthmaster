@@ -61,7 +61,7 @@ An account can be edited or permanently deleted while it has no financial activi
 
 Mutations require the version returned in the account response, quoted in `If-Match`. Owner-scoped row locks serialize checks and writes; JPA versioning detects stale requests. Account changes and audit snapshots commit together. Audit resource IDs intentionally survive account deletion without a foreign key to the account.
 
-`AccountUsagePolicy.ActivitySource` is the integration point for ledger, imports, and investments. No contributors exist until financial activity is implemented. Before introducing account references, each module must register a history/reference check, including reversed/soft-deleted records, and use restrictive account foreign keys. Future writers must lock referenced accounts before checking active status or writing activity, using UUID order when locking multiple accounts. This prevents activity creation racing with deletion, financial setup edits, or archiving. Never cascade-delete account history.
+`AccountUsagePolicy.ActivitySource` is the integration point for ledger, imports, and investments. The cash ledger contributes a permanent `ledger_account_history` reference check, including moved and soft-deleted operations. Before introducing account references, each module must register a history/reference check, including reversed/soft-deleted records, and use restrictive account foreign keys. Future writers must lock referenced accounts before checking active status or writing activity, using UUID order when locking multiple accounts. This prevents activity creation racing with deletion, financial setup edits, or archiving. Never cascade-delete account history.
 
 See [investment cash and holdings design](docs/adr/006-investment-cash-and-holdings.md).
 
@@ -158,3 +158,11 @@ postgres
 A worker/queue may be introduced only once asynchronous work (large PDF imports, scheduled market refreshes, etc.) creates a demonstrated need.
 
 See `docs/operations/`.
+
+### Cash ledger implementation
+
+`ledger_operations` holds owner, kind, positive amount, business dates, metadata, version, and soft-deletion status. `ledger_movements` holds explicit-currency signed cash movements. Income/refunds increase balances, expenses decrease them; refunds reduce spending. Transfers create a negative source and positive destination movement atomically and are excluded from income/spending. Investment accounts expose cash only; credit-card positions remain signed. No balance cache or artificial opening transactions exist. Account list/detail reads use a repeatable database snapshot so concurrent transfers or setup edits cannot mix opening balances and movements from different commits.
+
+Operation edits lock the owner-scoped operation first, then original/current and new accounts in UUID order. Account writers use the same account row locks. Movement replacement, permanent account references, and before/after audit snapshots share a database transaction. Transfer endpoints require distinct active owned accounts in the same currency. Insufficient funds never prevent recording activity. Ordinary endpoints cannot modify transfer sides.
+
+Dates use `LocalDate`; today uses `APP_BUSINESS_TIME_ZONE` (default `Europe/Zurich`). Transaction and optional value dates must fall between affected account opening dates and today. Audit timestamps remain UTC. Paginated activity returns 50 operations ordered by transaction date descending, creation timestamp descending, then ID. Categories, fees, FX, refund-purchase links and security trades remain deferred.

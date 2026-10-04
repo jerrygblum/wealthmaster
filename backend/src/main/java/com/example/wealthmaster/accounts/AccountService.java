@@ -14,15 +14,20 @@ public class AccountService {
     private final AccountRepository accounts;
     private final AuditService audit;
     private final AccountUsagePolicy usage;
-    public AccountService(AccountRepository accounts, AuditService audit, AccountUsagePolicy usage) {
-        this.accounts = accounts; this.audit = audit; this.usage = usage;
+    private final com.example.wealthmaster.ledger.LedgerService ledger;
+    public AccountService(AccountRepository accounts, AuditService audit, AccountUsagePolicy usage, com.example.wealthmaster.ledger.LedgerService ledger) {
+        this.accounts = accounts; this.audit = audit; this.usage = usage; this.ledger = ledger;
     }
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public List<AccountResponse> list(UUID ownerId) {
         return accounts.findByOwnerIdOrderByCreatedAtDescIdAsc(ownerId).stream().map(this::response).toList();
     }
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public AccountResponse detail(UUID owner, UUID id) {
+        return response(accounts.findById(id).filter(a -> a.getOwnerId().equals(owner)).orElseThrow(() -> new AccountFailure(404, "Account not found.")));
+    }
     private AccountResponse response(FinancialAccount account) {
-        return AccountResponse.from(account).withActivity(usage.hasActivity(account.getId()));
+        return AccountResponse.from(account).withActivity(usage.hasActivity(account.getId())).withBalance(account.getOpeningBalance().add(ledger.movements(account.getId())).toPlainString(), ledger.today());
     }
     @Transactional
     public AccountResponse create(UUID ownerId, CreateAccount input) {

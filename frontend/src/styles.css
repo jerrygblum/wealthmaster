@@ -84,3 +84,7 @@ p { margin: 0 0 16px; }
 .account-filter button.secondary[aria-pressed="true"] { background: #176658; color: white; }
 
 .account-card .form-actions, .workspace > .panel .form-actions { flex-wrap: wrap; }
+
+.workspace textarea { width: 100%; min-height: 100px; font: inherit; padding: 10px; border: 1px solid #aabdb5; border-radius: 8px; }
+.workspace article { overflow-wrap: anywhere; margin-bottom: 12px; }
+.workspace > .form-actions { flex-wrap: wrap; margin: 16px 0; }

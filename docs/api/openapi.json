@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Wealth Master API",
-    "version": "0.3.0",
-    "description": "Session authentication, authenticator 2FA, user security settings, and financial accounts. Enrollment required outside the explicit dev profile; prod always requires it."
+    "version": "0.4.0",
+    "description": "Session authentication, mandatory production MFA, accounts, calculated cash balances, manual income/expenses/refunds, and same-currency paired transfers."
   },
   "servers": [
     {
@@ -1145,6 +1145,35 @@
             "description": "Deleted; audit snapshot retained"
           }
         }
+      },
+      "get": {
+        "summary": "Get owned account with calculated current balance",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or unowned account"
+          }
+        }
       }
     },
     "/accounts/{id}/archive": {
@@ -1277,6 +1306,421 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/transactions": {
+      "post": {
+        "summary": "Create transactions",
+        "description": "Dates between account opening and today in APP_BUSINESS_TIME_ZONE. Active owned accounts required. Transfers require distinct accounts with matching currencies. Negative resulting balances allowed. Refunds reduce spending; transfers are excluded from income/spending. Transfer edits/deletions change both movements atomically.",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerOperation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing or unowned account"
+          },
+          "409": {
+            "description": "Archived account"
+          }
+        }
+      },
+      "get": {
+        "summary": "List ordinary entries and paired transfers",
+        "description": "Owner scoped, 50 operations per page, ordered by date descending, creation timestamp descending, then ID ascending. Archived account activity remains readable.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unowned or missing account"
+          }
+        }
+      }
+    },
+    "/transactions/{id}": {
+      "put": {
+        "summary": "Edit transactions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted operation version."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerOperation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing, unowned, deleted, or wrong operation type"
+          },
+          "409": {
+            "description": "Restore affected accounts"
+          },
+          "412": {
+            "description": "Version changed"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Soft delete transactions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted operation version."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed from balances; account references and audit snapshots retained."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing, unowned, deleted, or wrong operation type"
+          },
+          "409": {
+            "description": "Restore affected accounts"
+          },
+          "412": {
+            "description": "Version changed"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        }
+      }
+    },
+    "/transfers": {
+      "post": {
+        "summary": "Create transfers",
+        "description": "Dates between account opening and today in APP_BUSINESS_TIME_ZONE. Active owned accounts required. Transfers require distinct accounts with matching currencies. Negative resulting balances allowed. Refunds reduce spending; transfers are excluded from income/spending. Transfer edits/deletions change both movements atomically.",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerOperation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing or unowned account"
+          },
+          "409": {
+            "description": "Archived account"
+          }
+        }
+      }
+    },
+    "/transfers/{id}": {
+      "put": {
+        "summary": "Edit transfers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted operation version."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerOperation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing, unowned, deleted, or wrong operation type"
+          },
+          "409": {
+            "description": "Restore affected accounts"
+          },
+          "412": {
+            "description": "Version changed"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Soft delete transfers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted operation version."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed from balances; account references and audit snapshots retained."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing, unowned, deleted, or wrong operation type"
+          },
+          "409": {
+            "description": "Restore affected accounts"
+          },
+          "412": {
+            "description": "Version changed"
+          },
+          "428": {
+            "description": "If-Match required"
           }
         }
       }
@@ -1480,6 +1924,13 @@
           "hasActivity": {
             "type": "boolean",
             "description": "Locks financial setup and prevents deletion when history exists."
+          },
+          "currentBalance": {
+            "type": "string"
+          },
+          "balanceAsOf": {
+            "type": "string",
+            "format": "date"
           }
         },
         "required": [
@@ -1493,7 +1944,9 @@
           "active",
           "createdAt",
           "version",
-          "hasActivity"
+          "hasActivity",
+          "currentBalance",
+          "balanceAsOf"
         ]
       },
       "SecurityStatus": {
@@ -1629,6 +2082,198 @@
           "code",
           "kind"
         ]
+      },
+      "TransactionInput": {
+        "type": "object",
+        "required": [
+          "accountId",
+          "kind",
+          "amount",
+          "transactionDate",
+          "description"
+        ],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "REFUND"
+            ]
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "[0-9]{1,20}(\\.[0-9]{1,8})?",
+            "description": "Strictly positive decimal; no rounding."
+          },
+          "transactionDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "valueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "payee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          }
+        }
+      },
+      "TransferInput": {
+        "type": "object",
+        "required": [
+          "sourceAccountId",
+          "destinationAccountId",
+          "amount",
+          "transactionDate",
+          "description"
+        ],
+        "properties": {
+          "sourceAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "[0-9]{1,20}(\\.[0-9]{1,8})?",
+            "description": "Strictly positive decimal; no rounding."
+          },
+          "transactionDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          }
+        }
+      },
+      "LedgerOperation": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "REFUND",
+              "TRANSFER"
+            ]
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "[0-9]{1,20}(\\.[0-9]{1,8})?",
+            "description": "Strictly positive decimal; no rounding."
+          },
+          "transactionDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "valueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "payee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationAccountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ActivityPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LedgerOperation"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        }
       }
     }
   }

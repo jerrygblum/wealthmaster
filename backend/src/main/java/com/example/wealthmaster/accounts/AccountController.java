@@ -18,6 +18,8 @@ public class AccountController {
     public List<AccountResponse> list(@AuthenticationPrincipal OwnerPrincipal owner) {
         return service.list(owner.id());
     }
+    @GetMapping("/{id}")
+    public AccountResponse detail(@AuthenticationPrincipal OwnerPrincipal owner, @PathVariable UUID id) { return service.detail(owner.id(), id); }
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
     public AccountResponse create(@AuthenticationPrincipal OwnerPrincipal owner, @Valid @RequestBody CreateAccount input) {
         return service.create(owner.id(), input);

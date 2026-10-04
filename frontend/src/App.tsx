@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { AccountDetail } from "./AccountDetail";
 import { SecuritySettings, MfaLogin } from "./SecuritySettings";
 import { api, ApiError } from "./api";
 import type { AccountType, BalanceMeaning, CreateAccount, FinancialAccount, Session, User } from "./api";
@@ -85,6 +86,8 @@ function LoginPage({ notice, onLogin }: { notice: string | null; onLogin: (sessi
   </main>;
 }
 function AccountsPage({ user, onExpired, onLogout }: { user: User; onExpired: () => void; onLogout: () => void }) {
+  const [selected, setSelected] = useState<string | null>(window.location.hash.match(/^#\/accounts\/([a-f0-9-]+)$/)?.[1] ?? null);
+  useEffect(() => { const change = () => setSelected(window.location.hash.match(/^#\/accounts\/([a-f0-9-]+)$/)?.[1] ?? null); window.addEventListener("hashchange", change); return () => window.removeEventListener("hashchange", change); }, []);
   const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,7 +120,7 @@ function AccountsPage({ user, onExpired, onLogout }: { user: User; onExpired: ()
       else setError(errorMessage(err));
     } finally { setLoading(false); }
   }, [onExpired]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (!selected) void load(); }, [load, selected]);
   async function logout() {
     setLoggingOut(true); setError(null);
     try { await api.logout(); onLogout(); }
@@ -126,6 +129,7 @@ function AccountsPage({ user, onExpired, onLogout }: { user: User; onExpired: ()
       else setError(errorMessage(err));
     } finally { setLoggingOut(false); }
   }
+  if (selected) return <AccountDetail id={selected} onBack={() => { window.location.hash = "#/accounts"; setSelected(null); }} onExpired={onExpired} />;
   return <main className="workspace">
     <div className="workspace-heading"><div><p className="eyebrow">Your workspace</p><h1>Accounts</h1><p className="muted">{user.email}</p></div><button className="secondary" disabled={loggingOut} onClick={() => void logout()}>{loggingOut ? "Signing out…" : "Sign out"}</button></div>
     <div className="section-heading"><p>Keep track of where your money lives.</p><button disabled={showForm || actionPending || loggingOut || loading || !!error} onClick={() => { setEditing(undefined); setShowForm(true); setNotice(null); }}>Create account</button></div>
@@ -136,8 +140,9 @@ function AccountsPage({ user, onExpired, onLogout }: { user: User; onExpired: ()
     {showForm && <AccountForm account={editing} onCancel={() => { setShowForm(false); if (editing) void load(); }} onExpired={onExpired} onCreated={(account) => { setAccounts((existing) => editing ? existing.map(item => item.id === account.id ? account : item) : [account, ...existing]); setShowForm(false); setNotice(`${account.name} ${editing ? "updated" : "created"}.`); setEditing(undefined); if (!editing) setArchived(false); }} />}
     {error && <div className="error" role="alert"><p>{error}</p><button className="secondary" onClick={() => void load()}>Reload accounts</button></div>}
     {loading ? <p role="status">Loading accounts…</p> : !error && visibleAccounts.length === 0 ? <section className="panel empty-state"><h2>{archived ? "No archived accounts" : accounts.length ? "No active accounts" : "Your first account starts here"}</h2><p>{archived ? "Archived accounts will appear here. You can restore them at any time." : "Add a bank account, cash balance, credit card, or investment account."}</p>{!archived && <button disabled={showForm} onClick={() => { setEditing(undefined); setShowForm(true); }}>Create your first account</button>}</section> : <div className="account-grid">{visibleAccounts.map((account) => {
-      const owed = account.type === "CREDIT_CARD" && account.openingBalance.startsWith("-");
-      return <article className="panel account-card" key={account.id}><p className="eyebrow">{accountTypes[account.type]}</p><h2>{account.name}</h2>{account.institution && <p className="muted">{account.institution}</p>}<p className="balance">{account.currency} {displayAmount(owed ? account.openingBalance.slice(1) : account.openingBalance)}</p><p className="muted">Opening {owed ? "amount owed" : account.type === "INVESTMENT" ? "cash balance" : "balance"} · <time dateTime={account.openingDate}>{account.openingDate}</time></p>{!account.active && <p className="muted">Archived</p>}<div className="form-actions"><button className="secondary" disabled={showForm || actionPending || !!deleting} onClick={() => { setEditing(account); setShowForm(true); setNotice(null); }}>Edit</button><button className="secondary" disabled={showForm || actionPending || !!deleting} onClick={() => void manage(account, account.active ? "archive" : "restore")}>{account.active ? "Archive" : "Restore"}</button><button className="secondary" disabled={showForm || actionPending || !!deleting || account.hasActivity} onClick={() => { setDeleting(account); setActionError(null); setStale(false); }}>Delete</button></div>{account.hasActivity && <p className="help">Financial history is preserved. Archive this account instead of deleting it.</p>}</article>;
+      const balance = account.currentBalance ?? account.openingBalance;
+      const owed = account.type === "CREDIT_CARD" && balance.startsWith("-");
+      return <article className="panel account-card" key={account.id}><p className="eyebrow">{accountTypes[account.type]}</p><h2><button className="secondary" onClick={() => { window.location.hash = `#/accounts/${account.id}`; setSelected(account.id); }}>{account.name}</button></h2>{account.institution && <p className="muted">{account.institution}</p>}<p className="balance">{account.currency} {displayAmount(owed ? balance.slice(1) : balance)}</p><p className="muted">{account.currentBalance ? "Current" : "Opening"} {owed ? "amount owed" : account.type === "INVESTMENT" ? "cash balance" : "balance"} · <time dateTime={account.balanceAsOf ?? account.openingDate}>{account.balanceAsOf ?? account.openingDate}</time></p>{!account.active && <p className="muted">Archived</p>}<div className="form-actions"><button className="secondary" disabled={showForm || actionPending || !!deleting} onClick={() => { setEditing(account); setShowForm(true); setNotice(null); }}>Edit</button><button className="secondary" disabled={showForm || actionPending || !!deleting} onClick={() => void manage(account, account.active ? "archive" : "restore")}>{account.active ? "Archive" : "Restore"}</button><button className="secondary" disabled={showForm || actionPending || !!deleting || account.hasActivity} onClick={() => { setDeleting(account); setActionError(null); setStale(false); }}>Delete</button></div>{account.hasActivity && <p className="help">Financial history is preserved. Archive this account instead of deleting it.</p>}</article>;
     })}</div>}
   </main>;
 }

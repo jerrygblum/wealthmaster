@@ -33,6 +33,7 @@ public class FinancialAccount {
         this.openingBalance = balance; this.openingDate = date;
     }
     public void setActive(boolean active) { this.active = active; }
+    public UUID getOwnerId() { return ownerId; }
     public UUID getId() { return id; }
     public String getName() { return name; }
     public AccountType getType() { return type; }

@@ -103,6 +103,15 @@ class MfaIntegrationTest {
         var enrollment = verifiedSetup("test-binding"); mfa.confirm(user.getId(), "test-binding", true); return enrollment;
     }
     void assertAccountMutationsForbidden(MockHttpSession session) throws Exception {
+        mvc.perform(get("/api/v1/transactions").session(session)).andExpect(status().isForbidden());
+        for (String resource : List.of("transactions", "transfers")) {
+            for (var request : List.of(post("/api/v1/" + resource).contentType("application/json").content("{}"),
+                    put("/api/v1/" + resource + "/" + UUID.randomUUID()).contentType("application/json").content("{}"),
+                    delete("/api/v1/" + resource + "/" + UUID.randomUUID()))) {
+                mvc.perform(request.session(session).header("X-CSRF-TOKEN", csrf(session)).header("If-Match", "\"0\""))
+                        .andExpect(status().isForbidden());
+            }
+        }
         var path = "/api/v1/accounts/" + UUID.randomUUID();
         for (var request : List.of(put(path).contentType("application/json").content("{}"), delete(path), post(path + "/archive"), post(path + "/restore"))) {
             mvc.perform(request.session(session).header("X-CSRF-TOKEN", csrf(session)).header("If-Match", "\"0\""))

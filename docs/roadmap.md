@@ -25,12 +25,12 @@ Goal: represent financial accounts and trustworthy manual activity.
 - [x] Opening balances
 - [x] Account editing, unused-account deletion, archive/restore, version checks, and audit snapshots
 - [x] Investment cash/holdings architecture documented (implementation deferred)
-- Manual income/expense transactions
-- Transfers
+- [x] Manual income/expense/refund transactions, corrections, soft deletion and audit snapshots
+- [x] Same-currency paired transfers
 - Categories
-- Current account balances
+- [x] Calculated current account cash balances
 - Current net worth
-- Core financial unit/integration tests
+- [x] Core cash ledger unit/integration tests, ownership, concurrency and audit rollback
 
 Release outcome: the user can reproduce current cash/bank/card positions without Excel.
 

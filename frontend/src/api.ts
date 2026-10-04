@@ -12,7 +12,7 @@ export type AccountType = "CHECKING" | "SAVINGS" | "CASH" | "CREDIT_CARD" | "INV
 export type BalanceMeaning = "BALANCE" | "AMOUNT_OWED" | "IN_CREDIT";
 export type FinancialAccount = {
   id: string; name: string; type: AccountType; institution: string | null;
-  currency: string; openingBalance: string; openingDate: string; active: boolean; createdAt: string; version: number; hasActivity: boolean;
+  currency: string; currentBalance?: string; balanceAsOf?: string; openingBalance: string; openingDate: string; active: boolean; createdAt: string; version: number; hasActivity: boolean;
 };
 export type CreateAccount = {
   name: string; type: AccountType; institution: string; currency: string;
@@ -50,7 +50,22 @@ async function mutateAccount<T>(account: FinancialAccount, method: string, suffi
     headers: { [csrf.headerName]: csrf.token, "If-Match": `"${account.version}"`, ...(input ? { "Content-Type": "application/json" } : {}) },
     body: input ? JSON.stringify(input) : undefined });
 }
+export type LedgerKind = "INCOME" | "EXPENSE" | "REFUND" | "TRANSFER";
+export type LedgerInput = { accountId: string; kind: LedgerKind; amount: string; transactionDate: string; valueDate: string | null; payee: string; description: string; notes: string; destinationAccountId?: string };
+export type Operation = LedgerInput & { id: string; currency: string; version: number; createdAt: string };
+async function ledgerMutation<T>(path: string, method: string, input?: unknown, version?: number): Promise<T> {
+  const csrf = await request<{ headerName: string; token: string }>("/auth/csrf");
+  return request<T>(path, { method, headers: { [csrf.headerName]: csrf.token, "Content-Type": "application/json", ...(version === undefined ? {} : { "If-Match": `"${version}"` }) }, body: input === undefined ? undefined : JSON.stringify(input) });
+}
 export const api = {
+  account: (id: string) => request<FinancialAccount>(`/accounts/${id}`),
+  activity: (id: string, page: number) => request<{items: Operation[]; page: number; hasMore: boolean}>(`/transactions?accountId=${id}&page=${page}`),
+  saveActivity: (input: LedgerInput, operation?: Operation) => {
+    const transfer = input.kind === "TRANSFER";
+    const body = transfer ? { sourceAccountId: input.accountId, destinationAccountId: input.destinationAccountId, amount: input.amount, transactionDate: input.transactionDate, description: input.description, notes: input.notes } : input;
+    return ledgerMutation<Operation>(`/${transfer ? "transfers" : "transactions"}${operation ? `/${operation.id}` : ""}`, operation ? "PUT" : "POST", body, operation?.version);
+  },
+  deleteActivity: (operation: Operation) => ledgerMutation<void>(`/${operation.kind === "TRANSFER" ? "transfers" : "transactions"}/${operation.id}`, "DELETE", undefined, operation.version),
   session: () => request<Session>("/auth/session"),
   login: (email: string, password: string) => post<Session>("/auth/login", new URLSearchParams({ email, password }), "application/x-www-form-urlencoded"),
   logout: () => post<void>("/auth/logout"),
