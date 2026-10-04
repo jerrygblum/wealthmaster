@@ -160,6 +160,8 @@ Market prices may be delayed depending on provider/licensing. UI must show quote
 
 Current view includes contribution by account/asset type and drill-down to source data.
 
+The implemented cash-ledger view is the default landing page. It shows assets, liabilities and net worth separately for each native currency, including archived accounts and investment cash only. Positive balances are assets and negative balances are liabilities, including bank overdrafts and credit-card overpayments. Accounts opening after the configured business date are listed separately and excluded until that date. Totals retain exact decimal precision and show their business date and calculation timestamp. No combined FX total or security valuation is available yet. Categories remain a separate upcoming slice.
+
 Historical net-worth snapshots/views show change over time without retroactively rewriting history because of today's FX/prices.
 
 ### Reconciliation

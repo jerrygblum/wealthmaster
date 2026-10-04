@@ -5,9 +5,14 @@ import { SecuritySettings, MfaLogin } from "./SecuritySettings";
 import { api, ApiError } from "./api";
 import type { AccountType, BalanceMeaning, CreateAccount, FinancialAccount, Session, User } from "./api";
 
-const accountTypes: Record<AccountType, string> = {
-  CHECKING: "Checking", SAVINGS: "Savings", CASH: "Cash", CREDIT_CARD: "Credit card", INVESTMENT: "Investment", OTHER: "Other",
-};
+import { accountTypes, displayAmount } from "./accountPresentation";
+import { NetWorthPage } from "./NetWorthPage";
+export { displayAmount } from "./accountPresentation";
+
+function currentPage() {
+  const hash = window.location.hash;
+  return hash === "#/settings" ? "settings" : hash === "#/accounts" || hash.startsWith("#/accounts/") ? "accounts" : "net-worth";
+}
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
 }
@@ -15,16 +20,9 @@ function today() {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
-// Keep decimal amounts as strings, including when rendering large balances.
-export function displayAmount(value: string) {
-  const [whole, fraction = ""] = value.split(".");
-  const decimals = fraction.replace(/0+$/, "");
-  return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, "’")}${decimals ? `.${decimals}` : ""}`;
-}
-
 export default function App() {
-  const [page, setPage] = useState(window.location.hash === "#/settings" ? "settings" : "accounts");
-  useEffect(() => { const change = () => setPage(window.location.hash === "#/settings" ? "settings" : "accounts"); window.addEventListener("hashchange", change); return () => window.removeEventListener("hashchange", change); }, []);
+  const [page, setPage] = useState(currentPage);
+  useEffect(() => { const change = () => setPage(currentPage()); window.addEventListener("hashchange", change); return () => window.removeEventListener("hashchange", change); }, []);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,15 +43,16 @@ export default function App() {
     setSession(result); setNotice(null);
     if (result.status === "AUTHENTICATED" && result.recoveryUsed) { setPage("settings"); window.location.hash = "#/settings"; }
   }
-  const loggedOut = () => { setSession(null); setNotice(null); };
+  const loggedOut = () => { setSession(null); setNotice(null); setPage("net-worth"); window.location.hash = "#/net-worth"; };
   return (
     <div className="app-shell">
       <header className="brand"><span className="brand-mark" aria-hidden="true">W</span><span>Wealth Master</span></header>
-      {session?.status === "AUTHENTICATED" && <nav className="workspace-nav" aria-label="Workspace"><a href="#/accounts" aria-current={page === "accounts" ? "page" : undefined}>Accounts</a><a href="#/settings" aria-current={page === "settings" ? "page" : undefined}>Settings</a></nav>}
+      {session?.status === "AUTHENTICATED" && <nav className="workspace-nav" aria-label="Workspace"><a href="#/net-worth" aria-current={page === "net-worth" ? "page" : undefined}>Net worth</a><a href="#/accounts" aria-current={page === "accounts" ? "page" : undefined}>Accounts</a><a href="#/settings" aria-current={page === "settings" ? "page" : undefined}>Settings</a></nav>}
       {session?.status === "AUTHENTICATED" && session.recoveryUsed && <p role="status" className="notice">You signed in with a recovery code. Review your authenticator and remaining recovery codes in settings.</p>}
       {loading ? <main className="center-card"><p role="status">Checking your session…</p></main>
         : error ? <main className="center-card"><h1>Let’s reconnect</h1><p role="alert">{error}</p><button onClick={() => void restore()}>Try again</button></main>
          : session?.status === "MFA_SETUP_REQUIRED" || session?.status === "AUTHENTICATED" && page === "settings" ? <SecuritySettings requiredSetup={session.status === "MFA_SETUP_REQUIRED"} onSession={acceptSession} onExpired={expire} onLogout={loggedOut} />
+        : session?.status === "AUTHENTICATED" && page === "net-worth" ? <NetWorthPage user={session.user} onExpired={expire} onLogout={loggedOut} />
         : session?.status === "AUTHENTICATED" ? <AccountsPage user={session.user} onExpired={expire} onLogout={loggedOut} />
         : session?.status === "MFA_REQUIRED" ? <MfaLogin onSession={acceptSession} onExpired={expire} onLogout={loggedOut} />
         : <LoginPage notice={notice} onLogin={acceptSession} />}

@@ -29,7 +29,7 @@ Goal: represent financial accounts and trustworthy manual activity.
 - [x] Same-currency paired transfers
 - Categories
 - [x] Calculated current account cash balances
-- Current net worth
+- [x] Current cash net worth by native currency, account/type breakdown and default overview
 - [x] Core cash ledger unit/integration tests, ownership, concurrency and audit rollback
 
 Release outcome: the user can reproduce current cash/bank/card positions without Excel.

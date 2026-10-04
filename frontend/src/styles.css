@@ -88,3 +88,15 @@ p { margin: 0 0 16px; }
 .workspace textarea { width: 100%; min-height: 100px; font: inherit; padding: 10px; border: 1px solid #aabdb5; border-radius: 8px; }
 .workspace article { overflow-wrap: anywhere; margin-bottom: 12px; }
 .workspace > .form-actions { flex-wrap: wrap; margin: 16px 0; }
+
+.net-worth-total { overflow-wrap: anywhere; font-size: clamp(1.6rem, 4vw, 2.2rem); font-weight: 750; margin: 18px 0; }
+.net-worth-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.net-worth-totals dd { margin: 6px 0 0; font-weight: 650; overflow-wrap: anywhere; }
+.net-worth-card summary { cursor: pointer; padding: 12px 0; color: #24554c; }
+.net-worth-types, .future-accounts { padding-left: 20px; }
+.net-worth-types li, .future-accounts li { margin: 12px 0; overflow-wrap: anywhere; }
+.net-worth-types span { display: block; margin-top: 4px; }
+.net-worth-accounts { margin-top: 32px; }
+.net-worth-accounts h3 { overflow-wrap: anywhere; }
+.net-worth-accounts a, .empty-state a { color: #176658; }
+.workspace-nav { flex-wrap: wrap; }

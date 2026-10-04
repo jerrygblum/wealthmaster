@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Wealth Master API",
-    "version": "0.4.0",
-    "description": "Session authentication, mandatory production MFA, accounts, calculated cash balances, manual income/expenses/refunds, and same-currency paired transfers."
+    "version": "0.5.0",
+    "description": "Session authentication, mandatory production MFA, accounts, calculated cash balances, manual income/expenses/refunds, and same-currency paired transfers. Current net worth by native currency, including archived account cash balances."
   },
   "servers": [
     {
@@ -1724,6 +1724,43 @@
           }
         }
       }
+    },
+    "/net-worth/current": {
+      "get": {
+        "summary": "Calculate current net worth for the authenticated owner",
+        "description": "One repeatable-read snapshot of opening balances plus non-deleted ledger movements. Positive balances are assets; negative balances are liabilities. Includes archived accounts and investment cash, excludes future-opening accounts. Native currencies remain separate; no FX conversion or security valuation. Business date uses APP_BUSINESS_TIME_ZONE. Read-only; no CSRF token required.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact native-currency totals and account contributions; empty arrays when no eligible accounts exist.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentNetWorth"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA verification, enrollment or recovery proof required"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2272,6 +2309,203 @@
           },
           "hasMore": {
             "type": "boolean"
+          }
+        }
+      },
+      "NetWorthTypeTotal": {
+        "type": "object",
+        "required": [
+          "type",
+          "assets",
+          "liabilities",
+          "netWorth"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "CHECKING",
+              "SAVINGS",
+              "CASH",
+              "CREDIT_CARD",
+              "INVESTMENT",
+              "OTHER"
+            ]
+          },
+          "assets": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          },
+          "liabilities": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          },
+          "netWorth": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          }
+        }
+      },
+      "NetWorthCurrencyTotal": {
+        "type": "object",
+        "required": [
+          "currency",
+          "assets",
+          "liabilities",
+          "netWorth",
+          "byAccountType"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "assets": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          },
+          "liabilities": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          },
+          "netWorth": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          },
+          "byAccountType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetWorthTypeTotal"
+            }
+          }
+        }
+      },
+      "NetWorthAccount": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "currency",
+          "active",
+          "currentBalance"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CHECKING",
+              "SAVINGS",
+              "CASH",
+              "CREDIT_CARD",
+              "INVESTMENT",
+              "OTHER"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "currentBalance": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          }
+        }
+      },
+      "NetWorthFutureAccount": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "currency",
+          "active",
+          "openingDate"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CHECKING",
+              "SAVINGS",
+              "CASH",
+              "CREDIT_CARD",
+              "INVESTMENT",
+              "OTHER"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "openingDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "CurrentNetWorth": {
+        "type": "object",
+        "required": [
+          "balanceAsOf",
+          "calculatedAt",
+          "currencies",
+          "accounts",
+          "excludedFutureAccounts"
+        ],
+        "properties": {
+          "balanceAsOf": {
+            "type": "string",
+            "format": "date"
+          },
+          "calculatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "currencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetWorthCurrencyTotal"
+            }
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetWorthAccount"
+            }
+          },
+          "excludedFutureAccounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetWorthFutureAccount"
+            }
           }
         }
       }

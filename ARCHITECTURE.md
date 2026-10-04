@@ -166,3 +166,11 @@ See `docs/operations/`.
 Operation edits lock the owner-scoped operation first, then original/current and new accounts in UUID order. Account writers use the same account row locks. Movement replacement, permanent account references, and before/after audit snapshots share a database transaction. Transfer endpoints require distinct active owned accounts in the same currency. Insufficient funds never prevent recording activity. Ordinary endpoints cannot modify transfer sides.
 
 Dates use `LocalDate`; today uses `APP_BUSINESS_TIME_ZONE` (default `Europe/Zurich`). Transaction and optional value dates must fall between affected account opening dates and today. Audit timestamps remain UTC. Paginated activity returns 50 operations ordered by transaction date descending, creation timestamp descending, then ID. Categories, fees, FX, refund-purchase links and security trades remain deferred.
+
+### Current net worth implementation
+
+`networth` exposes owner-scoped `GET /api/v1/net-worth/current`. Its read-only repeatable-read transaction calls `AccountService` so opening balances and ledger movements share one PostgreSQL snapshot, including during concurrent transfers or account edits. No cached balances, persisted report rows, audit writes or schema changes are needed.
+
+Positive signed balances contribute to assets; absolute negative balances contribute to liabilities. Totals and account-type breakdowns use `BigDecimal` and decimal-string DTOs, without imposing input digit limits on aggregates. Archived accounts remain included; accounts opening after the business date appear separately. Investment valuation currently covers cash only. Currencies are never combined without FX data.
+
+Shared injectable `BusinessTime` derives business dates from the application `Clock` and `APP_BUSINESS_TIME_ZONE` (default `Europe/Zurich`); calculation timestamps remain UTC instants. The API disables HTTP caching. The frontend defaults to `#/net-worth`, reloads the report on entry, and links each contribution to its account activity.

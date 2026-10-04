@@ -12,7 +12,7 @@ const session = { status: "AUTHENTICATED" as const, user: { id: "owner-1", email
 const account: FinancialAccount = { id: "account-1", name: "Everyday", type: "CHECKING", institution: null, currency: "CHF", openingBalance: "1234.56000000", openingDate: "2026-10-04", active: true, version: 0, hasActivity: false, createdAt: "2026-10-04T00:00:00Z" };
 beforeEach(() => {
   vi.resetAllMocks();
-  window.location.hash = "";
+  window.location.hash = "#/accounts";
   vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Please sign in."));
   vi.mocked(api.accounts).mockResolvedValue([]);
 });

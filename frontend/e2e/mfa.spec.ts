@@ -56,7 +56,7 @@ test("enrollment, recovery, authenticator replacement, regeneration, and TOTP lo
   // Simulate an authenticator one period ahead, within the supported clock tolerance.
   await page.getByLabel("Authenticator code", { exact: true }).fill(authenticatorCode(replacementSecret, 30));
   await page.getByRole("button", { name: "Verify and sign in" }).click();
-  await expect(page.getByRole("heading", { name: "Accounts", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Net worth", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("security.png"), fullPage: true });

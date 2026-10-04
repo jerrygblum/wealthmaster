@@ -57,7 +57,15 @@ async function ledgerMutation<T>(path: string, method: string, input?: unknown, 
   const csrf = await request<{ headerName: string; token: string }>("/auth/csrf");
   return request<T>(path, { method, headers: { [csrf.headerName]: csrf.token, "Content-Type": "application/json", ...(version === undefined ? {} : { "If-Match": `"${version}"` }) }, body: input === undefined ? undefined : JSON.stringify(input) });
 }
+export type NetWorthTotals = { assets: string; liabilities: string; netWorth: string };
+export type CurrentNetWorth = {
+  balanceAsOf: string; calculatedAt: string;
+  currencies: (NetWorthTotals & { currency: string; byAccountType: (NetWorthTotals & { type: AccountType })[] })[];
+  accounts: (Pick<FinancialAccount, "id" | "name" | "type" | "currency" | "active"> & { currentBalance: string })[];
+  excludedFutureAccounts: Pick<FinancialAccount, "id" | "name" | "type" | "currency" | "active" | "openingDate">[];
+};
 export const api = {
+  currentNetWorth: () => request<CurrentNetWorth>("/net-worth/current"),
   account: (id: string) => request<FinancialAccount>(`/accounts/${id}`),
   activity: (id: string, page: number) => request<{items: Operation[]; page: number; hasMore: boolean}>(`/transactions?accountId=${id}&page=${page}`),
   saveActivity: (input: LedgerInput, operation?: Operation) => {

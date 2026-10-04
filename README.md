@@ -2,7 +2,7 @@
 
 A self-hosted personal finance and net-worth application designed to replace an Excel-based finance workflow while demonstrating end-to-end product ownership and production-minded software delivery.
 
-> **Status:** active development — email/password login, authenticator 2FA, security settings, and financial account management implemented.
+> **Status:** active development — email/password login, authenticator 2FA, security settings, financial account management, manual cash activity/transfers, and current cash net worth implemented.
 
 ## Product goals
 
@@ -43,7 +43,7 @@ The financial ledger is the source of truth. Dashboards, balances, budgets, port
 
 See [ARCHITECTURE.md](ARCHITECTURE.md), [docs/adr](docs/adr/), and the [OpenAPI contract](docs/api/openapi.json).
 
-Account management supports editing, confirmed deletion of unused accounts, and archive/restore. See the [investment cash/holdings design](docs/adr/006-investment-cash-and-holdings.md) for the planned transfer and stock-purchase model. See [account management operations](docs/operations/account-management.md) for migration and audit implications.
+Account management supports editing, confirmed deletion of unused accounts, and archive/restore. See the [investment cash/holdings design](docs/adr/006-investment-cash-and-holdings.md) for the planned transfer and stock-purchase model. See [account management operations](docs/operations/account-management.md) for migration and audit implications. The default [net-worth overview](docs/operations/net-worth.md) shows assets, liabilities and account contributions per native currency, including archived balances and investment cash.
 
 ## Local development
 

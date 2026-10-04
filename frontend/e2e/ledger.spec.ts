@@ -1,8 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { syntheticUser, passwordLogin, enroll } from "./helpers";
+import { syntheticUser, passwordLogin, enroll, openAccounts } from "./helpers";
 
 test("cash activity, refunds and paired transfer corrections survive reload", async ({page}) => {
  const email=await syntheticUser();if(await passwordLogin(page,email)==="MFA_SETUP_REQUIRED") await enroll(page);
+ await openAccounts(page);
  for(const name of ["Synthetic bank","Synthetic card"]) {
   await page.getByRole("button",{name:"Create account",exact:true}).click();
   await page.getByLabel("Account name").fill(name);await page.getByLabel("Account type").selectOption(name.endsWith("card")?"CREDIT_CARD":"CHECKING");

@@ -1,7 +1,7 @@
 package com.example.wealthmaster.ledger;
 
 import com.example.wealthmaster.accounts.*;
-import org.springframework.beans.factory.annotation.Value;
+import com.example.wealthmaster.config.BusinessTime;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,12 +16,12 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
     private final JdbcTemplate jdbc;
     private final AccountRepository accounts;
     private final ObjectMapper mapper;
-    private final ZoneId zone;
+    private final BusinessTime time;
     public LedgerService(JdbcTemplate jdbc, AccountRepository accounts, ObjectMapper mapper,
-            @Value("${APP_BUSINESS_TIME_ZONE:Europe/Zurich}") String zone) {
-        this.jdbc=jdbc; this.accounts=accounts; this.mapper=mapper; this.zone=ZoneId.of(zone);
+            BusinessTime time) {
+        this.jdbc=jdbc; this.accounts=accounts; this.mapper=mapper; this.time=time;
     }
-    public LocalDate today() { return LocalDate.now(zone); }
+    public LocalDate today() { return time.today(); }
     public boolean hasActivity(UUID id) {
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM ledger_account_history WHERE account_id=?)", Boolean.class,id));
     }

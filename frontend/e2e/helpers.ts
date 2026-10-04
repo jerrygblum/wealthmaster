@@ -44,7 +44,7 @@ export async function enroll(page: Page) {
   await expect(page.getByRole("button", { name: "Activate 2FA", exact: true })).toBeDisabled();
   await page.getByLabel("I saved my recovery codes").check();
   await page.getByRole("button", { name: "Activate 2FA", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Accounts", exact: true }).or(page.getByText("Enabled", { exact: true }))).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Net worth", exact: true }).or(page.getByText("Enabled", { exact: true }))).toBeVisible();
   return { secret, codes };
 }
 export async function readCodes(page: Page) {
@@ -61,4 +61,9 @@ export async function recoveryLogin(page: Page, email: string, code: string) {
   await page.getByLabel("Recovery code", { exact: true }).fill(code);
   await page.getByRole("button", { name: "Verify and sign in" }).click();
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+}
+
+export async function openAccounts(page: Page) {
+  await page.getByRole("link", { name: "Accounts", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Accounts", exact: true })).toBeVisible();
 }
