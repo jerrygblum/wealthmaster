@@ -1,13 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { syntheticUser, passwordLogin, enroll } from "./helpers";
 
 test("login, create an account, reload, and log out", async ({ page }, testInfo) => {
   const name = `Synthetic savings ${testInfo.project.name} ${Date.now()}`;
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath("login.png"), fullPage: true });
-  await page.getByLabel("Email", { exact: true }).fill("owner@example.test");
-  await page.getByLabel("Password", { exact: true }).fill("synthetic-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  const email = await syntheticUser();
+  const status = await passwordLogin(page, email);
+  if (status === "MFA_SETUP_REQUIRED") { await enroll(page); }
   await expect(page.getByRole("heading", { name: "Accounts", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await page.getByLabel("Account name").fill(name);

@@ -61,3 +61,21 @@ p { margin: 0 0 16px; }
   .workspace-heading { align-items: flex-start; }
   .section-heading { flex-direction: column; align-items: stretch; }
 }
+
+.workspace-nav { display: flex; gap: 22px; margin-top: 22px; border-bottom: 1px solid #dce6e0; padding-bottom: 12px; }
+.workspace-nav a { color: #24554c; padding: 6px 0; text-decoration: none; }
+.workspace-nav a[aria-current="page"] { font-weight: 750; border-bottom: 2px solid #176658; }
+.security-panel { max-width: 850px; }
+.security-panel .section-heading { margin-top: 0; }
+.security-panel input:not([type="checkbox"]), .security-panel select { max-width: 440px; margin-bottom: 18px; display: block; }
+.security-panel fieldset button { margin-bottom: 18px; }
+.security-badge { background: #e8f3ed; color: #24554c; padding: 6px 12px; border-radius: 99px; white-space: nowrap; }
+.mfa-wizard { margin-top: 26px; border-top: 1px solid #dce6e0; padding-top: 18px; }
+.mfa-wizard > .secondary { margin-top: 16px; }
+.mfa-qr { display: block; width: 240px; max-width: 100%; height: auto; margin-bottom: 16px; }
+.setup-key { display: block; overflow-wrap: anywhere; background: #f3f6f4; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+.recovery-codes { list-style: none; padding: 14px; background: #f3f6f4; border-radius: 8px; }
+.recovery-codes li { overflow-wrap: anywhere; margin-bottom: 6px; }
+.checkbox-label { display: flex; align-items: center; gap: 12px; margin: 22px 0; }
+.checkbox-label input { width: 20px; height: 20px; min-height: 20px; }
+.security-panel .form-actions { flex-wrap: wrap; }

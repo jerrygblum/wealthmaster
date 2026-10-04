@@ -6,12 +6,13 @@ import type { FinancialAccount } from "./api";
 
 vi.mock("./api", async (original) => {
   const actual = await original<typeof import("./api")>();
-  return { ...actual, api: { session: vi.fn(), login: vi.fn(), logout: vi.fn(), accounts: vi.fn(), createAccount: vi.fn() } };
+  return { ...actual, api: { session: vi.fn(), login: vi.fn(), logout: vi.fn(), accounts: vi.fn(), createAccount: vi.fn(), security: vi.fn(), verifyMfa: vi.fn(), startMfa: vi.fn(), verifyEnrollment: vi.fn(), confirmMfa: vi.fn(), cancelMfa: vi.fn() } };
 });
 const session = { status: "AUTHENTICATED" as const, user: { id: "owner-1", email: "owner@example.test" } };
 const account: FinancialAccount = { id: "account-1", name: "Everyday", type: "CHECKING", institution: null, currency: "CHF", openingBalance: "1234.56000000", openingDate: "2026-10-04", active: true, createdAt: "2026-10-04T00:00:00Z" };
 beforeEach(() => {
   vi.resetAllMocks();
+  window.location.hash = "";
   vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Please sign in."));
   vi.mocked(api.accounts).mockResolvedValue([]);
 });
@@ -91,7 +92,7 @@ describe("workspace", () => {
   it("does not grant workspace access for a future MFA challenge", async () => {
     vi.mocked(api.login).mockResolvedValue({ status: "MFA_REQUIRED" });
     await signIn();
-    await screen.findByRole("heading", { name: "Verification required" });
+    await screen.findByRole("heading", { name: "Verify your sign-in" });
     expect(api.accounts).not.toHaveBeenCalled();
   });
   it("disables login while the request is pending", async () => {

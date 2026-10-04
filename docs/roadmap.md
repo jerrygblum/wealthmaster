@@ -18,7 +18,8 @@ Goal: represent financial accounts and trustworthy manual activity.
 
 - [x] Email/password login, server sessions, initial owner setup
 - [ ] Self-service registration page
-- [ ] Mandatory TOTP MFA + recovery codes (explicitly deferred for the first login/accounts slice)
+- [x] TOTP MFA + recovery codes, required in production and optional enrollment in development
+- [x] Security settings, verified activation, authenticator replacement, recovery-code regeneration
 - [x] Multi-user isolation for account creation/listing
 - [x] Financial account creation and owner-scoped listing
 - [x] Opening balances

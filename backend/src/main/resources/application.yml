@@ -37,3 +37,7 @@ app:
   initial-owner:
     email: ${INITIAL_OWNER_EMAIL:}
     password: ${INITIAL_OWNER_PASSWORD:}
+
+  mfa:
+    encryption-password: ${MFA_ENCRYPTION_PASSWORD:}
+    encryption-salt: ${MFA_ENCRYPTION_SALT:}

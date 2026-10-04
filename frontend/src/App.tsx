@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { SecuritySettings, MfaLogin } from "./SecuritySettings";
 import { api, ApiError } from "./api";
 import type { AccountType, BalanceMeaning, CreateAccount, FinancialAccount, Session, User } from "./api";
 
@@ -21,6 +22,8 @@ export function displayAmount(value: string) {
 }
 
 export default function App() {
+  const [page, setPage] = useState(window.location.hash === "#/settings" ? "settings" : "accounts");
+  useEffect(() => { const change = () => setPage(window.location.hash === "#/settings" ? "settings" : "accounts"); window.addEventListener("hashchange", change); return () => window.removeEventListener("hashchange", change); }, []);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,14 +40,22 @@ export default function App() {
   const expire = useCallback(() => {
     setSession(null); setNotice("Your session expired. Please sign in again.");
   }, []);
+  function acceptSession(result: Session) {
+    setSession(result); setNotice(null);
+    if (result.status === "AUTHENTICATED" && result.recoveryUsed) { setPage("settings"); window.location.hash = "#/settings"; }
+  }
+  const loggedOut = () => { setSession(null); setNotice(null); };
   return (
     <div className="app-shell">
       <header className="brand"><span className="brand-mark" aria-hidden="true">W</span><span>Wealth Master</span></header>
+      {session?.status === "AUTHENTICATED" && <nav className="workspace-nav" aria-label="Workspace"><a href="#/accounts" aria-current={page === "accounts" ? "page" : undefined}>Accounts</a><a href="#/settings" aria-current={page === "settings" ? "page" : undefined}>Settings</a></nav>}
+      {session?.status === "AUTHENTICATED" && session.recoveryUsed && <p role="status" className="notice">You signed in with a recovery code. Review your authenticator and remaining recovery codes in settings.</p>}
       {loading ? <main className="center-card"><p role="status">Checking your session…</p></main>
         : error ? <main className="center-card"><h1>Let’s reconnect</h1><p role="alert">{error}</p><button onClick={() => void restore()}>Try again</button></main>
-        : session?.status === "AUTHENTICATED" ? <AccountsPage user={session.user} onExpired={expire} onLogout={() => { setSession(null); setNotice(null); }} />
-        : session?.status === "MFA_REQUIRED" ? <main className="center-card"><h1>Verification required</h1><p>Two-factor verification is not available in this version.</p><button onClick={() => setSession(null)}>Back to sign in</button></main>
-        : <LoginPage notice={notice} onLogin={(result) => { setSession(result); setNotice(null); }} />}
+         : session?.status === "MFA_SETUP_REQUIRED" || session?.status === "AUTHENTICATED" && page === "settings" ? <SecuritySettings requiredSetup={session.status === "MFA_SETUP_REQUIRED"} onSession={acceptSession} onExpired={expire} onLogout={loggedOut} />
+        : session?.status === "AUTHENTICATED" ? <AccountsPage user={session.user} onExpired={expire} onLogout={loggedOut} />
+        : session?.status === "MFA_REQUIRED" ? <MfaLogin onSession={acceptSession} onExpired={expire} onLogout={loggedOut} />
+        : <LoginPage notice={notice} onLogin={acceptSession} />}
     </div>
   );
 }

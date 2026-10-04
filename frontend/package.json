@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.1.1",
+    "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "typescript": "7.0.2",
@@ -23,9 +24,13 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^24.10.0",
+    "@types/pg": "^8.23.1",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "jsdom": "^27.1.0",
+    "otpauth": "^9.5.2",
+    "pg": "^8.23.1",
     "vitest": "^4.0.0"
   }
 }

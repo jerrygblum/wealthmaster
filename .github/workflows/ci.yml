@@ -44,6 +44,9 @@ jobs:
         run: npm test
 
   browser:
+    strategy:
+      matrix:
+        profile: [dev, prod]
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -58,6 +61,7 @@ jobs:
           --health-cmd "pg_isready -U wealthmaster_test -d wealthmaster_e2e"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
+      E2E_PROFILE: ${{ matrix.profile }}
       DB_URL: jdbc:postgresql://localhost:5432/wealthmaster_e2e
       DB_USER: wealthmaster_test
       DB_PASSWORD: synthetic-db-password
@@ -82,5 +86,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: browser-test-results
+          name: browser-test-results-${{ matrix.profile }}
           path: frontend/test-results/

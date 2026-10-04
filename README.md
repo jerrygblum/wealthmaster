@@ -2,7 +2,7 @@
 
 A self-hosted personal finance and net-worth application designed to replace an Excel-based finance workflow while demonstrating end-to-end product ownership and production-minded software delivery.
 
-> **Status:** active development — email/password login and financial account creation implemented; MFA deferred.
+> **Status:** active development — email/password login, authenticator 2FA, security settings, and financial account creation implemented.
 
 ## Product goals
 
@@ -23,7 +23,7 @@ A self-hosted personal finance and net-worth application designed to replace an 
 - Current and historical net-worth calculation
 - Reconciliation, audit history, data-quality checks, and exports
 
-See [PRODUCT.md](PRODUCT.md) and [docs/roadmap.md](docs/roadmap.md).
+See [PRODUCT.md](PRODUCT.md), [docs/roadmap.md](docs/roadmap.md), and [2FA setup and recovery](docs/operations/mfa.md).
 
 ## Technology
 
@@ -59,7 +59,7 @@ cp .env.example .env
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres
 ```
 
-Fill the initial owner credentials in `.env` and load it into the backend shell. See [local login setup](docs/operations/local-auth.md) for instructions and test setup.
+Fill the initial owner credentials and MFA encryption configuration in `.env` and load it into the backend shell. See [local login setup](docs/operations/local-auth.md) for instructions and test setup.
 
 ### Backend
 

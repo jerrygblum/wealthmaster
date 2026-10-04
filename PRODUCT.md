@@ -40,8 +40,8 @@ Before V1:
 
 ### Identity and security
 - Account creation and login. Initially provision the owner through environment configuration; the registration page is deferred.
-- Mandatory MFA for normal accounts. Explicit initial-slice exception: password login and financial account creation ship before TOTP/recovery codes; MFA remains required for the production milestone.
-- TOTP initially with recovery codes.
+- Mandatory MFA for normal accounts in production. Enrollment is optional only in the explicit development profile; enabled MFA is enforced at every login in both modes.
+- TOTP with single-use recovery codes, verified enrollment, authenticator replacement, and recovery-code regeneration through user security settings. No disable action.
 - Secure recovery/reset workflow.
 - User data isolation.
 - Account/data deletion and export.
