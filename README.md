@@ -2,7 +2,7 @@
 
 A self-hosted personal finance and net-worth application designed to replace an Excel-based finance workflow while demonstrating end-to-end product ownership and production-minded software delivery.
 
-> **Status:** scaffolding / active development
+> **Status:** active development — email/password login and financial account creation implemented; MFA deferred.
 
 ## Product goals
 
@@ -41,7 +41,7 @@ See [PRODUCT.md](PRODUCT.md) and [docs/roadmap.md](docs/roadmap.md).
 
 The financial ledger is the source of truth. Dashboards, balances, budgets, portfolio values, and net worth are derived from ledger and investment activity rather than being independent authoritative values.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/adr](docs/adr/).
+See [ARCHITECTURE.md](ARCHITECTURE.md), [docs/adr](docs/adr/), and the [OpenAPI contract](docs/api/openapi.json).
 
 ## Local development
 
@@ -56,8 +56,10 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/adr](docs/adr/).
 
 ```bash
 cp .env.example .env
-docker compose up -d postgres
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres
 ```
+
+Fill the initial owner credentials in `.env` and load it into the backend shell. See [local login setup](docs/operations/local-auth.md) for instructions and test setup.
 
 ### Backend
 

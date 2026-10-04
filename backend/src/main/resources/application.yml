@@ -3,8 +3,8 @@ spring:
     name: wealthmaster
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/wealthmaster}
-    username: ${DB_USER:admin}
-    password: ${DB_PASSWORD:change-me-in-production}
+    username: ${DB_USER:${POSTGRES_USER:wealthmaster}}
+    password: ${DB_PASSWORD:${POSTGRES_PASSWORD:change-me-in-production}}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -24,3 +24,16 @@ management:
 
 server:
   shutdown: graceful
+
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${SESSION_COOKIE_SECURE:false}
+
+app:
+  initial-owner:
+    email: ${INITIAL_OWNER_EMAIL:}
+    password: ${INITIAL_OWNER_PASSWORD:}

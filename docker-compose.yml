@@ -21,6 +21,9 @@ services:
       DB_USER: ${POSTGRES_USER:-wealthmaster}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-change-me-in-production}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      INITIAL_OWNER_EMAIL: ${INITIAL_OWNER_EMAIL:-}
+      INITIAL_OWNER_PASSWORD: ${INITIAL_OWNER_PASSWORD:-}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
     depends_on:
       postgres:
         condition: service_healthy

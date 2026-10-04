@@ -11,14 +11,17 @@ Goal: establish a public-ready repository and repeatable local/NAS deployment fo
 - [ ] Production Synology deployment documentation validated
 - [ ] First backup/restore drill
 
+Deployment validation and the first backup/restore drill are explicitly deferred while the first login/accounts slice is built.
+
 ## 0.1 — Identity + Core Ledger
 Goal: represent financial accounts and trustworthy manual activity.
 
-- Authentication
-- Mandatory TOTP MFA + recovery codes
-- Multi-user isolation
-- Financial accounts
-- Opening balances
+- [x] Email/password login, server sessions, initial owner setup
+- [ ] Self-service registration page
+- [ ] Mandatory TOTP MFA + recovery codes (explicitly deferred for the first login/accounts slice)
+- [x] Multi-user isolation for account creation/listing
+- [x] Financial account creation and owner-scoped listing
+- [x] Opening balances
 - Manual income/expense transactions
 - Transfers
 - Categories

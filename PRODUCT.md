@@ -39,8 +39,8 @@ Before V1:
 ## Functional requirements
 
 ### Identity and security
-- Account creation and login.
-- Mandatory MFA for normal accounts.
+- Account creation and login. Initially provision the owner through environment configuration; the registration page is deferred.
+- Mandatory MFA for normal accounts. Explicit initial-slice exception: password login and financial account creation ship before TOTP/recovery codes; MFA remains required for the production milestone.
 - TOTP initially with recovery codes.
 - Secure recovery/reset workflow.
 - User data isolation.
