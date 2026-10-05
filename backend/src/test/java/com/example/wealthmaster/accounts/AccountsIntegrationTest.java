@@ -56,7 +56,7 @@ class AccountsIntegrationTest {
     @BeforeEach void setup() {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         jdbc.update("DELETE FROM audit_events");
-        jdbc.update("DELETE FROM ledger_account_history");
+        jdbc.update("DELETE FROM ledger_category_history"); jdbc.update("DELETE FROM ledger_account_history");
         jdbc.update("DELETE FROM ledger_movements");
         jdbc.update("DELETE FROM ledger_operations"); accounts.deleteAll();
     }

@@ -27,7 +27,7 @@ Goal: represent financial accounts and trustworthy manual activity.
 - [x] Investment cash/holdings architecture documented (implementation deferred)
 - [x] Manual income/expense/refund transactions, corrections, soft deletion and audit snapshots
 - [x] Same-currency paired transfers
-- Categories
+- [x] Two-level income/spending categories, manual assignment, lifecycle history and optional starters
 - [x] Calculated current account cash balances
 - [x] Current cash net worth by native currency, account/type breakdown and default overview
 - [x] Core cash ledger unit/integration tests, ownership, concurrency and audit rollback

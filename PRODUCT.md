@@ -84,6 +84,9 @@ Accounts support editing, archive/restore, and confirmed permanent deletion when
 - Statement import avoids double counting.
 
 ### Categories and budgets
+
+The implemented category slice supports user-owned income and spending categories with one subcategory level. Either level is optional on ordinary activity; refunds use spending categories and transfers have none. Users can start empty or explicitly install an editable starter set once. Category management supports rename, archive/restore, and deletion only when never used and without children. Historical use locks type and parent even after clearing or deleting activity. Archiving a parent hides the entire branch from new assignment without changing child active flags. Renames update current labels; audit snapshots preserve prior labels. Budgets, category reports, rules, and bulk assignment follow later.
+
 - User-defined categories/subcategories.
 - Monthly and/or yearly category limits.
 - Actual, remaining, percentage used, over-budget state.
@@ -160,7 +163,7 @@ Market prices may be delayed depending on provider/licensing. UI must show quote
 
 Current view includes contribution by account/asset type and drill-down to source data.
 
-The implemented cash-ledger view is the default landing page. It shows assets, liabilities and net worth separately for each native currency, including archived accounts and investment cash only. Positive balances are assets and negative balances are liabilities, including bank overdrafts and credit-card overpayments. Accounts opening after the configured business date are listed separately and excluded until that date. Totals retain exact decimal precision and show their business date and calculation timestamp. No combined FX total or security valuation is available yet. Categories remain a separate upcoming slice.
+The implemented cash-ledger view is the default landing page. It shows assets, liabilities and net worth separately for each native currency, including archived accounts and investment cash only. Positive balances are assets and negative balances are liabilities, including bank overdrafts and credit-card overpayments. Accounts opening after the configured business date are listed separately and excluded until that date. Totals retain exact decimal precision and show their business date and calculation timestamp. No combined FX total or security valuation is available yet. Categories are available for manual assignment.
 
 Historical net-worth snapshots/views show change over time without retroactively rewriting history because of today's FX/prices.
 

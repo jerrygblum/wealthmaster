@@ -17,9 +17,10 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
     private final AccountRepository accounts;
     private final ObjectMapper mapper;
     private final BusinessTime time;
+    private final com.example.wealthmaster.budgets.CategoryService categories;
     public LedgerService(JdbcTemplate jdbc, AccountRepository accounts, ObjectMapper mapper,
-            BusinessTime time) {
-        this.jdbc=jdbc; this.accounts=accounts; this.mapper=mapper; this.time=time;
+            BusinessTime time, com.example.wealthmaster.budgets.CategoryService categories) {
+        this.jdbc=jdbc; this.accounts=accounts; this.mapper=mapper; this.time=time; this.categories=categories;
     }
     public LocalDate today() { return time.today(); }
     public boolean hasActivity(UUID id) {
@@ -32,9 +33,9 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
         return new Operation(r.getObject("id",UUID.class),Kind.valueOf(r.getString("kind")),r.getObject("account_id",UUID.class),
             r.getObject("destination_id",UUID.class),r.getBigDecimal("amount").toPlainString(),r.getString("currency"),
             r.getObject("transaction_date",LocalDate.class),r.getObject("value_date",LocalDate.class),r.getString("payee"),
-            r.getString("description"),r.getString("notes"),r.getTimestamp("created_at").toInstant(),r.getLong("version"));
+            r.getString("description"),r.getString("notes"),r.getTimestamp("created_at").toInstant(),r.getLong("version"),r.getObject("category_id",UUID.class),categories.assignment(r.getObject("category_id",UUID.class)));
     }
-    @Transactional(readOnly=true)
+    @Transactional(readOnly=true, isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public ActivityPage list(UUID owner, UUID account, int page) {
         if(page<0 || page>1000000) throw new IllegalArgumentException("Invalid page.");
         if(account!=null && !jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM financial_accounts WHERE id=? AND owner_id=?)",Boolean.class,account,owner))
@@ -70,28 +71,34 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
     @Transactional
     public Operation transaction(UUID owner, UUID id, String match, TransactionInput input) {
         if(input.kind()==Kind.TRANSFER) throw new IllegalArgumentException("Use the transfer endpoint.");
-        return save(owner,id,match,input.kind(),input.accountId(),null,input.amount(),input.transactionDate(),input.valueDate(),input.payee(),input.description(),input.notes());
+        return save(owner,id,match,input.kind(),input.accountId(),null,input.amount(),input.transactionDate(),input.valueDate(),input.payee(),input.description(),input.notes(),input.categoryId());
     }
     @Transactional
     public Operation transfer(UUID owner, UUID id, String match, TransferInput input) {
         if(input.sourceAccountId().equals(input.destinationAccountId())) throw new IllegalArgumentException("Choose distinct accounts.");
-        return save(owner,id,match,Kind.TRANSFER,input.sourceAccountId(),input.destinationAccountId(),input.amount(),input.transactionDate(),null,null,input.description(),input.notes());
+        return save(owner,id,match,Kind.TRANSFER,input.sourceAccountId(),input.destinationAccountId(),input.amount(),input.transactionDate(),null,null,input.description(),input.notes(),null);
     }
-    private Operation save(UUID owner,UUID id,String match,Kind kind,UUID source,UUID destination,String value,LocalDate date,LocalDate valueDate,String payee,String description,String notes) {
+    private Operation save(UUID owner,UUID id,String match,Kind kind,UUID source,UUID destination,String value,LocalDate date,LocalDate valueDate,String payee,String description,String notes,UUID categoryId) {
         var before=id==null?null:owned(owner,id,match,kind==Kind.TRANSFER);
         var locked=lock(owner,before,source,destination); var currency=locked.get(source).getCurrency();
         if(destination!=null && !currency.equals(locked.get(destination).getCurrency())) throw new IllegalArgumentException("Transfers require matching currencies.");
         var affected=destination==null?List.of(locked.get(source)):List.of(locked.get(source),locked.get(destination));
         date(date,affected); if(valueDate!=null) date(valueDate,affected); var amount=amount(value);
+        if(categoryId!=null || before!=null && before.categoryId()!=null) {
+            categories.lock(owner);
+            if(before!=null) before=jdbc.queryForObject("SELECT * FROM ledger_operations WHERE id=?",this::row,id);
+            categories.validateAssignment(owner,categoryId,before==null?null:before.categoryId(),kind==Kind.INCOME);
+        }
         if(id==null) {
             id=UUID.randomUUID();
-            jdbc.update("INSERT INTO ledger_operations(id,owner_id,kind,account_id,destination_id,amount,currency,transaction_date,value_date,payee,description,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",id,owner,kind.name(),source,destination,amount,currency,date,valueDate,payee,description.strip(),notes);
+            jdbc.update("INSERT INTO ledger_operations(id,owner_id,kind,account_id,destination_id,amount,currency,transaction_date,value_date,payee,description,notes,category_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",id,owner,kind.name(),source,destination,amount,currency,date,valueDate,payee,description.strip(),notes,categoryId);
         } else {
-            jdbc.update("UPDATE ledger_operations SET kind=?,account_id=?,destination_id=?,amount=?,currency=?,transaction_date=?,value_date=?,payee=?,description=?,notes=?,version=version+1 WHERE id=?",kind.name(),source,destination,amount,currency,date,valueDate,payee,description.strip(),notes,id);
+            jdbc.update("UPDATE ledger_operations SET kind=?,account_id=?,destination_id=?,amount=?,currency=?,transaction_date=?,value_date=?,payee=?,description=?,notes=?,category_id=?,version=version+1 WHERE id=?",kind.name(),source,destination,amount,currency,date,valueDate,payee,description.strip(),notes,categoryId,id);
             jdbc.update("DELETE FROM ledger_movements WHERE operation_id=?",id);
         }
         movement(id,source,kind==Kind.EXPENSE || kind==Kind.TRANSFER?amount.negate():amount,currency);
         if(destination!=null) movement(id,destination,amount,currency);
+        categories.remember(id,categoryId);
         var after=jdbc.queryForObject("SELECT * FROM ledger_operations WHERE id=?",this::row,id);
         audit(owner,id,before==null?"LEDGER_CREATED":"LEDGER_UPDATED",before,after); return after;
     }
@@ -102,6 +109,7 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
     @Transactional
     public void delete(UUID owner,UUID id,String match,boolean transfer) {
         var before=owned(owner,id,match,transfer); lock(owner,before,before.accountId(),before.destinationAccountId());
+        if(before.categoryId()!=null) { categories.lock(owner); before=jdbc.queryForObject("SELECT * FROM ledger_operations WHERE id=?",this::row,id); }
         jdbc.update("UPDATE ledger_operations SET deleted=TRUE,version=version+1 WHERE id=?",id);
         audit(owner,id,"LEDGER_DELETED",before,null);
     }

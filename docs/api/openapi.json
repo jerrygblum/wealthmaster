@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Wealth Master API",
-    "version": "0.5.0",
-    "description": "Session authentication, mandatory production MFA, accounts, calculated cash balances, manual income/expenses/refunds, and same-currency paired transfers. Current net worth by native currency, including archived account cash balances."
+    "version": "0.6.0",
+    "description": "Session authentication, mandatory production MFA, accounts, calculated cash balances, manual income/expenses/refunds, and same-currency paired transfers. Current net worth by native currency, including archived account cash balances. User-owned two-level income/spending categories and optional ledger assignment."
   },
   "servers": [
     {
@@ -1761,6 +1761,461 @@
           }
         }
       }
+    },
+    "/categories": {
+      "get": {
+        "summary": "List owned categories and starter eligibility",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "description": "Includes archived branches. Exactly two levels; either level is assignable. Owner comes from the session."
+      },
+      "post": {
+        "summary": "Create a category or subcategory",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/{id}": {
+      "put": {
+        "summary": "Rename or update an unused category",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted category version."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryInput"
+              }
+            }
+          }
+        },
+        "description": "Type and parent are locked after historical use or while children exist. Names remain editable, including archived branches."
+      },
+      "delete": {
+        "summary": "Delete an unused category without children",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted category version."
+          }
+        ]
+      }
+    },
+    "/categories/{id}/archive": {
+      "post": {
+        "summary": "Archive a category without changing child active flags",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted category version."
+          }
+        ],
+        "description": "Children retain their own active flags but become unavailable until the parent is restored. Retained assignments may survive unrelated transaction edits."
+      }
+    },
+    "/categories/{id}/restore": {
+      "post": {
+        "summary": "Restore a category without changing child active flags",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted category version."
+          }
+        ]
+      }
+    },
+    "/categories/starter-set": {
+      "post": {
+        "summary": "Install editable starters once into an empty category list",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2176,6 +2631,14 @@
               "null"
             ],
             "maxLength": 2000
+          },
+          "categoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Optional; omission/null means Uncategorized, including full-replacement PUT. Income uses INCOME; expenses/refunds use SPENDING."
           }
         }
       },
@@ -2292,8 +2755,22 @@
           "version": {
             "type": "integer",
             "minimum": 0
+          },
+          "categoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "category": {
+            "$ref": "#/components/schemas/CategoryAssignment"
           }
-        }
+        },
+        "required": [
+          "categoryId",
+          "category"
+        ]
       },
       "ActivityPage": {
         "type": "object",
@@ -2508,6 +2985,150 @@
             }
           }
         }
+      },
+      "CategoryInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Trimmed; unique case-insensitively within owner/type/parent, including archived categories."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "SPENDING"
+            ]
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "parentId",
+          "active",
+          "createdAt",
+          "version",
+          "hasActivity",
+          "hasChildren",
+          "available"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Trimmed; unique case-insensitively within owner/type/parent, including archived categories."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "SPENDING"
+            ]
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hasActivity": {
+            "type": "boolean",
+            "description": "Permanent ledger references, including cleared/deleted entries and assigned children."
+          },
+          "hasChildren": {
+            "type": "boolean"
+          },
+          "available": {
+            "type": "boolean",
+            "description": "Category and parent are active."
+          }
+        }
+      },
+      "CategoryList": {
+        "type": "object",
+        "required": [
+          "items",
+          "starterSetAvailable"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          },
+          "starterSetAvailable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CategoryAssignment": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "parentName",
+              "available"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "parentName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "available": {
+                "type": "boolean"
+              }
+            }
+          }
+        ]
       }
     }
   }

@@ -15,6 +15,10 @@ public class ApiErrors {
     public ResponseEntity<Map<String, String>> account(com.example.wealthmaster.accounts.AccountFailure error) {
         return ResponseEntity.status(error.status()).body(Map.of("message", error.getMessage()));
     }
+    @ExceptionHandler(com.example.wealthmaster.budgets.CategoryFailure.class)
+    public ResponseEntity<Map<String, String>> category(com.example.wealthmaster.budgets.CategoryFailure error) {
+        return ResponseEntity.status(error.status()).body(Map.of("message", error.getMessage()));
+    }
     @ExceptionHandler(SecurityFailure.class)
     public ResponseEntity<Map<String, Object>> security(SecurityFailure error) {
         var builder = ResponseEntity.status(error.status());

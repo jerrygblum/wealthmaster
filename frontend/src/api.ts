@@ -50,9 +50,13 @@ async function mutateAccount<T>(account: FinancialAccount, method: string, suffi
     headers: { [csrf.headerName]: csrf.token, "If-Match": `"${account.version}"`, ...(input ? { "Content-Type": "application/json" } : {}) },
     body: input ? JSON.stringify(input) : undefined });
 }
+export type CategoryType = "INCOME" | "SPENDING";
+export type CategoryInput = {name: string; type: CategoryType; parentId: string | null};
+export type Category = CategoryInput & {id: string; active: boolean; createdAt: string; version: number; hasActivity: boolean; hasChildren: boolean; available: boolean};
+export type CategoryList = {items: Category[]; starterSetAvailable: boolean};
 export type LedgerKind = "INCOME" | "EXPENSE" | "REFUND" | "TRANSFER";
-export type LedgerInput = { accountId: string; kind: LedgerKind; amount: string; transactionDate: string; valueDate: string | null; payee: string; description: string; notes: string; destinationAccountId?: string };
-export type Operation = LedgerInput & { id: string; currency: string; version: number; createdAt: string };
+export type LedgerInput = { accountId: string; kind: LedgerKind; amount: string; transactionDate: string; valueDate: string | null; payee: string; description: string; notes: string; destinationAccountId?: string; categoryId?: string | null };
+export type Operation = LedgerInput & { id: string; currency: string; version: number; createdAt: string; category?: {id: string; name: string; parentName: string | null; available: boolean} | null };
 async function ledgerMutation<T>(path: string, method: string, input?: unknown, version?: number): Promise<T> {
   const csrf = await request<{ headerName: string; token: string }>("/auth/csrf");
   return request<T>(path, { method, headers: { [csrf.headerName]: csrf.token, "Content-Type": "application/json", ...(version === undefined ? {} : { "If-Match": `"${version}"` }) }, body: input === undefined ? undefined : JSON.stringify(input) });
@@ -65,6 +69,11 @@ export type CurrentNetWorth = {
   excludedFutureAccounts: Pick<FinancialAccount, "id" | "name" | "type" | "currency" | "active" | "openingDate">[];
 };
 export const api = {
+  categories: () => request<CategoryList>("/categories"),
+  installCategoryStarters: () => post<CategoryList>("/categories/starter-set"),
+  saveCategory: (input: CategoryInput, category?: Category) => ledgerMutation<Category>(`/categories${category ? `/${category.id}` : ""}`, category ? "PUT" : "POST", input, category?.version),
+  setCategoryActive: (category: Category, active: boolean) => ledgerMutation<Category>(`/categories/${category.id}/${active ? "restore" : "archive"}`, "POST", undefined, category.version),
+  deleteCategory: (category: Category) => ledgerMutation<void>(`/categories/${category.id}`, "DELETE", undefined, category.version),
   currentNetWorth: () => request<CurrentNetWorth>("/net-worth/current"),
   account: (id: string) => request<FinancialAccount>(`/accounts/${id}`),
   activity: (id: string, page: number) => request<{items: Operation[]; page: number; hasMore: boolean}>(`/transactions?accountId=${id}&page=${page}`),

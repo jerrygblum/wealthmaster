@@ -6,12 +6,13 @@ import { api, ApiError } from "./api";
 import type { AccountType, BalanceMeaning, CreateAccount, FinancialAccount, Session, User } from "./api";
 
 import { accountTypes, displayAmount } from "./accountPresentation";
+import { CategoriesPage } from "./CategoriesPage";
 import { NetWorthPage } from "./NetWorthPage";
 export { displayAmount } from "./accountPresentation";
 
 function currentPage() {
   const hash = window.location.hash;
-  return hash === "#/settings" ? "settings" : hash === "#/accounts" || hash.startsWith("#/accounts/") ? "accounts" : "net-worth";
+  return hash === "#/categories" ? "categories" : hash === "#/settings" ? "settings" : hash === "#/accounts" || hash.startsWith("#/accounts/") ? "accounts" : "net-worth";
 }
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
@@ -47,11 +48,12 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="brand"><span className="brand-mark" aria-hidden="true">W</span><span>Wealth Master</span></header>
-      {session?.status === "AUTHENTICATED" && <nav className="workspace-nav" aria-label="Workspace"><a href="#/net-worth" aria-current={page === "net-worth" ? "page" : undefined}>Net worth</a><a href="#/accounts" aria-current={page === "accounts" ? "page" : undefined}>Accounts</a><a href="#/settings" aria-current={page === "settings" ? "page" : undefined}>Settings</a></nav>}
+      {session?.status === "AUTHENTICATED" && <nav className="workspace-nav" aria-label="Workspace"><a href="#/net-worth" aria-current={page === "net-worth" ? "page" : undefined}>Net worth</a><a href="#/accounts" aria-current={page === "accounts" ? "page" : undefined}>Accounts</a><a href="#/categories" aria-current={page === "categories" ? "page" : undefined}>Categories</a><a href="#/settings" aria-current={page === "settings" ? "page" : undefined}>Settings</a></nav>}
       {session?.status === "AUTHENTICATED" && session.recoveryUsed && <p role="status" className="notice">You signed in with a recovery code. Review your authenticator and remaining recovery codes in settings.</p>}
       {loading ? <main className="center-card"><p role="status">Checking your session…</p></main>
         : error ? <main className="center-card"><h1>Let’s reconnect</h1><p role="alert">{error}</p><button onClick={() => void restore()}>Try again</button></main>
          : session?.status === "MFA_SETUP_REQUIRED" || session?.status === "AUTHENTICATED" && page === "settings" ? <SecuritySettings requiredSetup={session.status === "MFA_SETUP_REQUIRED"} onSession={acceptSession} onExpired={expire} onLogout={loggedOut} />
+        : session?.status === "AUTHENTICATED" && page === "categories" ? <CategoriesPage user={session.user} onExpired={expire} onLogout={loggedOut} />
         : session?.status === "AUTHENTICATED" && page === "net-worth" ? <NetWorthPage user={session.user} onExpired={expire} onLogout={loggedOut} />
         : session?.status === "AUTHENTICATED" ? <AccountsPage user={session.user} onExpired={expire} onLogout={loggedOut} />
         : session?.status === "MFA_REQUIRED" ? <MfaLogin onSession={acceptSession} onExpired={expire} onLogout={loggedOut} />

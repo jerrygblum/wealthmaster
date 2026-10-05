@@ -100,3 +100,8 @@ p { margin: 0 0 16px; }
 .net-worth-accounts h3 { overflow-wrap: anywhere; }
 .net-worth-accounts a, .empty-state a { color: #176658; }
 .workspace-nav { flex-wrap: wrap; }
+
+.category-card .form-actions { flex-wrap: wrap; }
+.category-child { margin-left: 24px; }
+.category-branch { margin-bottom: 24px; }
+.category-card h3 { overflow-wrap: anywhere; }

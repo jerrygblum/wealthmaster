@@ -39,3 +39,14 @@ describe("session API", () => {
     expect(fetch.mock.calls.filter(([path]) => path.endsWith("csrf"))).toHaveLength(4);
   });
 });
+it("sends fresh CSRF and quoted versions for category lifecycle operations", async () => {
+  const fetch = vi.fn().mockImplementation((path: string) => Promise.resolve(path.endsWith("csrf") ? new Response(JSON.stringify({ headerName: "X-CSRF-TOKEN", token: "synthetic-token" })) : new Response(null, { status: 204 })));
+  vi.stubGlobal("fetch", fetch);
+  const category = { id: "synthetic-category", version: 3 } as import("./api").Category;
+  const input = { name: "Synthetic category", type: "SPENDING" as const, parentId: null };
+  await api.saveCategory(input, category); await api.setCategoryActive(category, false); await api.setCategoryActive(category, true); await api.deleteCategory(category);
+  const calls = fetch.mock.calls.filter(([path]) => !path.endsWith("csrf"));
+  expect(calls.map(([path, options]) => [path, options.method])).toEqual([["/api/v1/categories/synthetic-category", "PUT"], ["/api/v1/categories/synthetic-category/archive", "POST"], ["/api/v1/categories/synthetic-category/restore", "POST"], ["/api/v1/categories/synthetic-category", "DELETE"]]);
+  for (const [, options] of calls) { expect(options.headers["If-Match"]).toBe('"3"'); expect(options.headers["X-CSRF-TOKEN"]).toBe("synthetic-token"); }
+  expect(fetch.mock.calls.filter(([path]) => path.endsWith("csrf"))).toHaveLength(4);
+});

@@ -165,7 +165,7 @@ See `docs/operations/`.
 
 Operation edits lock the owner-scoped operation first, then original/current and new accounts in UUID order. Account writers use the same account row locks. Movement replacement, permanent account references, and before/after audit snapshots share a database transaction. Transfer endpoints require distinct active owned accounts in the same currency. Insufficient funds never prevent recording activity. Ordinary endpoints cannot modify transfer sides.
 
-Dates use `LocalDate`; today uses `APP_BUSINESS_TIME_ZONE` (default `Europe/Zurich`). Transaction and optional value dates must fall between affected account opening dates and today. Audit timestamps remain UTC. Paginated activity returns 50 operations ordered by transaction date descending, creation timestamp descending, then ID. Categories, fees, FX, refund-purchase links and security trades remain deferred.
+Dates use `LocalDate`; today uses `APP_BUSINESS_TIME_ZONE` (default `Europe/Zurich`). Transaction and optional value dates must fall between affected account opening dates and today. Audit timestamps remain UTC. Paginated activity returns 50 operations ordered by transaction date descending, creation timestamp descending, then ID. Fees, FX, refund-purchase links and security trades remain deferred.
 
 ### Current net worth implementation
 
@@ -174,3 +174,15 @@ Dates use `LocalDate`; today uses `APP_BUSINESS_TIME_ZONE` (default `Europe/Zuri
 Positive signed balances contribute to assets; absolute negative balances contribute to liabilities. Totals and account-type breakdowns use `BigDecimal` and decimal-string DTOs, without imposing input digit limits on aggregates. Archived accounts remain included; accounts opening after the business date appear separately. Investment valuation currently covers cash only. Currencies are never combined without FX data.
 
 Shared injectable `BusinessTime` derives business dates from the application `Clock` and `APP_BUSINESS_TIME_ZONE` (default `Europe/Zurich`); calculation timestamps remain UTC instants. The API disables HTTP caching. The frontend defaults to `#/net-worth`, reloads the report on entry, and links each contribution to its account activity.
+
+### Category implementation
+
+The `budgets` module owns category management; the ledger owns assignment. Categories have two levels with matching owner/type. Income categories are separate from spending categories used by expenses and refunds. `ledger_operations.category_id` is nullable; transfers remain uncategorized. Categories do not alter movements, balances, or net worth.
+
+Flyway V006 adds categories, per-owner state, and permanent `ledger_category_history`. Every assignment retains both the selected category and its parent. References survive recategorization, clearing and soft deletion, permanently locking type/parent and preventing deletion. Roots with children also lock structure. Restrictive, owner-matching foreign keys protect references. Existing activity remains uncategorized.
+
+Category writes serialize on a lazily-created `category_owner_state` row. Ledger assignment/removal acquires it after existing operation/account locks; category management never acquires ledger/account locks. Validation, history, movements and audit snapshots commit together. Read paths do not create owner-state rows; list reads use repeatable snapshots.
+
+Archiving a parent changes effective branch availability while retaining child active flags. Existing unavailable assignments may survive unrelated ledger edits; new assignments require an active branch and matching type. Nullable transaction `categoryId` uses full-replacement PUT semantics: omission clears it. Responses include current labels; audit snapshots capture labels at the time of changes.
+
+Starter installation is explicit, atomic, available for an empty list and recorded once per owner. The UI adds `#/categories`; net worth remains the default route.

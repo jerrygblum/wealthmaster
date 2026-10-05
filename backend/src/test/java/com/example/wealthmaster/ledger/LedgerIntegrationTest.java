@@ -59,7 +59,7 @@ class LedgerIntegrationTest {
     MockMvc mvc;
     @BeforeEach void setup() {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
-        jdbc.update("DELETE FROM audit_events"); jdbc.update("DELETE FROM ledger_account_history"); jdbc.update("DELETE FROM ledger_movements"); jdbc.update("DELETE FROM ledger_operations"); accounts.deleteAll();
+        jdbc.update("DELETE FROM audit_events"); jdbc.update("DELETE FROM ledger_category_history"); jdbc.update("DELETE FROM ledger_account_history"); jdbc.update("DELETE FROM ledger_movements"); jdbc.update("DELETE FROM ledger_operations"); accounts.deleteAll();
     }
     String csrf(MockHttpSession session) throws Exception {
         var result = mvc.perform(get("/api/v1/auth/csrf").session(session)).andReturn();

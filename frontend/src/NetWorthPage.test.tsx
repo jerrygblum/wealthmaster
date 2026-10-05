@@ -6,7 +6,7 @@ import { api, ApiError } from "./api";
 import type { CurrentNetWorth } from "./api";
 vi.mock("./api", async original => {
   const actual = await original<typeof import("./api")>();
-  return { ...actual, api: { ...actual.api, currentNetWorth: vi.fn(), session: vi.fn(), login: vi.fn(), logout: vi.fn(), accounts: vi.fn(), account: vi.fn(), activity: vi.fn(), security: vi.fn() } };
+  return { ...actual, api: { ...actual.api, categories: vi.fn(), currentNetWorth: vi.fn(), session: vi.fn(), login: vi.fn(), logout: vi.fn(), accounts: vi.fn(), account: vi.fn(), activity: vi.fn(), security: vi.fn() } };
 });
 const user = { id: "synthetic-owner", email: "owner@example.test" };
 const empty: CurrentNetWorth = { balanceAsOf: "2026-10-04", calculatedAt: "2026-10-04T12:00:00Z", currencies: [], accounts: [], excludedFutureAccounts: [] };
@@ -16,7 +16,7 @@ const report: CurrentNetWorth = { ...empty,
   excludedFutureAccounts: [{ id: "b", name: "Synthetic future", type: "SAVINGS", currency: "EUR", active: true, openingDate: "2026-10-05" }],
 };
 beforeEach(() => {
-  vi.resetAllMocks(); window.location.hash = "";
+  vi.resetAllMocks();vi.mocked(api.categories).mockResolvedValue({items:[],starterSetAvailable:true}); window.location.hash = "";
   vi.mocked(api.currentNetWorth).mockResolvedValue(empty); vi.mocked(api.accounts).mockResolvedValue([]);
   vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Please sign in."));
 });
