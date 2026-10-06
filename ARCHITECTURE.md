@@ -186,3 +186,33 @@ Category writes serialize on a lazily-created `category_owner_state` row. Ledger
 Archiving a parent changes effective branch availability while retaining child active flags. Existing unavailable assignments may survive unrelated ledger edits; new assignments require an active branch and matching type. Nullable transaction `categoryId` uses full-replacement PUT semantics: omission clears it. Responses include current labels; audit snapshots capture labels at the time of changes.
 
 Starter installation is explicit, atomic, available for an empty list and recorded once per owner. The UI adds `#/categories`; net worth remains the default route.
+
+### Spending budget implementation
+
+Flyway V007 adds `spending_budgets` with independent MONTH/YEAR calendar periods, native currency, NUMERIC(28,8) non-negative limits, versions and soft deletion. A partial unique index permits one live limit per owner/category/currency/period. `budget_category_history` preserves selected and parent references permanently; CategoryService usage combines ledger, period-budget and normal-setting history.
+
+All budget writes and copies take only the existing per-owner category lock. They never acquire account or ledger-operation locks. Limit mutations and before/after audit snapshots commit atomically. Copy validates every owned source version before writes, requires a single source period and different canonical target, and preserves existing target limits. Archived branches remain readable/editable/deletable but cannot receive new limits or copies.
+
+Report and supporting-activity reads use a read-only repeatable-read snapshot and disable HTTP caching. Actuals derive from non-deleted expenses minus refunds by transaction date and currency, including archived accounts and category branches. Parent actuals include directly assigned activity and immediate children. Effective coverage resolves defaults/exceptions for each operation date, so overlapping category budgets count each operation once. Totals never sum overlapping limits. BigDecimal values become exact decimal strings; only percentage is rounded HALF_UP to two places, with null for zero limits. No ledger writes, cached totals, FX, scheduled jobs or balance effects are introduced.
+
+`GET /api/v1/budgets` defaults to the current business month through BusinessTime. Normal limit management lives in Categories, period exceptions in Spending; net worth remains the default landing page. Recurring expectations/matching/forecasts are next; imports are deferred.
+
+### Spending distribution implementation
+
+The budgets module exposes `GET /api/v1/spending` and `/api/v1/spending/activity` using the budget persistence. Each entry point runs in one read-only REPEATABLE_READ transaction; nested category and budget reads participate in that snapshot. Responses use Cache-Control: no-store. Reports group owner-scoped non-deleted expense/refund operations by assigned category and currency, preserving separate gross amounts and exact BigDecimal net values. Inclusive rollups add immediate children; the pie consumes only root rollups and uncategorized gross expenses. Budget coverage and comparisons reuse the selected-period rules; overlapping limits are never summed.
+
+Activity accepts currency and optional owned spending category, including immediate children or uncategorized when omitted. It retains 50-row ledger ordering and account links without requiring a budget. All monetary DTOs are decimal strings; the frontend uses bounded BigInt-derived approximations only for SVG geometry. No caching, jobs, dependencies or ledger mutations are added. `#/planning` aliases `#/spending`; normal-setting links carry category context.
+
+### Dated normal limits
+
+Flyway V008 adds owner/category/currency heads (`budget_settings`), append-only month/year effective revisions (`budget_setting_revisions`) and permanent category references (`budget_setting_category_history`). Existing V007 rows remain explicit exceptions; migration does not infer defaults. Every normal save appends both frequency revisions effective at the current month/year boundary: the selected mode carries its amount, the other carries null (disabled). Latest effective date/version resolves earlier periods without backfilling. No limit retains the head, revisions and exceptions.
+
+EffectiveBudgetService resolves monthly exception/default before annual exception/default. Annual comparisons use YTD net spending through the selected month, capped at the business date. Year reports prefer annual exception/default, otherwise accrue individual monthly limits through the current month; future months contribute zero. Parent comparisons include direct assignments and immediate children. Gross chart/table amounts remain in the selected report period; comparison usage dates are explicit. All report reads share one repeatable-read snapshot.
+
+Normal and effective-limit writes hold the existing owner category lock. Body references check both expected setting and period exception versions (including expected absence), returning 412 for stale state. Current-period promotion saves the normal revision and soft-deletes the corresponding exception in one audited transaction. Past/future edits cannot promote. Archived branches permit existing same-frequency edits and exception reset, but no new limits. The monthly breakdown provides twelve independently editable monthly exceptions while annual monthly-rollup totals remain read-only.
+
+### Frontend composition and quality checks
+
+The React frontend follows atomic design: native control atoms, reusable field/action/feedback molecules, feature organisms, layout templates and page controllers. Pages compose templates and controlled organisms; feature hooks own requests and mutation state. The API client and DTO/prop types are separate boundaries, and pure presentation helpers preserve decimal strings. ESLint enforces downward UI imports and prevents components from importing requests, feature hooks or pages. Shared type-only view models carry no runtime hook dependency.
+
+Prettier formats frontend sources and configuration; ESLint checks typed correctness, hook usage, accessibility and Fast Refresh compatibility. CI checks both plus tooling-rule tests before the existing build/tests. Editor format-on-save is scoped by the frontend Prettier configuration; no commit hooks are installed. See [frontend development](frontend/README.md) for commands and component placement. This refactor preserves routes, API contracts, financial behavior and the existing visual design.

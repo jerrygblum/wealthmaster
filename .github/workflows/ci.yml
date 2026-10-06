@@ -38,6 +38,12 @@ jobs:
           node-version: '24'
       - name: Install
         run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Check formatting
+        run: npm run format:check
+      - name: Verify tooling rules
+        run: npm run test:tooling
       - name: Typecheck/build
         run: npm run build
       - name: Test

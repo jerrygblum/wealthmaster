@@ -104,9 +104,11 @@ class MfaIntegrationTest {
     }
     void assertAccountMutationsForbidden(MockHttpSession session) throws Exception {
         mvc.perform(get("/api/v1/categories").session(session)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/budgets").session(session)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/budgets/copy").session(session).header("X-CSRF-TOKEN", csrf(session)).contentType("application/json").content("{}")).andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/net-worth/current").session(session)).andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/transactions").session(session)).andExpect(status().isForbidden());
-        for (String resource : List.of("transactions", "transfers", "categories")) {
+        for (String resource : List.of("transactions", "transfers", "categories", "budgets")) {
             for (var request : List.of(post("/api/v1/" + resource).contentType("application/json").content("{}"),
                     put("/api/v1/" + resource + "/" + UUID.randomUUID()).contentType("application/json").content("{}"),
                     delete("/api/v1/" + resource + "/" + UUID.randomUUID()))) {

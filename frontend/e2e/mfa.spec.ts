@@ -1,7 +1,18 @@
 import { test, expect } from "@playwright/test";
-import { syntheticUser, passwordLogin, password, enroll, readCodes, signOut, recoveryLogin, authenticatorCode } from "./helpers";
+import {
+  syntheticUser,
+  passwordLogin,
+  password,
+  enroll,
+  readCodes,
+  signOut,
+  recoveryLogin,
+  authenticatorCode,
+} from "./helpers";
 
-test("enrollment, recovery, authenticator replacement, regeneration, and TOTP login", async ({ page }, testInfo) => {
+test("enrollment, recovery, authenticator replacement, regeneration, and TOTP login", async ({
+  page,
+}, testInfo) => {
   const email = await syntheticUser();
   const status = await passwordLogin(page, email);
   if (status === "MFA_SETUP_REQUIRED") {
@@ -54,12 +65,16 @@ test("enrollment, recovery, authenticator replacement, regeneration, and TOTP lo
   await signOut(page);
   expect(await passwordLogin(page, email)).toBe("MFA_REQUIRED");
   // Simulate an authenticator one period ahead, within the supported clock tolerance.
-  await page.getByLabel("Authenticator code", { exact: true }).fill(authenticatorCode(replacementSecret, 30));
+  await page
+    .getByLabel("Authenticator code", { exact: true })
+    .fill(authenticatorCode(replacementSecret, 30));
   await page.getByRole("button", { name: "Verify and sign in" }).click();
   await expect(page.getByRole("heading", { name: "Net worth", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("security.png"), fullPage: true });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
   await signOut(page);
 });

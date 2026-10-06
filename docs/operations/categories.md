@@ -13,3 +13,7 @@ Archiving a parent makes children unavailable without changing their own active 
 `PUT /transactions/{id}` replaces category assignment: omitted or null `categoryId` clears it. Clients must round-trip assigned IDs to preserve them. Category modifications require CSRF and quoted If-Match versions. Stale forms retain input and require cancellation/reload. Existing MFA and ownership protections apply.
 
 Lifecycle and ledger assignment serialize through a per-owner state row. Audits, references and ledger changes share transactions; no partial starter set or assignment survives rollback. Categorization leaves balances and net worth unchanged. No scheduled jobs or new monitoring configuration is needed; existing health checks and database backups cover the new tables.
+
+Budget use also retains the selected category and parent permanently in budget_category_history. Deleted budgets still block category deletion and type/parent changes. Archive unused-for-new-assignment branches instead. See [spending budgets](budgets.md).
+
+Spending-category cards set normal limits directly with No limit / Monthly / Yearly and an amount per currency. Category actions are collapsed; income management is unchanged. Limits load independently so failures leave category management available. A Spending Normal setting link selects the category and opens archived view when needed. Normal-setting history permanently locks category structure even after selecting No limit. See [spending budgets](budgets.md).

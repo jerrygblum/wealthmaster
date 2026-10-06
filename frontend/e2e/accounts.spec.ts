@@ -1,11 +1,15 @@
 import { test, expect } from "@playwright/test";
 import { syntheticUser, passwordLogin, enroll, openAccounts } from "./helpers";
 
-test("create, edit, archive, restore, delete an account and log out", async ({ page }, testInfo) => {
+test("create, edit, archive, restore, delete an account and log out", async ({
+  page,
+}, testInfo) => {
   const name = `Synthetic savings ${testInfo.project.name} ${Date.now()}`;
   const email = await syntheticUser();
   const status = await passwordLogin(page, email);
-  if (status === "MFA_SETUP_REQUIRED") { await enroll(page); }
+  if (status === "MFA_SETUP_REQUIRED") {
+    await enroll(page);
+  }
   await openAccounts(page);
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await page.getByLabel("Account name").fill(name);
@@ -16,7 +20,9 @@ test("create, edit, archive, restore, delete an account and log out", async ({ p
   await page.getByRole("button", { name: "Save account", exact: true }).click();
   await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   await page.reload();
-  const account = page.getByRole("article").filter({ has: page.getByRole("heading", { name, exact: true }) });
+  const account = page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name, exact: true }) });
   await expect(account).toContainText("CHF 1’234.56");
   await account.getByRole("button", { name, exact: true }).click();
   await expect(page.getByText(/^Opening balance:/)).toContainText("2026-10-04");
@@ -28,7 +34,9 @@ test("create, edit, archive, restore, delete an account and log out", async ({ p
   await page.getByRole("button", { name: "Save account", exact: true }).click();
   await expect(page.getByRole("heading", { name: changedName, exact: true })).toBeVisible();
   await page.reload();
-  const changed = page.getByRole("article").filter({ has: page.getByRole("heading", { name: changedName, exact: true }) });
+  const changed = page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name: changedName, exact: true }) });
   await expect(changed).toContainText("CHF 99’999’999’999’999’999’999.12345678");
   await changed.getByRole("button", { name: "Archive", exact: true }).click();
   await expect(page.getByRole("heading", { name: changedName, exact: true })).toHaveCount(0);
@@ -41,7 +49,9 @@ test("create, edit, archive, restore, delete an account and log out", async ({ p
   await page.getByRole("button", { name: "Active accounts" }).click();
   await expect(changed).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("accounts.png"), fullPage: true });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
   await changed.getByRole("button", { name: "Delete", exact: true }).click();
   await page.getByRole("button", { name: "Cancel deletion" }).click();
   await expect(changed).toBeVisible();

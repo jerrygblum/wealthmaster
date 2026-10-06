@@ -34,7 +34,7 @@ Goal: represent financial accounts and trustworthy manual activity.
 
 Release outcome: the user can reproduce current cash/bank/card positions without Excel.
 
-## 0.2 — Migration / Importer
+## 0.2 — Migration / Importer (deferred)
 Goal: migrate historical Excel workflow without manual re-entry.
 
 - CSV import
@@ -50,14 +50,15 @@ Goal: migrate historical Excel workflow without manual re-entry.
 
 Release outcome: existing historical Excel/CSV data can be migrated confidently.
 
-## 0.3 — Planning
-Goal: understand budgets and expected cash flow.
+## 0.3 — Spending and planning (current priority)
+Goal: understand budgets and expected cash flow. Imports are explicitly deferred. Recurring expectations remain deferred; matching and forecasts follow. Income targets, rollover and FX conversion remain deferred.
 
-- Monthly/yearly category budgets
+- [x] Dated normal monthly/yearly native-currency limits, period exceptions, parent rollups and explicit exception copying
 - Expected recurring expenses/income
 - Matching actual transactions to expectations
 - Missing expected items by period
-- Budget vs actual dashboard
+- [x] Compact inline category-card normal settings; Spending exception editors, atomic promotion and accrued monthly breakdown
+- [x] Spending dashboard with gross expense pie, refunds, exact hierarchy breakdowns, overlap-safe comparisons and activity without budgets
 - Basic cash-flow projection
 
 ## 0.4 — Wealth / Investments
