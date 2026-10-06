@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type {
   AuthenticatorStepProps,
   IdentityStepProps,
@@ -13,6 +13,7 @@ import { WorkspaceHeading } from "../application/WorkspaceHeading";
 import { Feedback } from "../../molecules/Feedback";
 
 export function SecuritySettingsView({
+  preferencesPanel,
   status,
   loadError,
   wizard,
@@ -31,6 +32,7 @@ export function SecuritySettingsView({
   AuthenticatorStep,
   RecoveryStep,
 }: SecuritySettingsViewModel & {
+  preferencesPanel: ReactNode;
   IdentityStep: ComponentType<IdentityStepProps>;
   AuthenticatorStep: ComponentType<AuthenticatorStepProps>;
   RecoveryStep: ComponentType<RecoveryStepProps>;
@@ -39,7 +41,7 @@ export function SecuritySettingsView({
     <>
       <WorkspaceHeading
         title={<>Settings</>}
-        subtitle={<>Security</>}
+        subtitle={<>Preferences and security</>}
         actions={
           <>
             <Button variant="secondary" disabled={action.pending} onClick={logout}>
@@ -48,6 +50,7 @@ export function SecuritySettingsView({
           </>
         }
       />
+      {preferencesPanel}
       {requiredSetup && (
         <Message role="status" className="notice">
           Set up two-factor authentication before accessing your financial accounts.

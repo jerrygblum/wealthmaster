@@ -80,8 +80,8 @@ beforeEach(() => {
 it("renders exact totals, signed contributions, archived status and excluded future accounts", async () => {
   vi.mocked(api.currentNetWorth).mockResolvedValue(report);
   render(<NetWorthPage user={user} onExpired={() => {}} onLogout={() => {}} />);
-  await screen.findByText("CHF 199’999’999’999’999’999’868.24691355");
-  expect(screen.getByText("CHF 150.00000001")).toBeVisible();
+  await screen.findByText("CHF 199’999’999’999’999’999’868.25");
+  expect(screen.getByText("CHF 150.00")).toBeVisible();
   expect(screen.getByText("Archived · included in totals")).toBeVisible();
   expect(screen.getByRole("link", { name: "Synthetic archived" })).toHaveAttribute(
     "href",

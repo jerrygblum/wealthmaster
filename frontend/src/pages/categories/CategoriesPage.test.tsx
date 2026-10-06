@@ -6,7 +6,7 @@ import { CategoriesPage } from "./CategoriesPage";
 vi.mock("../../services/api", async (original) => ({
   ...(await original<typeof import("../../services/api")>()),
   api: {
-    saveBudgetSetting: vi.fn(),
+    preferences: vi.fn(),
     budgetSettings: vi.fn(),
     categories: vi.fn(),
     saveCategory: vi.fn(),
@@ -39,6 +39,11 @@ const child: Category = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(api.preferences).mockResolvedValue({
+    defaultCurrency: "CHF",
+    version: 1,
+    hasLimitsToReset: false,
+  });
   vi.mocked(api.budgetSettings).mockResolvedValue({ businessDate: "2026-10-05", items: [] });
   vi.mocked(api.categories).mockResolvedValue({ items: [], starterSetAvailable: true });
 });
@@ -79,7 +84,7 @@ it("locks used hierarchy and unused parents with children, preserving stale edit
   vi.mocked(api.categories).mockResolvedValue({ items: [root, child], starterSetAvailable: false });
   renderPage();
   await screen.findByText("Synthetic Food → Synthetic Groceries");
-  fireEvent.click(screen.getAllByText("Edit category")[1]);
+  fireEvent.click(screen.getAllByRole("button", { name: "Edit category" })[1]);
   expect(screen.getByLabelText("Category type")).toBeDisabled();
   expect(screen.getByLabelText("Parent category (optional)")).toBeDisabled();
   fireEvent.change(screen.getByLabelText("Category name"), {
@@ -92,7 +97,7 @@ it("locks used hierarchy and unused parents with children, preserving stale edit
   expect(screen.getByLabelText("Category name")).toHaveValue("Synthetic Shopping");
   fireEvent.click(screen.getByText("Cancel"));
   await screen.findByText("Synthetic Food → Synthetic Groceries");
-  fireEvent.click(screen.getAllByText("Edit category")[0]);
+  fireEvent.click(screen.getAllByRole("button", { name: "Edit category" })[0]);
   expect(screen.getByLabelText("Category type")).toBeDisabled();
 });
 it("shows children of archived parents in the archived view without changing child status", async () => {
@@ -107,10 +112,12 @@ it("shows children of archived parents in the archived view without changing chi
   await screen.findByText("No active spending categories.");
   fireEvent.click(screen.getByText("Archived categories"));
   await screen.findByText("Unavailable while parent is archived");
-  expect(screen.getAllByText("Delete").every((button) => button.hasAttribute("disabled"))).toBe(
-    true,
-  );
-  fireEvent.click(screen.getByText("Restore"));
+  expect(
+    screen
+      .getAllByRole("button", { name: "Delete" })
+      .every((button) => button.hasAttribute("disabled")),
+  ).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Restore" }));
   await waitFor(() =>
     expect(api.setCategoryActive).toHaveBeenCalledWith(
       expect.objectContaining({ id: "root" }),
@@ -123,7 +130,7 @@ it("confirms deletion of unused categories", async () => {
   vi.mocked(api.categories).mockResolvedValue({ items: [unused], starterSetAvailable: false });
   renderPage();
   await screen.findByText("Synthetic Food");
-  fireEvent.click(screen.getByText("Delete"));
+  fireEvent.click(screen.getByRole("button", { name: "Delete" }));
   await screen.findByText("Delete Synthetic Food?");
   expect(api.deleteCategory).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText("Confirm deletion"));
@@ -140,21 +147,28 @@ it("retries failed loads and routes expired sessions to sign-in", async () => {
   await waitFor(() => expect(expired).toHaveBeenCalledOnce());
 });
 
-it("keeps failed limit input visible while category filters and edits stay disabled", async () => {
+it("keeps failed limit input inside the category form while other actions stay disabled", async () => {
   vi.mocked(api.categories).mockResolvedValue({ items: [root], starterSetAvailable: false });
-  vi.mocked(api.saveBudgetSetting).mockRejectedValue(new ApiError(409, "Synthetic limit rejected"));
+  vi.mocked(api.saveCategory).mockRejectedValue(new ApiError(409, "Synthetic limit rejected"));
   renderPage();
   await screen.findByText("Synthetic Food");
-  await waitFor(() => expect(screen.getByRole("button", { name: "Monthly" })).toBeEnabled());
-  fireEvent.click(screen.getByRole("button", { name: "Monthly" }));
-  fireEvent.change(screen.getByLabelText("Normal limit amount for Synthetic Food CHF"), {
-    target: { value: "3.12345678" },
-  });
-  fireEvent.click(screen.getByText("Save normal limit"));
+  fireEvent.click(screen.getByRole("button", { name: "Edit category" }));
+  await waitFor(() => expect(screen.getByLabelText("Spending limit")).toBeEnabled());
+  fireEvent.change(screen.getByLabelText("Spending limit"), { target: { value: "MONTH" } });
+  fireEvent.change(screen.getByLabelText("Amount (CHF)"), { target: { value: "3.12345678" } });
+  fireEvent.click(screen.getByText("Save category"));
   await screen.findByText("Synthetic limit rejected");
-  expect(screen.getByLabelText("Normal limit amount for Synthetic Food CHF")).toHaveValue(
-    "3.12345678",
-  );
+  expect(screen.getByLabelText("Amount (CHF)")).toHaveValue("3.12345678");
   expect(screen.getByText("Archived categories")).toBeDisabled();
-  expect(screen.getByText("Edit category")).toBeDisabled();
+  expect(api.saveCategory).toHaveBeenCalledWith(
+    expect.objectContaining({
+      normalLimit: {
+        mode: "MONTH",
+        limit: "3.12345678",
+        expected: null,
+        expectedPreferencesVersion: 1,
+      },
+    }),
+    root,
+  );
 });

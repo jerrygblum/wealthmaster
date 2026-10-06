@@ -54,7 +54,7 @@ beforeEach(() => {
 });
 it("shows exact balances and preserves failed form input", async () => {
   render(<AccountDetail id="a" onBack={() => {}} onExpired={() => {}} />);
-  await screen.findByText("CHF -2.00000001");
+  await screen.findByText("CHF -2.00");
   fireEvent.click(screen.getByText("Add transaction"));
   fireEvent.change(screen.getByLabelText("Amount (CHF)"), { target: { value: "1.12345678" } });
   fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Synthetic refund" } });

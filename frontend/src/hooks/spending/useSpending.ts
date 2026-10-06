@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api, ApiError } from "../../services/api";
 import type { SpendingPageProps } from "../../types/componentProps";
-import type { BudgetComparison, BudgetPeriod, Operation, SpendingReport } from "../../types/models";
+import type { BudgetPeriod, Operation, SpendingReport } from "../../types/models";
 
 export function useSpending({ onExpired }: SpendingPageProps) {
   const [period, setPeriod] = useState<BudgetPeriod>("MONTH"),
@@ -12,13 +12,6 @@ export function useSpending({ onExpired }: SpendingPageProps) {
   const [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [all, setAll] = useState(false);
-  const [editing, setEditing] = useState<{
-    categoryId: string;
-    currency: string;
-    label: string;
-    comparison?: BudgetComparison;
-  }>();
-  const [monthEditing, setMonthEditing] = useState(false);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [activity, setActivity] = useState<{
     categoryId: string | null;
@@ -111,10 +104,6 @@ export function useSpending({ onExpired }: SpendingPageProps) {
     error,
     all,
     setAll,
-    editing,
-    setEditing,
-    monthEditing,
-    setMonthEditing,
     expanded,
     setExpanded,
     activity,

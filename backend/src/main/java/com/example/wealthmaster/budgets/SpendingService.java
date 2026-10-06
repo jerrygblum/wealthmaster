@@ -14,20 +14,20 @@ public class SpendingService {
     public record Group(UUID categoryId, String currency, Amounts direct, Amounts inclusive) {}
     public record CurrencyTotal(String currency, String expenses, String refunds, String netSpending, String uncategorized, String unbudgeted) {}
     public record Report(BudgetDtos.Period periodType, LocalDate periodStart, List<CategoryDtos.Category> categories,
-                         List<Group> groups, List<CurrencyTotal> currencies, List<EffectiveBudgetService.Comparison> limits, LocalDate businessDate, List<BudgetSettingService.Setting> settings) {}
+                         List<Group> groups, List<CurrencyTotal> currencies, List<EffectiveBudgetService.Comparison> limits, LocalDate businessDate, String defaultCurrency) {}
     private record Key(UUID category, String currency) {}
     private record Totals(BigDecimal expenses, BigDecimal refunds) {
         Totals add(Totals other) { return new Totals(expenses.add(other.expenses), refunds.add(other.refunds)); }
         Amounts dto() { return new Amounts(expenses.toPlainString(), refunds.toPlainString(), expenses.subtract(refunds).toPlainString()); }
     }
     private static final Totals ZERO = new Totals(BigDecimal.ZERO, BigDecimal.ZERO);
+    private final com.example.wealthmaster.users.CurrencyPolicy currencyPolicy;
     private final JdbcTemplate jdbc;
     private final CategoryService categories;
     private final BudgetService budgets;
     private final EffectiveBudgetService effective;
-    private final BudgetSettingService settings;
-    public SpendingService(JdbcTemplate jdbc, CategoryService categories, BudgetService budgets, EffectiveBudgetService effective, BudgetSettingService settings) {
-        this.jdbc=jdbc; this.categories=categories; this.budgets=budgets;this.effective=effective;this.settings=settings;
+    public SpendingService(JdbcTemplate jdbc, CategoryService categories, BudgetService budgets, EffectiveBudgetService effective, com.example.wealthmaster.users.CurrencyPolicy currencyPolicy) {
+        this.currencyPolicy=currencyPolicy;this.jdbc=jdbc; this.categories=categories; this.budgets=budgets;this.effective=effective;
     }
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
     public Report report(UUID owner, BudgetDtos.Period type, LocalDate start) {
@@ -55,7 +55,7 @@ public class SpendingService {
             var uncategorized=direct.getOrDefault(new Key(null,currency.currency()),ZERO).dto();
             groups.add(new Group(null,currency.currency(),uncategorized,uncategorized));
         }
-        return new Report(budget.periodType(),budget.periodStart(),cats,groups,totals,budget.comparisons(),budget.businessDate(),settings.settings(owner));
+        return new Report(budget.periodType(),budget.periodStart(),cats,groups,totals,budget.comparisons(),budget.businessDate(),currencyPolicy.get(owner).defaultCurrency());
     }
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
     public LedgerDtos.ActivityPage activity(UUID owner,BudgetDtos.Period type,LocalDate start,String currency,UUID category,int page) {

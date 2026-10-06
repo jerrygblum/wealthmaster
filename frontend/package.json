@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:tooling": "node --test tooling/*.test.mjs"
+    "test:tooling": "node --test tooling/*.test.mjs",
+    "test:related": "vitest related --run --maxWorkers=2"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.1.1",

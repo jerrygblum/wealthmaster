@@ -12,12 +12,13 @@ import static com.example.wealthmaster.budgets.CategoryDtos.*;
 @RequestMapping("/api/v1/categories")
 public class CategoryController {
     private final CategoryService service;
-    public CategoryController(CategoryService service) { this.service = service; }
+    private final CategoryCrudService crud;
+    public CategoryController(CategoryService service,CategoryCrudService crud) { this.service = service; this.crud=crud; }
     @GetMapping public CategoryList list(@AuthenticationPrincipal OwnerPrincipal owner) { return service.list(owner.id()); }
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
-    public Category create(@AuthenticationPrincipal OwnerPrincipal owner, @Valid @RequestBody Input input) { return service.create(owner.id(), input); }
+    public Category create(@AuthenticationPrincipal OwnerPrincipal owner, @Valid @RequestBody Input input) { return crud.save(owner.id(),null,null,input); }
     @PutMapping("/{id}")
-    public Category update(@AuthenticationPrincipal OwnerPrincipal owner, @PathVariable UUID id, @RequestHeader(value="If-Match",required=false) String match, @Valid @RequestBody Input input) { return service.update(owner.id(), id, match, input); }
+    public Category update(@AuthenticationPrincipal OwnerPrincipal owner, @PathVariable UUID id, @RequestHeader(value="If-Match",required=false) String match, @Valid @RequestBody Input input) { return crud.save(owner.id(),id,match,input); }
     @PostMapping("/{id}/archive")
     public Category archive(@AuthenticationPrincipal OwnerPrincipal owner, @PathVariable UUID id, @RequestHeader(value="If-Match",required=false) String match) { return service.setActive(owner.id(),id,match,false); }
     @PostMapping("/{id}/restore")

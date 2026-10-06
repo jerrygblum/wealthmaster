@@ -63,11 +63,11 @@ class BudgetIntegrationTest {
     @Autowired ObjectMapper mapper;
     MockMvc mvc;
     @BeforeEach void setup() {
-        if(businessTime!=null)org.mockito.Mockito.doCallRealMethod().when(businessTime).today();
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         jdbc.update("DELETE FROM audit_events"); jdbc.update("DELETE FROM ledger_category_history"); jdbc.update("DELETE FROM ledger_account_history"); jdbc.update("DELETE FROM ledger_movements"); jdbc.update("DELETE FROM ledger_operations"); accounts.deleteAll();
-        jdbc.update("DELETE FROM budget_category_history"); jdbc.update("DELETE FROM spending_budgets");
-        jdbc.update("DELETE FROM budget_setting_category_history"); jdbc.update("DELETE FROM budget_setting_revisions"); jdbc.update("DELETE FROM budget_settings");
+        jdbc.update("DELETE FROM budget_setting_category_history"); jdbc.update("DELETE FROM budget_settings");
+        jdbc.update("DELETE FROM user_preferences");
+        jdbc.update("INSERT INTO user_preferences(owner_id,default_currency) VALUES(?,?)",owner(),"CHF");
         jdbc.update("DELETE FROM categories WHERE parent_id IS NOT NULL"); jdbc.update("DELETE FROM categories"); jdbc.update("DELETE FROM category_owner_state");
     }
     String csrf(MockHttpSession session) throws Exception {
@@ -90,15 +90,22 @@ class BudgetIntegrationTest {
     String version(Category c) { return "\"" + c.version() + "\""; }
     TransactionInput entry(UUID a, Kind kind, UUID category) { return new TransactionInput(a,kind,"10.00000001",ledger.today(),null,null,"Synthetic activity",null,category); }
     Category current(UUID id) { return categories.list(owner()).items().stream().filter(c->c.id().equals(id)).findFirst().orElseThrow(); }
-    @Autowired BudgetService budgets;
-    BudgetDtos.Budget budget(UUID category, String currency, BudgetDtos.Period type, LocalDate start, String amount) {
-        return budgets.create(owner(),new BudgetDtos.Input(category,currency,type,start,amount));
+    @Autowired BudgetSettingService normalSettings;
+    @Autowired EffectiveBudgetService effectiveBudgets;
+    @Autowired SpendingService spendingReport;
+    @Autowired CategoryCrudService crud;
+    @Autowired PreferencesService preferences;
+    BudgetDtos.Source reference(BudgetSettingService.Setting s) {return new BudgetDtos.Source(s.id(),s.version());}
+    BudgetSettingService.Setting limit(UUID category,BudgetSettingService.Mode mode,String value,BudgetSettingService.Setting before) {
+        return normalSettings.save(owner(),new BudgetSettingService.Input(category,"CHF",mode,value,before==null?null:reference(before)));
     }
     void spend(UUID account,UUID category,Kind kind,String amount,LocalDate date) {
-        ledger.transaction(owner(),null,null,new TransactionInput(account,kind,amount,date,null,null,"Synthetic budget activity",null,category));
+        ledger.transaction(owner(),null,null,new TransactionInput(account,kind,amount,date,null,null,"Synthetic spending",null,category));
     }
-    void money(String expected,String actual) { assertEquals(0,new BigDecimal(expected).compareTo(new BigDecimal(actual))); }
-    @Autowired SpendingService spendingReport;
+    void money(String expected,String actual) {assertEquals(0,new BigDecimal(expected).compareTo(new BigDecimal(actual)));}
+    EffectiveBudgetService.Comparison comparison(UUID category,BudgetDtos.Period period,LocalDate start) {
+        return spendingReport.report(owner(),period,start).limits().stream().filter(c->c.categoryId().equals(category)).findFirst().orElseThrow();
+    }
     @Test void spendingWithoutLimitsGrossRollupsRefundsAndBoundaries() throws Exception {
         var a=account(); var root=categories.create(owner(),spending("Food",null));
         var child=categories.create(owner(),spending("Groceries",root.id()));
@@ -138,27 +145,6 @@ class BudgetIntegrationTest {
         mvc.perform(get("/api/v1/spending/activity").session(session).param("currency","CHF").param("page","-1")).andExpect(status().isBadRequest());
 
     }
-    @Test void spendingRefundOnlyLimitsCurrenciesCorrectionsAndPagination() {
-        var a=account();var root=categories.create(owner(),spending("Food",null));var month=LocalDate.of(2024,2,1);
-        spend(a.getId(),root.id(),Kind.REFUND,"20",month);
-        budget(root.id(),"CHF",MONTH,month,"0");budget(root.id(),"USD",MONTH,month,"5");
-        var usd=accounts.saveAndFlush(new FinancialAccount(owner(),"Synthetic USD cash",AccountType.CASH,null,"USD",BigDecimal.ZERO,LocalDate.of(2020,1,1)));
-        spend(usd.getId(),root.id(),Kind.EXPENSE,"7.12345678",month);
-        var report=spendingReport.report(owner(),MONTH,month); assertEquals(2,report.currencies().size());
-        money("0",report.currencies().getFirst().expenses());money("-20",report.currencies().getFirst().netSpending());
-        money("7.12345678",report.currencies().get(1).expenses());money("7.12345678",report.currencies().get(1).netSpending());
-        assertTrue(report.limits().get(1).overBudget());
-        money("7.12345678",report.groups().stream().filter(g->root.id().equals(g.categoryId())&&g.currency().equals("USD")).findFirst().orElseThrow().inclusive().expenses());
-        money("20",report.limits().getFirst().remaining());assertFalse(report.limits().getFirst().overBudget());
-        for(int i=0;i<51;i++) spend(a.getId(),root.id(),Kind.EXPENSE,"1",month);
-        var first=spendingReport.activity(owner(),MONTH,month,"CHF",root.id(),0);assertEquals(50,first.items().size());assertTrue(first.hasMore());
-        assertEquals(2,spendingReport.activity(owner(),MONTH,month,"CHF",root.id(),1).items().size());
-        var operation=first.items().getFirst();
-        ledger.transaction(owner(),operation.id(),"\""+operation.version()+"\"",new TransactionInput(a.getId(),Kind.EXPENSE,"7",month,null,null,"Synthetic correction",null,null));
-        money("7",spendingReport.report(owner(),MONTH,month).groups().stream().filter(g->g.categoryId()==null&&g.currency().equals("CHF")).findFirst().orElseThrow().direct().expenses());
-        ledger.delete(owner(),operation.id(),"\"1\"",false);
-        money("50",spendingReport.report(owner(),MONTH,month).currencies().getFirst().expenses());
-    }
     @Test void spendingSnapshotRemainsConsistentDuringConcurrentCorrections() throws Exception {
         var owner=owner();var a=account();var category=categories.create(owner,spending("Before",null));var month=LocalDate.of(2024,2,1);
         var operation=ledger.transaction(owner,null,null,new TransactionInput(a.getId(),Kind.EXPENSE,"2",month,null,null,"Synthetic snapshot",null,category.id()));
@@ -179,205 +165,178 @@ class BudgetIntegrationTest {
             var refreshed=spendingReport.report(owner,MONTH,month);assertEquals("After",refreshed.categories().getFirst().name());money("7",refreshed.currencies().getFirst().expenses());money("7",refreshed.groups().getFirst().inclusive().expenses());
         } finally {release.countDown();org.mockito.Mockito.doCallRealMethod().when(categories).list(owner);}
     }
-    @Autowired BudgetSettingService normalSettings;
-    @Autowired EffectiveBudgetService effectiveBudgets;
-    @Autowired EffectiveLimitService effectiveLimits;
-    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean com.example.wealthmaster.config.BusinessTime businessTime;
-    BudgetDtos.Source reference(BudgetSettingService.Setting s) {return s==null?null:new BudgetDtos.Source(s.id(),s.version());}
-    EffectiveBudgetService.Comparison comparison(UUID category,BudgetDtos.Period type,LocalDate start) {
-        return effectiveBudgets.report(owner(),type,start).comparisons().stream().filter(c->c.categoryId().equals(category)&&c.currency().equals("CHF")).findFirst().orElseThrow();
-    }
-    @Test void datedNormalsExceptionsAnnualUsageAndFrequencyChanges() {
-        org.mockito.Mockito.doReturn(LocalDate.of(2026,1,15)).when(businessTime).today();
-        var a=account();var category=categories.create(owner(),spending("Recurring",null));
-        var normal=normalSettings.save(owner(),new BudgetSettingService.Input(category.id(),"CHF",BudgetSettingService.Mode.MONTH,"100",null));
-        spend(a.getId(),category.id(),Kind.EXPENSE,"10",LocalDate.of(2026,1,5));
-        org.mockito.Mockito.doReturn(LocalDate.of(2026,6,15)).when(businessTime).today();
-        normal=normalSettings.save(owner(),new BudgetSettingService.Input(category.id(),"CHF",BudgetSettingService.Mode.MONTH,"200",reference(normal)));
-        budget(category.id(),"CHF",MONTH,LocalDate.of(2026,8,1),"120");
-        org.mockito.Mockito.doReturn(LocalDate.of(2026,10,5)).when(businessTime).today();
-        spend(a.getId(),category.id(),Kind.EXPENSE,"30",LocalDate.of(2026,8,3));
-        spend(a.getId(),category.id(),Kind.REFUND,"50",LocalDate.of(2026,10,2));
-        money("100",comparison(category.id(),MONTH,LocalDate.of(2026,1,1)).limit());
-        money("120",comparison(category.id(),MONTH,LocalDate.of(2026,8,1)).limit());
-        assertEquals("EXCEPTION",comparison(category.id(),MONTH,LocalDate.of(2026,8,1)).source());
-        var year=comparison(category.id(),YEAR,LocalDate.of(2026,1,1));money("1420",year.limit());money("-10",year.actual());assertEquals(10,year.accruedMonths());
-        assertEquals(LocalDate.of(2026,10,5),year.usageEnd());assertEquals("MONTHLY_ROLLUP",year.source());
-        money("0",comparison(category.id(),YEAR,LocalDate.of(2027,1,1)).limit());
-        assertEquals(0,comparison(category.id(),YEAR,LocalDate.of(2027,1,1)).accruedMonths());
-        normal=normalSettings.save(owner(),new BudgetSettingService.Input(category.id(),"CHF",BudgetSettingService.Mode.YEAR,"1200",reference(normal)));
-        var october=comparison(category.id(),MONTH,LocalDate.of(2026,10,1));assertEquals(YEAR,october.periodType());money("1200",october.limit());money("-10",october.actual());
-        money("200",comparison(category.id(),MONTH,LocalDate.of(2026,9,1)).limit());
-        money("1200",comparison(category.id(),YEAR,LocalDate.of(2026,1,1)).limit());
-        money("1200",comparison(category.id(),YEAR,LocalDate.of(2027,1,1)).limit());
-        assertEquals(12,effectiveBudgets.breakdown(owner(),category.id(),"CHF",2026).items().size());
-        normalSettings.save(owner(),new BudgetSettingService.Input(category.id(),"CHF",BudgetSettingService.Mode.NONE,null,reference(normal)));
-        money("120",comparison(category.id(),MONTH,LocalDate.of(2026,8,1)).limit());
-        assertTrue(effectiveBudgets.report(owner(),MONTH,LocalDate.of(2026,10,1)).comparisons().isEmpty());
-        assertTrue(current(category.id()).hasActivity());
-    }
-    @Test void currentPromotionIsAtomicAndOldDefaultsAreNotBackfilled() throws Exception {
-        org.mockito.Mockito.doReturn(LocalDate.of(2026,10,5)).when(businessTime).today();
-        var category=categories.create(owner(),spending("Promote",null));var month=LocalDate.of(2026,10,1);
-        var normal=normalSettings.save(owner(),new BudgetSettingService.Input(category.id(),"CHF",BudgetSettingService.Mode.MONTH,"100",null));
-        assertTrue(effectiveBudgets.report(owner(),MONTH,month.minusMonths(1)).comparisons().isEmpty());
-        var exception=budget(category.id(),"CHF",MONTH,month,"120");
-        var input=new EffectiveLimitService.Input(category.id(),"CHF",MONTH,month,"130",EffectiveLimitService.Scope.NORMAL,reference(normal),new BudgetDtos.Source(exception.id(),exception.version()));
-        effectiveLimits.save(owner(),input);assertTrue(budgets.report(owner(),MONTH,month).items().isEmpty());
-        assertEquals("NORMAL",comparison(category.id(),MONTH,month).source());money("130",comparison(category.id(),MONTH,month.plusMonths(1)).limit());
-        assertEquals(412,assertThrows(CategoryFailure.class,()->effectiveLimits.save(owner(),input)).status());
-        var latest=normalSettings.list(owner()).items().getFirst();
-        assertThrows(IllegalArgumentException.class,()->effectiveLimits.save(owner(),new EffectiveLimitService.Input(category.id(),"CHF",MONTH,month.plusMonths(1),"140",EffectiveLimitService.Scope.NORMAL,reference(latest),null)));
-        var past=budget(category.id(),"CHF",MONTH,month.minusMonths(1),"50");
-        effectiveLimits.reset(owner(),new EffectiveLimitService.Input(category.id(),"CHF",MONTH,month.minusMonths(1),null,EffectiveLimitService.Scope.PERIOD,reference(latest),new BudgetDtos.Source(past.id(),past.version())));
-        assertTrue(effectiveBudgets.report(owner(),MONTH,month.minusMonths(1)).comparisons().isEmpty());
-        var session=login("owner@example.test");
-        mvc.perform(get("/api/v1/budget-settings").session(session)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"));
-        mvc.perform(get("/api/v1/budgets/monthly-breakdown").session(session).param("categoryId",category.id().toString()).param("currency","CHF").param("year","2026")).andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(12));
-        mvc.perform(get("/api/v1/budget-settings")).andExpect(status().isUnauthorized());
-    }
-    @Test void normalHistoryArchiveRulesAndPromotionRollback() {
-        org.mockito.Mockito.doReturn(LocalDate.of(2026,10,5)).when(businessTime).today();
-        var category=categories.create(owner(),spending("Normal history",null));var month=LocalDate.of(2026,10,1);
-        var normal=normalSettings.save(owner(),new BudgetSettingService.Input(category.id(),"CHF",BudgetSettingService.Mode.MONTH,"0",null));
-        assertTrue(current(category.id()).hasActivity());
-        categories.setActive(owner(),category.id(),version(current(category.id())),false);
-        normal=normalSettings.save(owner(),new BudgetSettingService.Input(category.id(),"CHF",BudgetSettingService.Mode.MONTH,"1",reference(normal)));
-        final var currentNormal=normal;
-        assertEquals(409,assertThrows(CategoryFailure.class,()->normalSettings.save(owner(),new BudgetSettingService.Input(category.id(),"CHF",BudgetSettingService.Mode.YEAR,"2",reference(currentNormal)))).status());
-        categories.setActive(owner(),category.id(),version(current(category.id())),true);
-        var exception=budget(category.id(),"CHF",MONTH,month,"3");
-        jdbc.update("ALTER TABLE audit_events ADD CONSTRAINT synthetic_normal_rollback CHECK(event_type <> 'BUDGET_DELETED')");
-        try {assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->effectiveLimits.save(owner(),new EffectiveLimitService.Input(category.id(),"CHF",MONTH,month,"4",EffectiveLimitService.Scope.NORMAL,reference(currentNormal),new BudgetDtos.Source(exception.id(),exception.version()))));}
-        finally {jdbc.update("ALTER TABLE audit_events DROP CONSTRAINT synthetic_normal_rollback");}
-        money("1",normalSettings.list(owner()).items().getFirst().limit());money("3",comparison(category.id(),MONTH,month).limit());
-        var latest=normalSettings.list(owner()).items().getFirst();normalSettings.save(owner(),new BudgetSettingService.Input(category.id(),"CHF",BudgetSettingService.Mode.NONE,null,reference(latest)));
-        assertEquals(409,assertThrows(CategoryFailure.class,()->categories.delete(owner(),category.id(),version(current(category.id())))).status());
-    }
-    @Test void rollupsCoverageExactAmountsAndIndependentPeriods() {
-        var a=account(); var root=categories.create(owner(),spending("Food",null)); var child=categories.create(owner(),spending("Groceries",root.id()));
-        var other=categories.create(owner(),spending("Other",null));var month=LocalDate.of(2024,2,1);
+
+    @Test void linkedAllowancesCompareOnlyTheSelectedPeriodWithoutProrationOrBackfilling() {
+        var a=account();var root=categories.create(owner(),spending("Food",null));var child=categories.create(owner(),spending("Groceries",root.id()));
+        var month=LocalDate.of(2024,2,1);
         spend(a.getId(),root.id(),Kind.EXPENSE,"5",month);
         spend(a.getId(),child.id(),Kind.EXPENSE,"10.12345678",LocalDate.of(2024,2,29));
-        spend(a.getId(),child.id(),Kind.REFUND,"2",LocalDate.of(2024,2,29));
-        spend(a.getId(),null,Kind.INCOME,"1000",month);
-        var destination=account();ledger.transfer(owner(),null,null,new TransferInput(a.getId(),destination.getId(),"1",month,"Synthetic excluded transfer",null));
-        spend(a.getId(),null,Kind.EXPENSE,"3",month);spend(a.getId(),other.id(),Kind.EXPENSE,"4",month);
+        spend(a.getId(),child.id(),Kind.REFUND,"2",month);
         spend(a.getId(),child.id(),Kind.EXPENSE,"100",LocalDate.of(2024,3,1));
-        spend(a.getId(),child.id(),Kind.REFUND,"200",LocalDate.of(2023,12,31));
-        var parent=budget(root.id(),"CHF",MONTH,month,"13.12345678");money("13.12345678",parent.actual());money("0",parent.remaining());assertFalse(parent.overBudget());assertEquals("100.00",parent.percentage());
-        var sub=budget(child.id(),"CHF",MONTH,month,"0");assertTrue(sub.overBudget());assertNull(sub.percentage());money("-8.12345678",sub.remaining());
-        var report=budgets.report(owner(),MONTH,month);var totals=report.currencies().getFirst();money("20.12345678",totals.netSpending());money("3",totals.uncategorized());money("7",totals.unbudgeted());
-        var annual=budget(root.id(),"CHF",YEAR,LocalDate.of(2024,1,1),"1000");money("113.12345678",annual.actual());
-        var eurAccount=accounts.saveAndFlush(new FinancialAccount(owner(),"Synthetic euro",AccountType.CASH,null,"EUR",BigDecimal.ZERO,LocalDate.of(2020,1,1)));
-        spend(eurAccount.getId(),root.id(),Kind.EXPENSE,"7.00000001",month);
-        var euro=budget(root.id(),"EUR",MONTH,month,"1");money("7.00000001",euro.actual());assertEquals(2,budgets.report(owner(),MONTH,month).currencies().size());
-        assertEquals(409,assertThrows(CategoryFailure.class,()->budget(root.id(),"CHF",MONTH,month,"1")).status());
-        var precise=budget(other.id(),"CHF",MONTH,LocalDate.of(2090,1,1),"99999999999999999999.12345678");assertEquals("99999999999999999999.12345678",precise.limit());
-        assertEquals(ledger.today().withDayOfMonth(1),budgets.report(owner(),null,null).periodStart());
+        var normal=limit(root.id(),BudgetSettingService.Mode.YEAR,"1200",null);
+        money("100",normal.monthlyLimit());money("1200",normal.yearlyLimit());
+        var monthly=comparison(root.id(),MONTH,month);money("100",monthly.limit());money("13.12345678",monthly.actual());assertEquals(MONTH,monthly.periodType());assertEquals(month,monthly.periodStart());
+        var yearly=comparison(root.id(),YEAR,month.withDayOfYear(1));money("1200",yearly.limit());money("113.12345678",yearly.actual());
+        money("100",comparison(root.id(),MONTH,LocalDate.of(2090,1,1)).limit());money("0",comparison(root.id(),MONTH,LocalDate.of(2090,1,1)).actual());
+        money("1200",comparison(root.id(),YEAR,ledger.today().withDayOfYear(1)).limit());
+        normal=limit(root.id(),BudgetSettingService.Mode.MONTH,"120",normal);
+        money("120",normal.monthlyLimit());money("1440",normal.yearlyLimit());
+        money("120",comparison(root.id(),MONTH,month).limit());money("1440",comparison(root.id(),YEAR,month.withDayOfYear(1)).limit());
+        assertEquals(1,spendingReport.report(owner(),MONTH,month).limits().size());
+        money("0",spendingReport.report(owner(),MONTH,month).currencies().getFirst().unbudgeted());
     }
-    @Test void refundsCorrectionsDeletionArchivedAccountsAndNoLedgerChanges() {
-        var a=account();var root=categories.create(owner(),spending("Food",null));var month=ledger.today().withDayOfMonth(1);
-        spend(a.getId(),root.id(),Kind.EXPENSE,"1",ledger.today());spend(a.getId(),root.id(),Kind.REFUND,"3.00000001",ledger.today());
-        var balance=accountService.detail(owner(),a.getId()).currentBalance();var worth=netWorth.current(owner()).currencies();var movements=jdbc.queryForObject("SELECT count(*) FROM ledger_movements",Integer.class);
-        var b=budget(root.id(),"CHF",MONTH,month,"0");money("-2.00000001",b.actual());money("2.00000001",b.remaining());assertFalse(b.overBudget());
-        budgets.update(owner(),b.id(),"\"0\"",new BudgetDtos.Limit("2"));
-        assertEquals(balance,accountService.detail(owner(),a.getId()).currentBalance());assertEquals(worth,netWorth.current(owner()).currencies());assertEquals(movements,jdbc.queryForObject("SELECT count(*) FROM ledger_movements",Integer.class));
-        accountService.setActive(owner(),a.getId(),"\"0\"",false);categories.setActive(owner(),root.id(),version(root),false);
-        assertEquals(2,budgets.activity(owner(),b.id(),0).items().size());assertFalse(budgets.report(owner(),MONTH,month).items().getFirst().available());
-        budgets.update(owner(),b.id(),"\"1\"",new BudgetDtos.Limit("1"));budgets.delete(owner(),b.id(),"\"2\"");
-        assertTrue(current(root.id()).hasActivity());assertEquals(409,assertThrows(CategoryFailure.class,()->categories.delete(owner(),root.id(),"\"1\"")).status());
+    @Test void zeroNoLimitAndPermanentHistoryAreDistinct() {
+        var root=categories.create(owner(),spending("Food",null));var month=ledger.today().withDayOfMonth(1);
+        spend(account().getId(),root.id(),Kind.EXPENSE,"40",ledger.today());
+        var normal=limit(root.id(),BudgetSettingService.Mode.MONTH,"0",null);
+        var zero=comparison(root.id(),MONTH,month);assertTrue(zero.overBudget());assertNull(zero.percentage());money("-40",zero.remaining());
+        money("0",spendingReport.report(owner(),MONTH,month).currencies().getFirst().unbudgeted());
+        normal=limit(root.id(),BudgetSettingService.Mode.NONE,null,normal);assertNull(normal.monthlyLimit());assertNull(normal.yearlyLimit());
+        assertTrue(spendingReport.report(owner(),YEAR,ledger.today().withDayOfYear(1)).limits().isEmpty());
+        money("40",spendingReport.report(owner(),MONTH,month).currencies().getFirst().unbudgeted());
+        assertTrue(current(root.id()).hasActivity());assertEquals(409,assertThrows(CategoryFailure.class,()->categories.delete(owner(),root.id(),version(current(root.id())))).status());
     }
-    @Test void budgetReferencesPermanentlyLockSelectedAndParentCategories() {
-        var root=categories.create(owner(),spending("Parent",null));var child=categories.create(owner(),spending("Child",root.id()));
-        var b=budget(child.id(),"CHF",MONTH,LocalDate.of(2090,1,1),"0");budgets.delete(owner(),b.id(),"\"0\"");
-        assertTrue(current(child.id()).hasActivity());assertTrue(current(root.id()).hasActivity());
-        assertEquals(409,assertThrows(CategoryFailure.class,()->categories.update(owner(),child.id(),version(child),spending("Child",null))).status());
-        assertEquals(409,assertThrows(CategoryFailure.class,()->categories.delete(owner(),child.id(),version(child))).status());
-        var again=budget(child.id(),"CHF",MONTH,LocalDate.of(2090,1,1),"2");assertNotEquals(b.id(),again.id());
+    @Test void refundsCurrenciesCorrectionsAndActivityPaginationStayIndependentOfLimits() {
+        var a=account();var root=categories.create(owner(),spending("Food",null));var month=LocalDate.of(2024,2,1);
+        limit(root.id(),BudgetSettingService.Mode.MONTH,"0",null);
+        spend(a.getId(),root.id(),Kind.REFUND,"20",month);
+        var usd=accounts.saveAndFlush(new FinancialAccount(owner(),"Synthetic USD cash",AccountType.CASH,null,"USD",BigDecimal.ZERO,LocalDate.of(2020,1,1)));
+        spend(usd.getId(),root.id(),Kind.EXPENSE,"7.12345678",month);
+        var report=spendingReport.report(owner(),MONTH,month);assertEquals(2,report.currencies().size());assertEquals(1,report.limits().size());
+        money("20",report.limits().getFirst().remaining());assertFalse(report.limits().getFirst().overBudget());
+        money("7.12345678",report.currencies().get(1).unbudgeted());
+        for(int i=0;i<51;i++)spend(a.getId(),root.id(),Kind.EXPENSE,"1",month);
+        var first=spendingReport.activity(owner(),MONTH,month,"CHF",root.id(),0);assertEquals(50,first.items().size());assertTrue(first.hasMore());
+        assertEquals(2,spendingReport.activity(owner(),MONTH,month,"CHF",root.id(),1).items().size());
+        var op=first.items().getFirst();ledger.transaction(owner(),op.id(),"\"0\"",new TransactionInput(a.getId(),Kind.EXPENSE,"7",month,null,null,"Synthetic correction",null,null));
+        money("7",spendingReport.report(owner(),MONTH,month).currencies().getFirst().unbudgeted());
+        ledger.delete(owner(),op.id(),"\"1\"",false);money("50",spendingReport.report(owner(),MONTH,month).currencies().getFirst().expenses());
     }
-    @Test void copyPreservesTargetsSkipsUnavailableAndRejectsStaleAtomically() {
-        var a=categories.create(owner(),spending("A",null));var b=categories.create(owner(),spending("B",null));var c=categories.create(owner(),spending("C",null));
-        var source=LocalDate.of(2024,1,1);var target=source.plusMonths(1);
-        var ba=budget(a.id(),"CHF",MONTH,source,"10");var bb=budget(b.id(),"CHF",MONTH,source,"20");var bc=budget(c.id(),"CHF",MONTH,source,"30");
-        budget(a.id(),"CHF",MONTH,target,"1");categories.setActive(owner(),b.id(),version(b),false);
-        var copied=budgets.copy(owner(),new BudgetDtos.Copy(List.of(new BudgetDtos.Source(ba.id(),0),new BudgetDtos.Source(bb.id(),0),new BudgetDtos.Source(bc.id(),0)),target));
-        assertEquals(1,copied.created().size());assertEquals(List.of("TARGET_EXISTS","CATEGORY_UNAVAILABLE"),copied.skipped().stream().map(BudgetDtos.Skip::reason).toList());money("30",copied.created().getFirst().limit());
-        money("1",budgets.report(owner(),MONTH,target).items().stream().filter(x->x.categoryId().equals(a.id())).findFirst().orElseThrow().limit());
-        budgets.update(owner(),bc.id(),"\"0\"",new BudgetDtos.Limit("31"));
-        assertEquals(412,assertThrows(CategoryFailure.class,()->budgets.copy(owner(),new BudgetDtos.Copy(List.of(new BudgetDtos.Source(ba.id(),0),new BudgetDtos.Source(bc.id(),0)),source.plusMonths(2)))).status());
-        assertTrue(budgets.report(owner(),MONTH,source.plusMonths(2)).items().isEmpty());
-        assertThrows(IllegalArgumentException.class,()->budgets.copy(owner(),new BudgetDtos.Copy(List.of(new BudgetDtos.Source(ba.id(),0)),source)));
+    @Test void archivedExistingLimitEditsAllowEitherInputBasisWithoutChangingLedger() {
+        var a=account();var root=categories.create(owner(),spending("Food",null));var child=categories.create(owner(),spending("Child",root.id()));
+        var normal=limit(root.id(),BudgetSettingService.Mode.MONTH,"100",null);
+        spend(a.getId(),child.id(),Kind.EXPENSE,"1",ledger.today());
+        spend(a.getId(),child.id(),Kind.REFUND,"3",ledger.today());
+        ledger.transfer(owner(),null,null,new TransferInput(a.getId(),account().getId(),"5",ledger.today(),"Synthetic excluded transfer",null));
+        var balances=accountService.detail(owner(),a.getId()).currentBalance();var worth=netWorth.current(owner()).currencies();
+        categories.setActive(owner(),root.id(),version(current(root.id())),false);accountService.setActive(owner(),a.getId(),"\"0\"",false);
+        normal=limit(root.id(),BudgetSettingService.Mode.YEAR,"1200",normal);
+        var comparison=comparison(root.id(),MONTH,ledger.today().withDayOfMonth(1));assertFalse(comparison.available());money("-2",comparison.actual());
+        assertEquals(balances,accountService.detail(owner(),a.getId()).currentBalance());assertEquals(worth,netWorth.current(owner()).currencies());
+        normal=limit(root.id(),BudgetSettingService.Mode.NONE,null,normal);var cleared=normal;
+        assertEquals(409,assertThrows(CategoryFailure.class,()->limit(root.id(),BudgetSettingService.Mode.YEAR,"1200",cleared)).status());
     }
-    @Test void validatesCurrenciesCategoriesAndVersions() {
-        var c=categories.create(owner(),spending("Spending",null));var start=LocalDate.of(2090,1,1);
-        for(var currency:List.of("xyz","XYZ","EURO")) assertThrows(IllegalArgumentException.class,()->budget(c.id(),currency,MONTH,start,"1"));
-        assertThrows(IllegalArgumentException.class,()->budget(c.id(),"CHF",MONTH,start,"-1"));
-        var income=categories.create(owner(),new Input("Income",Type.INCOME,null));assertThrows(IllegalArgumentException.class,()->budget(income.id(),"CHF",MONTH,start,"1"));
-        var b=budget(c.id(),"CHF",MONTH,start,"1");assertEquals(428,assertThrows(CategoryFailure.class,()->budgets.delete(owner(),b.id(),null)).status());assertEquals(400,assertThrows(CategoryFailure.class,()->budgets.delete(owner(),b.id(),"0")).status());
-        budgets.update(owner(),b.id(),"\"0\"",new BudgetDtos.Limit("0"));assertEquals(412,assertThrows(CategoryFailure.class,()->budgets.delete(owner(),b.id(),"\"0\"")).status());
-    }
-    @Test void auditFailureRollsBackBudgetAndPermanentHistory() {
-        var c=categories.create(owner(),spending("Rollback",null));
-        jdbc.execute("ALTER TABLE audit_events ADD CONSTRAINT synthetic_budget_audit_failure CHECK(event_type <> 'BUDGET_CREATED') NOT VALID");
-        try { assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->budget(c.id(),"CHF",MONTH,LocalDate.of(2090,1,1),"1"));assertFalse(current(c.id()).hasActivity());assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM spending_budgets",Integer.class)); }
-        finally { jdbc.execute("ALTER TABLE audit_events DROP CONSTRAINT synthetic_budget_audit_failure"); }
-    }
-    @Test void apiRequiresSessionCsrfOwnershipAndVersionAndDisablesCaching() throws Exception {
-        mvc.perform(get("/api/v1/budgets")).andExpect(status().isUnauthorized());var session=login("owner@example.test");var c=categories.create(owner(),spending("API",null));
-        var body=mapper.writeValueAsString(new BudgetDtos.Input(c.id(),"CHF",MONTH,LocalDate.of(2090,1,1),"1"));
-        mvc.perform(post("/api/v1/budgets").session(session).contentType("application/json").content(body)).andExpect(status().isForbidden());
-        var result=mvc.perform(post("/api/v1/budgets").session(session).header("X-CSRF-TOKEN",csrf(session)).contentType("application/json").content(body)).andExpect(status().isCreated()).andReturn();var id=mapper.readTree(result.getResponse().getContentAsString()).get("id").asString();
-        mvc.perform(get("/api/v1/budgets").session(session).param("periodType","MONTH").param("periodStart","2090-01-01")).andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$.items[0].limit").value("1.00000000"));
-        mvc.perform(delete("/api/v1/budgets/"+id).session(session).header("X-CSRF-TOKEN",csrf(session))).andExpect(status().is(428));
-        var other=users.findByEmail("budgets.other@example.test").orElseGet(()->users.save(new AppUser("budgets.other@example.test",encoder.encode("synthetic-password"))));var foreign=login(other.getEmail());
-        var settingInput=new BudgetSettingService.Input(c.id(),"CHF",BudgetSettingService.Mode.MONTH,"100",null);
-        mvc.perform(put("/api/v1/budget-settings").session(session).contentType("application/json").content(mapper.writeValueAsString(settingInput))).andExpect(status().isForbidden());
-        mvc.perform(put("/api/v1/budget-settings").session(foreign).header("X-CSRF-TOKEN",csrf(foreign)).contentType("application/json").content(mapper.writeValueAsString(settingInput))).andExpect(status().isNotFound());
-        normalSettings.save(owner(),settingInput);
-        mvc.perform(get("/api/v1/budget-settings").session(foreign)).andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty());
-        mvc.perform(get("/api/v1/budgets/monthly-breakdown").session(foreign).param("categoryId",c.id().toString()).param("currency","CHF").param("year","2026")).andExpect(status().isNotFound());
-        var foreignInput=new EffectiveLimitService.Input(c.id(),"CHF",MONTH,LocalDate.of(2090,1,1),"2",EffectiveLimitService.Scope.PERIOD,null,null);
-        mvc.perform(put("/api/v1/budgets/effective-limit").session(foreign).header("X-CSRF-TOKEN",csrf(foreign)).contentType("application/json").content(mapper.writeValueAsString(foreignInput))).andExpect(status().isNotFound());
-        mvc.perform(delete("/api/v1/budgets/effective-limit").session(foreign).header("X-CSRF-TOKEN",csrf(foreign)).contentType("application/json").content(mapper.writeValueAsString(foreignInput))).andExpect(status().isNotFound());
-        mvc.perform(get("/api/v1/budgets/"+id+"/activity").session(foreign)).andExpect(status().isNotFound());
-        mvc.perform(get("/api/v1/spending").session(foreign)).andExpect(status().isOk())
-            .andExpect(jsonPath("$.categories").isEmpty()).andExpect(jsonPath("$.currencies").isEmpty());
-        mvc.perform(get("/api/v1/spending/activity").session(foreign).param("currency","CHF").param("categoryId",c.id().toString())).andExpect(status().isNotFound());
-
-        mvc.perform(delete("/api/v1/budgets/"+id).session(foreign).header("X-CSRF-TOKEN",csrf(foreign)).header("If-Match","\"0\"")).andExpect(status().isNotFound());
-        assertEquals(404,assertThrows(CategoryFailure.class,()->budgets.copy(other.getId(),new BudgetDtos.Copy(List.of(new BudgetDtos.Source(UUID.fromString(id),0)),LocalDate.of(2090,2,1)))).status());
-    }
-    @Test void concurrentCreatesSerializeWithCategoryMutations() throws Exception {
-        var c=categories.create(owner(),spending("Concurrent",null));var owner=owner();var ready=new java.util.concurrent.CountDownLatch(1);var release=new java.util.concurrent.CountDownLatch(1);
-        org.mockito.Mockito.doAnswer(call->{call.callRealMethod();if(Thread.currentThread().getName().equals("synthetic-budget-create")){ready.countDown();assertTrue(release.await(15,java.util.concurrent.TimeUnit.SECONDS));}return null;}).when(categories).validateAssignment(owner,c.id(),null,false);
-        try(var executor=java.util.concurrent.Executors.newFixedThreadPool(2)) {
-            var creating=executor.submit(()->{Thread.currentThread().setName("synthetic-budget-create");return budget(c.id(),"CHF",MONTH,LocalDate.of(2090,1,1),"1");});assertTrue(ready.await(15,java.util.concurrent.TimeUnit.SECONDS));
-            var deleting=executor.submit(()->assertThrows(CategoryFailure.class,()->categories.delete(owner,c.id(),version(c))));
-            try {assertThrows(java.util.concurrent.TimeoutException.class,()->deleting.get(100,java.util.concurrent.TimeUnit.MILLISECONDS));}finally {release.countDown();}
-            assertNotNull(creating.get());assertEquals(409,deleting.get().status());
+    @Test void categorySaveRejectsStaleReferencesAndSubcategoryLimitsAtomically() {
+        var root=categories.create(owner(),spending("Food",null));var child=categories.create(owner(),spending("Child",root.id()));
+        for(var mode:BudgetSettingService.Mode.values()) {
+            assertEquals(409,assertThrows(CategoryFailure.class,()->limit(child.id(),mode,"100",null)).status());
+            assertEquals(409,assertThrows(CategoryFailure.class,()->crud.save(owner(),child.id(),version(child),new Input("Changed",Type.SPENDING,root.id(),new NormalLimit(mode,"100",null,0L)))).status());
+            assertEquals("Child",current(child.id()).name());
         }
+        var created=crud.save(owner(),null,null,new Input("Travel",Type.SPENDING,null,new NormalLimit(BudgetSettingService.Mode.YEAR,"1200",null,0L)));
+        var normal=normalSettings.list(owner()).items().getFirst();
+        assertEquals(412,assertThrows(CategoryFailure.class,()->crud.save(owner(),created.id(),version(created),new Input("Changed",Type.SPENDING,null,new NormalLimit(BudgetSettingService.Mode.MONTH,"120",new BudgetDtos.Source(normal.id(),99),0L)))).status());
+        assertEquals("Travel",current(created.id()).name());
+        assertEquals(412,assertThrows(CategoryFailure.class,()->crud.save(owner(),created.id(),version(created),new Input("Changed",Type.SPENDING,null,new NormalLimit(BudgetSettingService.Mode.MONTH,"120",reference(normal),99L)))).status());
+        assertEquals(1,normalSettings.list(owner()).items().size());
+        assertThrows(IllegalArgumentException.class,()->crud.save(owner(),null,null,new Input("Income",Type.INCOME,null,new NormalLimit(BudgetSettingService.Mode.MONTH,"100",null,0L))));
     }
-    @Test void correctionsDeletionAndPaginatedSupportingActivityRecalculateActuals() {
-        var a=account();var c=categories.create(owner(),spending("Corrections",null));var start=ledger.today().withDayOfMonth(1);
-        var op=ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.EXPENSE,"2",ledger.today(),null,null,"Synthetic original",null,c.id()));
-        var b=budget(c.id(),"CHF",MONTH,start,"2");assertFalse(b.overBudget());
-        ledger.transaction(owner(),op.id(),"\"0\"",new TransactionInput(a.getId(),Kind.EXPENSE,"2.00000001",ledger.today(),null,null,"Synthetic correction",null,c.id()));
-        var updated=budgets.report(owner(),MONTH,start).items().getFirst();assertTrue(updated.overBudget());money("-0.00000001",updated.remaining());
-        ledger.transaction(owner(),op.id(),"\"1\"",new TransactionInput(a.getId(),Kind.EXPENSE,"2.00000001",ledger.today(),null,null,"Synthetic cleared",null,null));
-        money("0",budgets.report(owner(),MONTH,start).items().getFirst().actual());money("2.00000001",budgets.report(owner(),MONTH,start).currencies().getFirst().unbudgeted());
-        ledger.delete(owner(),op.id(),"\"2\"",false);assertTrue(budgets.report(owner(),MONTH,start).currencies().stream().allMatch(x->new BigDecimal(x.netSpending()).signum()==0));
-        for(int i=0;i<51;i++) spend(a.getId(),c.id(),Kind.EXPENSE,"1",ledger.today());
-        var page=budgets.activity(owner(),b.id(),0);assertEquals(50,page.items().size());assertTrue(page.hasMore());
-        var last=budgets.activity(owner(),b.id(),1);assertEquals(1,last.items().size());assertFalse(last.hasMore());assertTrue(page.items().stream().noneMatch(x->x.id().equals(last.items().getFirst().id())));
-        assertThrows(IllegalArgumentException.class,()->budgets.activity(owner(),b.id(),-1));
+    @Test void currencyResetAffectsAllReportPeriodsAndRollsBackOnAuditFailure() {
+        var root=categories.create(owner(),spending("Food",null));limit(root.id(),BudgetSettingService.Mode.MONTH,"100",null);
+        assertEquals(409,assertThrows(CategoryFailure.class,()->preferences.save(owner(),new PreferencesService.Input("EUR",0L,false))).status());
+        jdbc.execute("ALTER TABLE audit_events ADD CONSTRAINT synthetic_reset_failure CHECK(event_type <> 'DEFAULT_CURRENCY_CHANGED') NOT VALID");
+        try {assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->preferences.save(owner(),new PreferencesService.Input("EUR",0L,true)));}
+        finally {jdbc.execute("ALTER TABLE audit_events DROP CONSTRAINT synthetic_reset_failure");}
+        assertEquals("CHF",preferences.get(owner()).defaultCurrency());money("100",comparison(root.id(),MONTH,LocalDate.of(2024,1,1)).limit());
+        var after=preferences.save(owner(),new PreferencesService.Input("EUR",0L,true));assertFalse(after.hasLimitsToReset());
+        for(var period:List.of(MONTH,YEAR))assertTrue(spendingReport.report(owner(),period,LocalDate.of(2024,1,1)).limits().isEmpty());
+        assertTrue(current(root.id()).hasActivity());
+        assertEquals(412,assertThrows(CategoryFailure.class,()->preferences.save(owner(),new PreferencesService.Input("USD",0L,true))).status());
     }
-    @Test void copyAuditFailureRollsBackEveryCreatedTarget() {
-        var a=categories.create(owner(),spending("Copy A",null));var b=categories.create(owner(),spending("Copy B",null));var source=LocalDate.of(2090,1,1);var target=source.plusMonths(1);
-        var first=budget(a.id(),"CHF",MONTH,source,"1");var second=budget(b.id(),"CHF",MONTH,source,"2");
-        jdbc.execute("ALTER TABLE audit_events ADD CONSTRAINT synthetic_copy_audit_failure CHECK(event_type <> 'BUDGET_CREATED' OR details->'after'->>'categoryName' <> 'Copy B' OR details->'after'->>'periodStart' <> '2090-02-01') NOT VALID");
-        try {assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->budgets.copy(owner(),new BudgetDtos.Copy(List.of(new BudgetDtos.Source(first.id(),0),new BudgetDtos.Source(second.id(),0)),target)));assertTrue(budgets.report(owner(),MONTH,target).items().isEmpty());assertEquals(2,jdbc.queryForObject("SELECT count(*) FROM spending_budgets",Integer.class));}
-        finally {jdbc.execute("ALTER TABLE audit_events DROP CONSTRAINT synthetic_copy_audit_failure");}
+    @Test void apiOwnershipCachingAndRetiredRoutes() throws Exception {
+        var root=categories.create(owner(),spending("Food",null));var normal=limit(root.id(),BudgetSettingService.Mode.YEAR,"1200",null);
+        var other=users.findByEmail("budgets.other@example.test").orElseGet(()->users.save(new AppUser("budgets.other@example.test",encoder.encode("synthetic-password"))));
+        var foreign=login(other.getEmail());var session=login("owner@example.test");
+        mvc.perform(get("/api/v1/budget-settings").session(session)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$.items[0].monthlyLimit").value("100.00000000")).andExpect(jsonPath("$.items[0].yearlyLimit").value("1200.00000000"));
+        mvc.perform(put("/api/v1/budget-settings").session(foreign).header("X-CSRF-TOKEN",csrf(foreign)).contentType("application/json").content(mapper.writeValueAsString(new BudgetSettingService.Input(root.id(),"CHF",BudgetSettingService.Mode.MONTH,"100",reference(normal))))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/spending").session(foreign)).andExpect(status().isOk()).andExpect(jsonPath("$.limits.length()").value(0));
+        mvc.perform(get("/api/v1/spending/activity").session(foreign).param("currency","CHF").param("categoryId",root.id().toString())).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/budget-settings")).andExpect(status().isUnauthorized());
+        for(var route:List.of("/api/v1/budgets","/api/v1/budgets/monthly-breakdown","/api/v1/budgets/effective-limit"))mvc.perform(get(route).session(session)).andExpect(status().isNotFound());
+    }
+    @Test void migrationRemovesAllSubcategoryLimitsAndKeepsMainLimitsLedgerAndAudit() throws Exception {
+        var root=categories.create(owner(),spending("Food",null));
+        var child=categories.create(owner(),spending("Groceries",root.id()));
+        spend(account().getId(),child.id(),Kind.EXPENSE,"40",ledger.today());
+        normalSettings.save(owner(),new BudgetSettingService.Input(root.id(),"CHF",BudgetSettingService.Mode.YEAR,"1200",null));
+        var schema="subcategory_cleanup_"+UUID.randomUUID().toString().replace("-","");
+        try(var connection=jdbc.getDataSource().getConnection()) {
+            var source=new org.springframework.jdbc.datasource.SingleConnectionDataSource(connection,true);
+            var db=new JdbcTemplate(source);
+            try {
+                org.flywaydb.core.Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema).target("9").load().migrate();
+                db.execute("SET search_path TO "+schema);
+                for(var table:List.of("app_users","financial_accounts","categories","ledger_operations","ledger_movements","ledger_account_history","ledger_category_history","budget_settings","budget_setting_category_history","audit_events"))
+                    db.execute("INSERT INTO "+schema+"."+table+" SELECT * FROM public."+table);
+                var rootBudget=UUID.randomUUID();
+                db.update("INSERT INTO spending_budgets(id,owner_id,category_id,currency,period_type,period_start,amount) VALUES(?,?,?,'CHF','YEAR',DATE '2024-01-01',80)",rootBudget,owner(),root.id());
+                db.update("INSERT INTO budget_category_history(budget_id,category_id) VALUES(?,?)",rootBudget,root.id());
+                var settingId=db.queryForObject("SELECT id FROM budget_settings WHERE category_id=?",UUID.class,root.id());
+                db.update("INSERT INTO budget_setting_revisions(id,setting_id,version,period_type,effective_from,amount) VALUES(?,?,0,'YEAR',DATE '2024-01-01',1200)",UUID.randomUUID(),settingId);
+                var otherOwner=UUID.randomUUID();var otherRoot=UUID.randomUUID();var otherChild=UUID.randomUUID();var archivedChild=UUID.randomUUID();
+                db.update("INSERT INTO app_users(id,email,password_hash,created_at) VALUES(?,'cleanup@example.test','synthetic-unused-hash',CURRENT_TIMESTAMP)",otherOwner);
+                db.update("INSERT INTO categories(id,owner_id,name,type) VALUES(?,?,'Other owner main','SPENDING')",otherRoot,otherOwner);
+                db.update("INSERT INTO categories(id,owner_id,name,type,parent_id) VALUES(?,?,'Other owner child','SPENDING',?)",otherChild,otherOwner,otherRoot);
+                db.update("INSERT INTO categories(id,owner_id,name,type,parent_id,active) VALUES(?,?,'Archived child','SPENDING',?,FALSE)",archivedChild,owner(),root.id());
+                var children=List.of(child.id(),archivedChild,otherChild);
+                for(int index=0;index<children.size();index++) {
+                    var id=children.get(index);var user=index==2?otherOwner:owner();var parent=index==2?otherRoot:root.id();
+                    for(var currency:List.of("CHF","EUR")) {
+                        for(var type:List.of("MONTH","YEAR")) {
+                            for(var deleted:List.of(false,true)) {
+                                var budgetId=UUID.randomUUID();
+                                db.update("INSERT INTO spending_budgets(id,owner_id,category_id,currency,period_type,period_start,amount,deleted) VALUES(?,?,?,?,?,?,0,?)",budgetId,user,id,currency,type,LocalDate.of(deleted?2024:2090,1,1),deleted);
+                                db.update("INSERT INTO budget_category_history(budget_id,category_id) VALUES(?,?),(?,?)",budgetId,id,budgetId,parent);
+                                db.update("INSERT INTO audit_events(id,actor_id,event_type,resource_id) VALUES(?,?,'BUDGET_CREATED',?)",UUID.randomUUID(),user,budgetId);
+                            }
+                        }
+                        var childSetting=UUID.randomUUID();var mode=List.of("NONE","MONTH","YEAR").get(index);
+                        db.update("INSERT INTO budget_settings(id,owner_id,category_id,currency,mode,amount) VALUES(?,?,?,?,?,?)",childSetting,user,id,currency,mode,index==0?null:BigDecimal.ZERO);
+                        db.update("INSERT INTO budget_setting_category_history(setting_id,category_id) VALUES(?,?),(?,?)",childSetting,id,childSetting,parent);
+                        for(var type:List.of("MONTH","YEAR"))
+                            db.update("INSERT INTO budget_setting_revisions(id,setting_id,version,period_type,effective_from,amount) VALUES(?,?,0,?,DATE '2024-01-01',?)",UUID.randomUUID(),childSetting,type,mode.equals(type)?BigDecimal.ZERO:null);
+                    }
+                }
+                var preserved=new java.util.LinkedHashMap<String,List<java.util.Map<String,Object>>>();
+                for(var table:List.of("app_users","financial_accounts","categories","ledger_operations","ledger_movements","ledger_account_history","ledger_category_history","audit_events"))
+                    preserved.put(table,db.queryForList("SELECT * FROM "+table+" ORDER BY 1,2"));
+                var limits=new java.util.LinkedHashMap<String,List<java.util.Map<String,Object>>>();
+                for(var table:List.of("spending_budgets","budget_category_history","budget_settings","budget_setting_revisions","budget_setting_category_history")) {
+                    String condition=table.startsWith("budget_setting")?(table.equals("budget_settings")?"id":"setting_id"):table.equals("spending_budgets")?"id":"budget_id";
+                    String heads=table.startsWith("budget_setting")?"budget_settings":"spending_budgets";
+                    limits.put(table,db.queryForList("SELECT * FROM "+table+" WHERE "+condition+" IN (SELECT id FROM "+heads+" WHERE category_id IN (SELECT id FROM categories WHERE parent_id IS NULL)) ORDER BY 1,2"));
+                }
+                org.flywaydb.core.Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema).target("10").load().migrate();
+                db.execute("SET search_path TO "+schema);
+                for(var entry:preserved.entrySet()) assertEquals(entry.getValue(),db.queryForList("SELECT * FROM "+entry.getKey()+" ORDER BY 1,2"),entry.getKey());
+                for(var entry:limits.entrySet()) assertEquals(entry.getValue(),db.queryForList("SELECT * FROM "+entry.getKey()+" ORDER BY 1,2"),entry.getKey());
+                assertEquals(0,db.queryForObject("SELECT count(*) FROM spending_budgets b JOIN categories c ON c.id=b.category_id WHERE c.parent_id IS NOT NULL",Integer.class));
+                assertEquals(0,db.queryForObject("SELECT count(*) FROM budget_settings s JOIN categories c ON c.id=s.category_id WHERE c.parent_id IS NOT NULL",Integer.class));
+                var heads=db.queryForList("SELECT * FROM budget_settings ORDER BY 1,2");
+                var references=db.queryForList("SELECT * FROM budget_setting_category_history ORDER BY 1,2");
+                org.flywaydb.core.Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema).load().migrate();
+                db.execute("SET search_path TO "+schema);
+                assertEquals(heads,db.queryForList("SELECT * FROM budget_settings ORDER BY 1,2"));
+                assertEquals(references,db.queryForList("SELECT * FROM budget_setting_category_history ORDER BY 1,2"));
+                for(var table:List.of("spending_budgets","budget_category_history","budget_setting_revisions"))
+                    assertNull(db.queryForObject("SELECT to_regclass(?)",String.class,schema+"."+table));
+                for(var entry:preserved.entrySet()) assertEquals(entry.getValue(),db.queryForList("SELECT * FROM "+entry.getKey()+" ORDER BY 1,2"),entry.getKey());
+
+            } finally {
+                db.execute("SET search_path TO public");
+                db.execute("DROP SCHEMA IF EXISTS "+schema+" CASCADE");
+            }
+        }
     }
 
 }

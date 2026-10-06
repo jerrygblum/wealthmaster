@@ -53,11 +53,11 @@ Release outcome: existing historical Excel/CSV data can be migrated confidently.
 ## 0.3 — Spending and planning (current priority)
 Goal: understand budgets and expected cash flow. Imports are explicitly deferred. Recurring expectations remain deferred; matching and forecasts follow. Income targets, rollover and FX conversion remain deferred.
 
-- [x] Dated normal monthly/yearly native-currency limits, period exceptions, parent rollups and explicit exception copying
+- [x] One current linked monthly/yearly limit per main spending category, saved with category CRUD; selected-period comparisons, confirmed currency resets and pre-production override/revision cleanup (V010/V011)
 - Expected recurring expenses/income
 - Matching actual transactions to expectations
 - Missing expected items by period
-- [x] Compact inline category-card normal settings; Spending exception editors, atomic promotion and accrued monthly breakdown
+- [x] Compact inline category limit forms with linked unit conversion and read-only Spending comparisons
 - [x] Spending dashboard with gross expense pie, refunds, exact hierarchy breakdowns, overlap-safe comparisons and activity without budgets
 - Basic cash-flow projection
 

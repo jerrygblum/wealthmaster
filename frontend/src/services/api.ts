@@ -1,9 +1,8 @@
 import type {
-  Budget,
+  Preferences,
   BudgetMode,
   BudgetPeriod,
   BudgetReference,
-  BudgetReport,
   BudgetSetting,
   BudgetSettings,
   Category,
@@ -11,13 +10,11 @@ import type {
   CategoryList,
   CreateAccount,
   CurrentNetWorth,
-  EffectiveLimitInput,
   FactorKind,
   FinancialAccount,
   LedgerInput,
   MfaOperation,
   MfaSetup,
-  MonthlyBreakdown,
   Operation,
   RecoveryCodes,
   SecurityStatus,
@@ -106,6 +103,12 @@ async function ledgerMutation<T>(
 }
 
 export const api = {
+  preferences: () => request<Preferences>("/users/me/preferences"),
+  savePreferences: (input: {
+    defaultCurrency: string;
+    expectedVersion: number;
+    confirmLimitReset: boolean;
+  }) => ledgerMutation<Preferences>("/users/me/preferences", "PUT", input),
   budgetSettings: () => request<BudgetSettings>("/budget-settings"),
   saveBudgetSetting: (input: {
     categoryId: string;
@@ -114,14 +117,6 @@ export const api = {
     limit: string | null;
     expected: BudgetReference | null;
   }) => ledgerMutation<BudgetSetting>("/budget-settings", "PUT", input),
-  saveEffectiveLimit: (input: EffectiveLimitInput) =>
-    ledgerMutation<void>("/budgets/effective-limit", "PUT", input),
-  resetEffectiveLimit: (input: EffectiveLimitInput) =>
-    ledgerMutation<void>("/budgets/effective-limit", "DELETE", input),
-  monthlyBreakdown: (categoryId: string, currency: string, year: number) =>
-    request<MonthlyBreakdown>(
-      `/budgets/monthly-breakdown?categoryId=${categoryId}&currency=${currency}&year=${year}`,
-    ),
   spending: (periodType: BudgetPeriod, periodStart?: string) =>
     request<SpendingReport>(
       `/spending?periodType=${periodType}${periodStart ? `&periodStart=${periodStart}` : ""}`,
@@ -135,31 +130,6 @@ export const api = {
   ) =>
     request<{ items: Operation[]; page: number; hasMore: boolean }>(
       `/spending/activity?periodType=${periodType}&periodStart=${periodStart}&currency=${currency}${categoryId ? `&categoryId=${categoryId}` : ""}&page=${page}`,
-    ),
-  budgets: (periodType: BudgetPeriod, periodStart?: string) =>
-    request<BudgetReport>(
-      `/budgets?periodType=${periodType}${periodStart ? `&periodStart=${periodStart}` : ""}`,
-    ),
-  createBudget: (input: {
-    categoryId: string;
-    currency: string;
-    periodType: BudgetPeriod;
-    periodStart: string;
-    limit: string;
-  }) => ledgerMutation<Budget>("/budgets", "POST", input),
-  updateBudget: (b: Budget, limit: string) =>
-    ledgerMutation<Budget>(`/budgets/${b.id}`, "PUT", { limit }, b.version),
-  deleteBudget: (b: Budget) =>
-    ledgerMutation<void>(`/budgets/${b.id}`, "DELETE", undefined, b.version),
-  copyBudgets: (sources: Budget[], targetPeriodStart: string) =>
-    ledgerMutation<{ created: Budget[]; skipped: { id: string; reason: string }[] }>(
-      "/budgets/copy",
-      "POST",
-      { sources: sources.map((b) => ({ id: b.id, version: b.version })), targetPeriodStart },
-    ),
-  budgetActivity: (id: string, page: number) =>
-    request<{ items: Operation[]; page: number; hasMore: boolean }>(
-      `/budgets/${id}/activity?page=${page}`,
     ),
   categories: () => request<CategoryList>("/categories"),
   installCategoryStarters: () => post<CategoryList>("/categories/starter-set"),

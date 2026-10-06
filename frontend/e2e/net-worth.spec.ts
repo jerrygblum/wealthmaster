@@ -63,10 +63,10 @@ test("net worth is the default, separates currencies, and follows account activi
   await broker.getByRole("button", { name: "Archive", exact: true }).click();
   await page.getByRole("link", { name: "Net worth", exact: true }).click();
   const chf = page.getByRole("region", { name: "CHF net worth", exact: true });
-  await expect(chf.locator(".net-worth-total")).toHaveText("CHF 900.12345678");
+  await expect(chf.locator(".net-worth-total")).toHaveText("CHF 900.12");
   await expect(
     page.getByRole("region", { name: "EUR net worth", exact: true }).locator(".net-worth-total"),
-  ).toHaveText("EUR 20.00000001");
+  ).toHaveText("EUR 20.00");
   await expect(page.getByRole("region", { name: "USD net worth", exact: true })).toHaveCount(0);
   await expect(page.getByText("Archived · included in totals")).toBeVisible();
   await expect(page.getByText(/Excluded from current totals/)).toBeVisible();
@@ -79,11 +79,11 @@ test("net worth is the default, separates currencies, and follows account activi
   await page.getByRole("button", { name: "Save activity" }).click();
   await expect(page.getByRole("heading", { name: "Synthetic cost", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Net worth", exact: true }).click();
-  await expect(chf.locator(".net-worth-total")).toHaveText("CHF 890.12345677");
+  await expect(chf.locator(".net-worth-total")).toHaveText("CHF 890.12");
   await page.reload();
-  await expect(chf.locator(".net-worth-total")).toHaveText("CHF 890.12345677");
+  await expect(chf.locator(".net-worth-total")).toHaveText("CHF 890.12");
   await page.getByRole("button", { name: "Refresh net worth" }).click();
-  await expect(chf.locator(".net-worth-total")).toHaveText("CHF 890.12345677");
+  await expect(chf.locator(".net-worth-total")).toHaveText("CHF 890.12");
   await page.screenshot({ path: testInfo.outputPath("net-worth.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,

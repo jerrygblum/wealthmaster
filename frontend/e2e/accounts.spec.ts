@@ -37,7 +37,7 @@ test("create, edit, archive, restore, delete an account and log out", async ({
   const changed = page
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: changedName, exact: true }) });
-  await expect(changed).toContainText("CHF 99’999’999’999’999’999’999.12345678");
+  await expect(changed).toContainText("CHF 99’999’999’999’999’999’999.12");
   await changed.getByRole("button", { name: "Archive", exact: true }).click();
   await expect(page.getByRole("heading", { name: changedName, exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Archived accounts" }).click();

@@ -1,3 +1,4 @@
+import { displayAmount } from "../../../utils/accountPresentation";
 import { colors, fractions, spendingBranchId } from "../../../utils/spendingPresentation";
 import { Link } from "../../atoms/Controls";
 export function ExpensesChart({
@@ -27,8 +28,8 @@ export function ExpensesChart({
             <title id={`chart-title-${currency}`}>Expenses before refunds — {currency}</title>
             <desc id={`chart-desc-${currency}`}>
               Top-level totals include children; each expense is counted once.{" "}
-              {slices.map((s) => `${s.label}: ${s.value} ${currency}`).join("; ")}. Refunds are in
-              the table.
+              {slices.map((s) => `${s.label}: ${displayAmount(s.value)} ${currency}`).join("; ")}.
+              Refunds are in the table.
             </desc>
             {slices.map((s, i) => {
               const from = angle;
@@ -55,7 +56,7 @@ export function ExpensesChart({
                     onSelect(s.id);
                   }}
                 >
-                  {s.label}: {s.value} {currency}
+                  {s.label}: {displayAmount(s.value)} {currency}
                 </Link>
               </li>
             ))}

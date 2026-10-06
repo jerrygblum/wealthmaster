@@ -43,7 +43,7 @@ The financial ledger is the source of truth. Dashboards, balances, budgets, port
 
 See [ARCHITECTURE.md](ARCHITECTURE.md), [docs/adr](docs/adr/), and the [OpenAPI contract](docs/api/openapi.json).
 
-Account management supports editing, confirmed deletion of unused accounts, and archive/restore. See the [investment cash/holdings design](docs/adr/006-investment-cash-and-holdings.md) for the planned transfer and stock-purchase model. See [account management operations](docs/operations/account-management.md) for migration and audit implications. The default [net-worth overview](docs/operations/net-worth.md) shows assets, liabilities and account contributions per native currency, including archived balances and investment cash. See [category operations](docs/operations/categories.md) for manual classification and lifecycle rules. [Spending](docs/operations/budgets.md) shows gross expense distribution, refunds and exact native-currency comparisons. Compact Categories cards manage dated normal monthly/yearly limits. Spending edits and copies period exceptions, compares annual limits with YTD spending and accrues monthly allowances in yearly views. Imports are deferred; recurring expectations are the next slice.
+Account management supports editing, confirmed deletion of unused accounts, and archive/restore. See the [investment cash/holdings design](docs/adr/006-investment-cash-and-holdings.md) for the planned transfer and stock-purchase model. See [account management operations](docs/operations/account-management.md) for migration and audit implications. The default [net-worth overview](docs/operations/net-worth.md) shows assets, liabilities and account contributions per native currency, including archived balances and investment cash. See [category operations](docs/operations/categories.md) for manual classification and lifecycle rules. [Spending](docs/operations/budgets.md) shows gross expense distribution, refunds and exact native-currency comparisons. Compact category rows manage one current linked monthly/yearly limit per main category. Spending compares the selected period’s net activity with its corresponding allowance; no overrides, dated limit revisions or prorated allowances remain. Imports are deferred; recurring expectations are the next slice.
 
 ## Local development
 
@@ -113,3 +113,5 @@ Do not report vulnerabilities through a public issue. See [SECURITY.md](SECURITY
 MIT — see [LICENSE](LICENSE).
 
 See [frontend development and atomic design](frontend/README.md) for linting, formatting, editor setup and component conventions.
+
+For short development cycles, run frontend `npm run test:related -- <changed-source-files>` or watch mode and focused backend unit tests. Run local lint/format/type checks before completion; full browser journeys remain in CI by default. See [frontend development](frontend/README.md#fast-development-checks).

@@ -20,6 +20,9 @@ vi.mock("../../services/api", async (original) => {
       archiveAccount: vi.fn(),
       restoreAccount: vi.fn(),
       deleteAccount: vi.fn(),
+      preferences: vi
+        .fn()
+        .mockResolvedValue({ defaultCurrency: null, version: 0, hasLimitsToReset: false }),
       security: vi.fn(),
       verifyMfa: vi.fn(),
       startMfa: vi.fn(),
@@ -48,6 +51,11 @@ const account: FinancialAccount = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(api.preferences).mockResolvedValue({
+    defaultCurrency: null,
+    version: 0,
+    hasLimitsToReset: false,
+  });
   window.location.hash = "#/accounts";
   vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Please sign in."));
   vi.mocked(api.accounts).mockResolvedValue([]);
@@ -146,10 +154,8 @@ describe("workspace", () => {
     await signIn();
     await waitFor(() => expect(screen.getByRole("button", { name: "Signing in…" })).toBeDisabled());
   });
-  it("formats decimal strings without losing precision", () => {
-    expect(displayAmount("99999999999999999999.12345678")).toBe(
-      "99’999’999’999’999’999’999.12345678",
-    );
+  it("rounds decimal strings without converting to floating point", () => {
+    expect(displayAmount("99999999999999999999.12345678")).toBe("99’999’999’999’999’999’999.12");
     expect(displayAmount("-1.01000000")).toBe("-1.01");
   });
 
@@ -262,7 +268,7 @@ it.each(["#/spending", "#/planning"])("opens Spending for %s", async (hash) => {
     currencies: [],
     limits: [],
     businessDate: "2026-10-05",
-    settings: [],
+    defaultCurrency: null,
   });
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Spending" })).toBeVisible();

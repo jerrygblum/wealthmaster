@@ -1,64 +1,56 @@
-import { Button, Input, LoadingIndicator, Select } from "../../atoms/Controls";
+import { ActionIcon } from "../../atoms/ActionIcon";
+import { Button, Link, LoadingIndicator } from "../../atoms/Controls";
 import { ActionGroup } from "../../molecules/ActionGroup";
 import { Confirmation } from "../../molecules/Confirmation";
-import { Field } from "../../molecules/Field";
 import { Message } from "../../molecules/Message";
 import { WorkspaceHeading } from "../application/WorkspaceHeading";
-
-import type { ComponentType } from "react";
-import type { CategoryLimitsProps } from "../../../types/componentProps";
+import { CategoryForm } from "./CategoryForm";
 import type { CategoryType } from "../../../types/models";
 import type { CategoriesPageViewModel } from "../../../types/viewModels";
-
+import { displayAmount } from "../../../utils/accountPresentation";
 import { categoryLabel } from "../../../utils/categoryPresentation";
 
-export function CategoriesPageView({
-  data,
-  loading,
-  pending,
-  limitsBusy,
-  setLimitsBusy,
-  error,
-  setError,
-  notice,
-  stale,
-  setStale,
-  archived,
-  setArchived,
-  form,
-  setForm,
-  editing,
-  setEditing,
-  deleting,
-  setDeleting,
-  load,
-  start,
-  save,
-  logout,
-  items,
-  locked,
-  parents,
-  busy,
-  refreshHistory,
-  visible,
-  deleteCategory,
-  installStarters,
-  archiveCategory,
-  user,
-  onExpired,
-  CategoryLimits,
-}: CategoriesPageViewModel & { CategoryLimits: ComponentType<CategoryLimitsProps> }) {
+export function CategoriesPageView(model: CategoriesPageViewModel) {
+  const {
+    data,
+    loading,
+    pending,
+    error,
+    setError,
+    notice,
+    stale,
+    setStale,
+    archived,
+    setArchived,
+    form,
+    editing,
+    deleting,
+    setDeleting,
+    load,
+    start,
+    logout,
+    items,
+    busy,
+    visible,
+    deleteCategory,
+    installStarters,
+    archiveCategory,
+    user,
+    limitData,
+    preferences,
+    limitsLoading,
+    limitsError,
+    loadLimits,
+  } = model;
   return (
     <>
       <WorkspaceHeading
         title={<>Categories</>}
         subtitle={<>{user.email}</>}
         actions={
-          <>
-            <Button variant="secondary" disabled={pending} onClick={() => void logout()}>
-              Sign out
-            </Button>
-          </>
+          <Button variant="secondary" disabled={pending} onClick={() => void logout()}>
+            Sign out
+          </Button>
         }
       />
       <p>
@@ -71,8 +63,11 @@ export function CategoriesPageView({
         </Button>
         <Button
           variant="secondary"
-          disabled={pending || loading || limitsBusy}
-          onClick={() => void load()}
+          disabled={busy}
+          onClick={() => {
+            void load();
+            void loadLimits();
+          }}
         >
           Refresh categories
         </Button>
@@ -80,7 +75,7 @@ export function CategoriesPageView({
       {error && (
         <div role="alert" className="error">
           <p>{error}</p>
-          <Button disabled={pending || loading} onClick={() => void load()}>
+          <Button disabled={pending || !!form} onClick={() => void load()}>
             Retry / reload categories
           </Button>
         </div>
@@ -90,82 +85,10 @@ export function CategoriesPageView({
           {notice}
         </Message>
       )}
-      {loading && <LoadingIndicator role="status">Loading categories…</LoadingIndicator>}
-      {form && (
+      {loading && <LoadingIndicator>Loading categories…</LoadingIndicator>}
+      {form && !editing && (
         <section className="panel create-panel">
-          <h2>{editing ? "Edit category" : "New category"}</h2>
-          <form onSubmit={(event) => void save(event)}>
-            <fieldset disabled={pending} className="form-grid">
-              <Field htmlFor="category-name" label={"Category name"}>
-                <Input
-                  id="category-name"
-                  focusOnMount
-                  required
-                  maxLength={100}
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </Field>
-              <div>
-                <label htmlFor="category-type">Category type</label>
-                <Select
-                  id="category-type"
-                  disabled={locked}
-                  value={form.type}
-                  onChange={(e) =>
-                    setForm({ ...form, type: e.target.value as CategoryType, parentId: null })
-                  }
-                >
-                  <option value="INCOME">Income</option>
-                  <option value="SPENDING">Spending</option>
-                </Select>
-              </div>
-              <div>
-                <label htmlFor="category-parent">Parent category (optional)</label>
-                <Select
-                  id="category-parent"
-                  disabled={locked}
-                  value={form.parentId ?? ""}
-                  onChange={(e) => setForm({ ...form, parentId: e.target.value || null })}
-                >
-                  <option value="">Top-level category</option>
-                  {parents.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                      {!c.active ? " (archived)" : ""}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              {locked && (
-                <p className="help">
-                  Type and parent are locked because this category has ledger or budget history or
-                  subcategories. Its name can still change.
-                </p>
-              )}
-              {stale && (
-                <p role="status">
-                  This category changed. Your input is retained; cancel and reload before editing
-                  again.
-                </p>
-              )}
-              <ActionGroup className="form-actions form-wide">
-                <Button disabled={stale}>Save category</Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setForm(undefined);
-                    setEditing(undefined);
-                    setStale(false);
-                    void load();
-                  }}
-                >
-                  Cancel
-                </Button>
-              </ActionGroup>
-            </fieldset>
-          </form>
+          <CategoryForm model={model} />
         </section>
       )}
       {deleting && (
@@ -210,7 +133,7 @@ export function CategoriesPageView({
           <div className="account-filter" aria-label="Category status">
             <Button
               variant="secondary"
-              disabled={pending || limitsBusy}
+              disabled={busy}
               aria-pressed={!archived}
               onClick={() => setArchived(false)}
             >
@@ -218,7 +141,7 @@ export function CategoriesPageView({
             </Button>
             <Button
               variant="secondary"
-              disabled={pending || limitsBusy}
+              disabled={busy}
               aria-pressed={archived}
               onClick={() => setArchived(true)}
             >
@@ -228,18 +151,39 @@ export function CategoriesPageView({
           {(["INCOME", "SPENDING"] as CategoryType[]).map((type) => (
             <section key={type} aria-labelledby={`categories-${type}`}>
               <h2 id={`categories-${type}`}>{type === "INCOME" ? "Income" : "Spending"}</h2>
+              {type === "SPENDING" && (
+                <>
+                  {limitsLoading && <LoadingIndicator>Loading spending limits…</LoadingIndicator>}
+                  {limitsError && (
+                    <div role="alert" className="error">
+                      <p>{limitsError}</p>
+                      <Button disabled={pending || !!form} onClick={() => void loadLimits()}>
+                        Retry spending limits
+                      </Button>
+                    </div>
+                  )}
+                  {preferences && !preferences.defaultCurrency && (
+                    <p>
+                      Select a <Link href="#/settings">default currency in Settings</Link> before
+                      setting spending limits. Existing limits are retained until you confirm a
+                      currency selection.
+                    </p>
+                  )}
+                </>
+              )}
               {!items.some((c) => c.type === type && visible(c)) && (
                 <p>
                   No {archived ? "archived" : "active"} {type.toLowerCase()} categories.
                 </p>
               )}
-              {type === "SPENDING" ? (
-                <CategoryLimits
-                  onChanged={refreshHistory}
-                  onBusyChange={setLimitsBusy}
-                  disabled={pending || !!form || !!deleting}
-                  onExpired={onExpired}
-                  categories={items
+              {items.some((c) => c.type === type && visible(c)) && (
+                <div className={`category-list ${type === "INCOME" ? "category-list-income" : ""}`}>
+                  <div className="category-list-heading" aria-hidden="true">
+                    <span>Category</span>
+                    {type === "SPENDING" && <span>Spending limit</span>}
+                    <span>Actions</span>
+                  </div>
+                  {items
                     .filter((c) => c.type === type && visible(c))
                     .sort((a, b) => {
                       const aa = items.find((c) => c.id === a.parentId)?.name || a.name;
@@ -249,30 +193,69 @@ export function CategoriesPageView({
                         Number(!!a.parentId) - Number(!!b.parentId) ||
                         a.name.localeCompare(b.name)
                       );
-                    })}
-                  renderCategory={(c) => (
-                    <>
-                      <h3>{categoryLabel(c, items)}</h3>
-                      {!c.active ? (
-                        <p className="muted">Archived</p>
-                      ) : !c.available ? (
-                        <p className="muted">Unavailable while parent is archived</p>
-                      ) : null}
-                      <details className="category-actions">
-                        <summary>Category actions</summary>
-                        <ActionGroup className="form-actions">
-                          <Button variant="secondary" disabled={busy} onClick={() => start(c)}>
-                            Edit category
+                    })
+                    .map((c) => (
+                      <article
+                        key={c.id}
+                        id={`category-${c.id}`}
+                        data-selected={model.selectedCategory === c.id ? "true" : undefined}
+                        className={`category-row ${c.parentId ? "category-row-child" : ""}`}
+                      >
+                        <div className="category-row-name">
+                          <h3>{categoryLabel(c, items)}</h3>
+                          {!c.active ? (
+                            <span className="muted">Archived</span>
+                          ) : !c.available ? (
+                            <span className="muted">Unavailable while parent is archived</span>
+                          ) : null}
+                        </div>
+                        {type === "SPENDING" && (
+                          <div className="category-row-limit">
+                            {c.parentId
+                              ? `Included in ${items.find((parent) => parent.id === c.parentId)?.name ?? "main category"}’s limit`
+                              : limitsLoading
+                                ? "Loading…"
+                                : limitsError
+                                  ? "Limit unavailable"
+                                  : limitData?.items
+                                      .filter((s) => s.categoryId === c.id && s.mode !== "NONE")
+                                      .map(
+                                        (s) =>
+                                          `${displayAmount(s.monthlyLimit ?? "0")} ${s.currency} / month · ${displayAmount(s.yearlyLimit ?? "0")} ${s.currency} / year`,
+                                      )
+                                      .join(" · ") || "No spending limit"}
+                          </div>
+                        )}
+                        <ActionGroup className="category-row-actions">
+                          <Button
+                            variant="secondary"
+                            className="category-action"
+                            aria-label="Edit category"
+                            title={`Edit ${categoryLabel(c, items)}`}
+                            disabled={busy}
+                            onClick={() => start(c)}
+                          >
+                            <ActionIcon action="edit" />
                           </Button>
                           <Button
                             variant="secondary"
+                            className="category-action"
+                            aria-label={c.active ? "Archive" : "Restore"}
+                            title={`${c.active ? "Archive" : "Restore"} ${categoryLabel(c, items)}`}
                             disabled={busy}
                             onClick={() => archiveCategory(c)}
                           >
-                            {c.active ? "Archive" : "Restore"}
+                            <ActionIcon action={c.active ? "archive" : "restore"} />
                           </Button>
                           <Button
                             variant="secondary"
+                            className="category-action category-action-delete"
+                            aria-label="Delete"
+                            title={
+                              c.hasActivity || c.hasChildren
+                                ? "History or subcategories prevent deletion; archive instead."
+                                : `Delete ${categoryLabel(c, items)}`
+                            }
                             disabled={busy || c.hasActivity || c.hasChildren}
                             onClick={() => {
                               setDeleting(c);
@@ -280,77 +263,17 @@ export function CategoriesPageView({
                               setError("");
                             }}
                           >
-                            Delete
+                            <ActionIcon action="delete" />
                           </Button>
                         </ActionGroup>
-                        {(c.hasActivity || c.hasChildren) && (
-                          <p className="help">
-                            Ledger and budget use permanently lock type and parent and prevent
-                            deletion. Archive to retain history and subcategories.
-                          </p>
+                        {editing?.id === c.id && form && (
+                          <div className="category-row-editor">
+                            <CategoryForm model={model} />
+                          </div>
                         )}
-                      </details>
-                    </>
-                  )}
-                />
-              ) : (
-                <>
-                  {" "}
-                  {items
-                    .filter((c) => c.type === type && !c.parentId)
-                    .map((parent) => (
-                      <div key={parent.id} className="category-branch">
-                        {[parent, ...items.filter((c) => c.parentId === parent.id)]
-                          .filter(visible)
-                          .map((c) => (
-                            <article
-                              className={`panel category-card ${c.parentId ? "category-child" : ""}`}
-                              key={c.id}
-                            >
-                              <h3>{categoryLabel(c, items)}</h3>
-                              {!c.active ? (
-                                <p className="muted">Archived</p>
-                              ) : !c.available ? (
-                                <p className="muted">Unavailable while parent is archived</p>
-                              ) : null}
-                              <ActionGroup className="form-actions">
-                                <Button
-                                  variant="secondary"
-                                  disabled={busy}
-                                  onClick={() => start(c)}
-                                >
-                                  Edit category
-                                </Button>
-                                <Button
-                                  variant="secondary"
-                                  disabled={busy}
-                                  onClick={() => archiveCategory(c)}
-                                >
-                                  {c.active ? "Archive" : "Restore"}
-                                </Button>
-                                <Button
-                                  variant="secondary"
-                                  disabled={busy || c.hasActivity || c.hasChildren}
-                                  onClick={() => {
-                                    setDeleting(c);
-                                    setStale(false);
-                                    setError("");
-                                  }}
-                                >
-                                  Delete
-                                </Button>
-                              </ActionGroup>
-                              {(c.hasActivity || c.hasChildren) && (
-                                <p className="help">
-                                  Ledger and budget use permanently lock type and parent and prevent
-                                  deletion. Archive to retain history and subcategories.
-                                </p>
-                              )}
-                            </article>
-                          ))}
-                      </div>
+                      </article>
                     ))}
-                </>
+                </div>
               )}
             </section>
           ))}

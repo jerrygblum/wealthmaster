@@ -11,6 +11,9 @@ vi.mock("../../services/api", async (original) => {
   return {
     ...actual,
     api: {
+      preferences: vi
+        .fn()
+        .mockResolvedValue({ defaultCurrency: null, version: 0, hasLimitsToReset: false }),
       security: vi.fn(),
       verifyMfa: vi.fn(),
       startMfa: vi.fn(),
@@ -32,6 +35,11 @@ const codes = {
 const callbacks = { onSession: vi.fn(), onExpired: vi.fn(), onLogout: vi.fn() };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(api.preferences).mockResolvedValue({
+    defaultCurrency: null,
+    version: 0,
+    hasLimitsToReset: false,
+  });
   vi.mocked(api.security).mockResolvedValue({
     enabled: false,
     required: true,

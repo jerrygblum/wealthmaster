@@ -1,48 +1,24 @@
-import type { ComponentType } from "react";
+import { displayAmount } from "../../../utils/accountPresentation";
 import { Fragment } from "react";
-import type {
-  MonthlyLimitBreakdownProps,
-  SpendingLimitEditorProps,
-} from "../../../types/componentProps";
-import type { BudgetComparison, SpendingReport } from "../../../types/models";
+import type { SpendingReport } from "../../../types/models";
 import type { SpendingPageViewModel } from "../../../types/viewModels";
 import { nonzero, spendingBranchId, zero } from "../../../utils/spendingPresentation";
+import { ActionIcon } from "../../atoms/ActionIcon";
 import { Button, Link } from "../../atoms/Controls";
 export function SpendingHierarchyTable({
   data,
   all,
-  editing,
-  setEditing,
   activityLoading,
-  monthEditing,
-  setMonthEditing,
-  onExpired,
-  load,
   expanded,
   setExpanded,
   openActivity,
   summary,
-  SpendingLimitEditor,
-  MonthlyLimitBreakdown,
 }: Pick<
   SpendingPageViewModel,
-  | "data"
-  | "all"
-  | "editing"
-  | "setEditing"
-  | "activityLoading"
-  | "monthEditing"
-  | "setMonthEditing"
-  | "onExpired"
-  | "load"
-  | "expanded"
-  | "setExpanded"
-  | "openActivity"
+  "data" | "all" | "activityLoading" | "expanded" | "setExpanded" | "openActivity"
 > & {
   data: SpendingReport;
   summary: SpendingReport["currencies"][number];
-  SpendingLimitEditor: ComponentType<SpendingLimitEditorProps>;
-  MonthlyLimitBreakdown: ComponentType<MonthlyLimitBreakdownProps>;
 }) {
   const amount = (id: string | null, direct = false) => {
     const group = data.groups.find((g) => g.currency === summary.currency && g.categoryId === id);
@@ -57,133 +33,111 @@ export function SpendingHierarchyTable({
     !!limit(id) ||
     data.categories.some((c) => c.parentId === id && !!limit(c.id));
   const branchId = (id: string | null) => spendingBranchId(summary.currency, id);
-  const editor = (id: string, label: string, b: BudgetComparison | undefined) =>
-    editing?.categoryId === id && editing.currency === summary.currency ? (
-      <tr>
-        <td colSpan={10}>
-          <SpendingLimitEditor
-            categoryId={id}
-            label={label}
-            currency={summary.currency}
-            comparison={b}
-            periodType={b?.periodType ?? data.periodType}
-            periodStart={b?.periodStart ?? data.periodStart}
-            settingReference={
-              b?.settingReference ??
-              (() => {
-                const setting = data.settings?.find(
-                  (s) => s.categoryId === id && s.currency === summary.currency,
-                );
-                return setting ? { id: setting.id, version: setting.version } : null;
-              })()
-            }
-            businessDate={data.businessDate}
-            available={data.categories.find((c) => c.id === id)?.available ?? false}
-            onExpired={onExpired}
-            onCancel={() => setEditing(undefined)}
-            onSaved={async () => {
-              setEditing(undefined);
-              await load();
-            }}
-          />
-        </td>
-      </tr>
-    ) : null;
   const row = (id: string | null, label: string, direct = false) => {
     const a = amount(id, direct),
       b = direct ? undefined : limit(id);
+    const category = data.categories.find((c) => c.id === id);
+    const parent = !!category && !category.parentId && !direct;
     return (
       <Fragment key={`${id}-${direct}`}>
-        <tr id={direct ? undefined : branchId(id)} tabIndex={-1}>
+        <tr
+          id={direct ? undefined : branchId(id)}
+          tabIndex={-1}
+          className={direct || category?.parentId ? "spending-child-row" : undefined}
+        >
           <th scope="row">
-            {label}
-            {id &&
-              !direct &&
-              !data.categories.find((c) => c.id === id)?.available &&
-              " (archived branch)"}
+            <div className="spending-row-name">
+              {parent && (
+                <Button
+                  variant="secondary"
+                  className="spending-expand"
+                  aria-label={`${expanded.includes(category.id) ? "Collapse" : "Expand"} ${category.name}`}
+                  aria-expanded={expanded.includes(category.id)}
+                  onClick={() =>
+                    setExpanded((ids) =>
+                      ids.includes(category.id)
+                        ? ids.filter((value) => value !== category.id)
+                        : [...ids, category.id],
+                    )
+                  }
+                >
+                  <ActionIcon action={expanded.includes(category.id) ? "collapse" : "expand"} />
+                </Button>
+              )}
+              <span>
+                {label}
+                {id &&
+                  !direct &&
+                  !data.categories.find((c) => c.id === id)?.available &&
+                  " (archived branch)"}
+              </span>
+            </div>
           </th>
-          <td>{a.expenses}</td>
-          <td>{a.refunds}</td>
-          <td>{a.netSpending}</td>
+          <td>{displayAmount(a.expenses)}</td>
+          <td>{displayAmount(a.refunds)}</td>
+          <td>{displayAmount(a.netSpending)}</td>
           <td>
             {b ? (
               <>
                 <strong>
-                  {b.limit} {b.currency}
+                  {displayAmount(b.limit)} {b.currency}
                 </strong>
                 <small>
-                  {b.source === "MONTHLY_ROLLUP"
-                    ? `Accrued monthly allowances · ${b.coveredMonths}/${b.accruedMonths} months have limits`
-                    : `${b.periodType === "MONTH" ? b.periodStart.slice(0, 7) : b.periodStart.slice(0, 4)} · ${b.periodType === "MONTH" ? "Monthly" : "Yearly"} · ${b.source === "EXCEPTION" ? "Exception" : "Normal"}`}
+                  {b.periodType === "MONTH" ? b.periodStart.slice(0, 7) : b.periodStart.slice(0, 4)}
+                  {" · "}
+                  {b.periodType === "MONTH" ? "Monthly" : "Yearly"}
                 </small>
               </>
             ) : (
               "—"
             )}
           </td>
+          <td>{b ? displayAmount(b.remaining) : "—"}</td>
           <td>
-            {b ? (
-              <>
-                {b.actual}
-                <small>{b.usageEnd ? `${b.usageStart} to ${b.usageEnd}` : "Not started"}</small>
-              </>
-            ) : (
-              "—"
-            )}
+            {b
+              ? b.percentage === null
+                ? "Not applicable"
+                : `${displayAmount(b.percentage)}%`
+              : "—"}
           </td>
-          <td>{b?.remaining ?? "—"}</td>
-          <td>{b ? (b.percentage === null ? "Not applicable" : `${b.percentage}%`) : "—"}</td>
-          <td>{b ? (b.overBudget ? "Over budget" : "Within budget") : "No limit"}</td>
+          <td>
+            {b
+              ? b.overBudget
+                ? "Over budget"
+                : "Within budget"
+              : category?.parentId
+                ? "Included in main category"
+                : "No limit"}
+          </td>
           <td>
             {!direct && (
-              <>
+              <div className="spending-row-actions">
                 <Button
-                  disabled={activityLoading || !!editing || monthEditing}
+                  variant="secondary"
+                  className="spending-action"
+                  aria-label="Supporting activity"
+                  title={`View activity for ${label}`}
+                  disabled={activityLoading}
                   onClick={() => void openActivity(id, label, summary.currency)}
                 >
-                  Supporting activity
+                  <ActionIcon action="activity" />
                 </Button>
-                {id && (
+                {id && parent && (
                   <>
-                    {b?.source === "MONTHLY_ROLLUP" ? (
-                      <MonthlyLimitBreakdown
-                        categoryId={id}
-                        label={label}
-                        currency={summary.currency}
-                        year={Number(data.periodStart.slice(0, 4))}
-                        available={data.categories.find((c) => c.id === id)?.available ?? false}
-                        onSaved={load}
-                        onExpired={onExpired}
-                        onEditingChange={setMonthEditing}
-                      />
-                    ) : (
-                      <Button
-                        disabled={
-                          !!editing ||
-                          monthEditing ||
-                          (!data.categories.find((c) => c.id === id)?.available &&
-                            !b?.overrideReference)
-                        }
-                        onClick={() =>
-                          setEditing({
-                            categoryId: id,
-                            currency: summary.currency,
-                            label,
-                            comparison: b,
-                          })
-                        }
-                      >
-                        Edit limit
-                      </Button>
-                    )}
-                    <Link href={`#/categories?categoryId=${id}`}>Normal setting</Link>
+                    <Link
+                      className="secondary spending-action"
+                      aria-label="Manage limit"
+                      title={`Manage ${label} in Categories`}
+                      href={`#/categories?categoryId=${id}`}
+                    >
+                      <ActionIcon action="settings" />
+                    </Link>
                   </>
                 )}
-              </>
+              </div>
             )}
           </td>
         </tr>
-        {id && !direct && editor(id, label, b)}
       </Fragment>
     );
   };
@@ -191,8 +145,8 @@ export function SpendingHierarchyTable({
     <div className="spending-table">
       <table>
         <caption>
-          Exact spending in {summary.currency}. Parent totals are inclusive; child and direct rows
-          are breakdowns.
+          Spending in {summary.currency}, rounded to two decimals. Parent totals are inclusive;
+          child and direct rows are breakdowns.
         </caption>
         <thead>
           <tr>
@@ -202,7 +156,6 @@ export function SpendingHierarchyTable({
               "Refunds",
               "Net spending",
               "Limit",
-              "Spending used",
               "Remaining allowance",
               "Percentage used",
               "Status",
@@ -220,20 +173,6 @@ export function SpendingHierarchyTable({
             .map((c) => (
               <Fragment key={c.id}>
                 {row(c.id, `${c.name} (inclusive)`)}
-                <tr>
-                  <td colSpan={10}>
-                    <Button
-                      aria-expanded={expanded.includes(c.id)}
-                      onClick={() =>
-                        setExpanded((ids) =>
-                          ids.includes(c.id) ? ids.filter((id) => id !== c.id) : [...ids, c.id],
-                        )
-                      }
-                    >
-                      {expanded.includes(c.id) ? "Collapse" : "Expand"} {c.name}
-                    </Button>
-                  </td>
-                </tr>
                 {expanded.includes(c.id) && (
                   <>
                     {row(c.id, `${c.name} — directly assigned`, true)}

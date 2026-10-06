@@ -1,15 +1,10 @@
+import { displayAmount } from "../../../utils/accountPresentation";
 import { nonzero, zero } from "../../../utils/spendingPresentation";
 import { Button, Checkbox, Input, Link, LoadingIndicator, Select } from "../../atoms/Controls";
 import { ActionGroup } from "../../molecules/ActionGroup";
 import { ExpensesChart } from "./ExpensesChart";
 import { SpendingHierarchyTable } from "./SpendingHierarchyTable";
 
-import type { ComponentType } from "react";
-import type {
-  BudgetCopyToolProps,
-  MonthlyLimitBreakdownProps,
-  SpendingLimitEditorProps,
-} from "../../../types/componentProps";
 import type { BudgetPeriod } from "../../../types/models";
 import type { SpendingPageViewModel } from "../../../types/viewModels";
 
@@ -25,10 +20,6 @@ export function SpendingPageView({
   error,
   all,
   setAll,
-  editing,
-  setEditing,
-  monthEditing,
-  setMonthEditing,
   expanded,
   setExpanded,
   activity,
@@ -39,27 +30,26 @@ export function SpendingPageView({
   load,
   move,
   openActivity,
-  onExpired,
-  SpendingLimitEditor,
-  MonthlyLimitBreakdown,
-  BudgetCopyTool,
-}: SpendingPageViewModel & {
-  SpendingLimitEditor: ComponentType<SpendingLimitEditorProps>;
-  MonthlyLimitBreakdown: ComponentType<MonthlyLimitBreakdownProps>;
-  BudgetCopyTool: ComponentType<BudgetCopyToolProps>;
-}) {
+}: SpendingPageViewModel) {
   return (
     <>
       <h1>Spending</h1>
       <p>
-        Normal limits recur automatically; period exceptions take precedence. Annual usage is
-        year-to-date, and yearly views accrue monthly allowances. Refunds reduce spending.
+        Category limits apply to every period. Monthly and yearly allowances are linked; refunds
+        reduce spending. Manage limits in Categories.
       </p>
-      <ActionGroup className="form-actions">
+      <p className="help">
+        {data?.defaultCurrency
+          ? `Default currency: ${data.defaultCurrency}. `
+          : "Choose a default currency in Settings before enabling limits. "}
+        Foreign-currency spending is not converted and is excluded from default-currency limit
+        comparisons. Each currency is reported separately.
+      </p>
+      <ActionGroup className="form-actions spending-toolbar">
         <label>
           Period type{" "}
           <Select
-            disabled={loading || !!editing || monthEditing}
+            disabled={loading}
             value={period}
             onChange={(e) => {
               setPeriod(e.target.value as BudgetPeriod);
@@ -70,7 +60,7 @@ export function SpendingPageView({
             <option value="YEAR">Year</option>
           </Select>
         </label>
-        <Button disabled={loading || !!editing || monthEditing} onClick={() => move(-1)}>
+        <Button disabled={loading} onClick={() => move(-1)}>
           Previous period
         </Button>
         <form
@@ -91,12 +81,12 @@ export function SpendingPageView({
               onChange={(e) => setEntry(e.target.value)}
             />
           </label>
-          <Button disabled={loading || !!editing || monthEditing}>Show period</Button>
+          <Button disabled={loading}>Show period</Button>
         </form>
-        <Button disabled={loading || !!editing || monthEditing} onClick={() => move(1)}>
+        <Button disabled={loading} onClick={() => move(1)}>
           Next period
         </Button>
-        <Button disabled={loading || !!editing || monthEditing} onClick={() => void load()}>
+        <Button disabled={loading} onClick={() => void load()}>
           Refresh spending
         </Button>
       </ActionGroup>
@@ -111,12 +101,8 @@ export function SpendingPageView({
       {data && !loading && data.periodType === period && (!start || data.periodStart === start) && (
         <>
           <label>
-            <Checkbox
-              disabled={!!editing || monthEditing}
-              checked={all}
-              onChange={(e) => setAll(e.target.checked)}
-            />{" "}
-            Show all categories
+            <Checkbox checked={all} onChange={(e) => setAll(e.target.checked)} /> Show all
+            categories
           </label>
           {!data.currencies.length && (
             <>
@@ -152,54 +138,43 @@ export function SpendingPageView({
             return (
               <section key={summary.currency}>
                 <h2>{summary.currency}</h2>
-                <div className="panel">
+                <div className="spending-summary">
                   <p>
-                    Expenses: {summary.expenses} · Refunds: {summary.refunds} · Net spending:{" "}
-                    {summary.netSpending} {summary.currency}
+                    Expenses: {displayAmount(summary.expenses)} · Refunds:{" "}
+                    {displayAmount(summary.refunds)} · Net spending:{" "}
+                    {displayAmount(summary.netSpending)} {summary.currency}
                   </p>
                   <p>
-                    Uncategorized net spending: {summary.uncategorized} · Without an applicable
-                    budget: {summary.unbudgeted} {summary.currency}
+                    Uncategorized net spending: {displayAmount(summary.uncategorized)} · Without an
+                    applicable budget: {displayAmount(summary.unbudgeted)} {summary.currency}
                   </p>
                 </div>
-                <h3>Expenses before refunds</h3>
-                <ExpensesChart
-                  currency={summary.currency}
-                  slices={slices}
-                  onSelect={(id) => {
-                    if (id) setExpanded((ids) => (ids.includes(id) ? ids : [...ids, id]));
-                    requestAnimationFrame(() => {
-                      document.getElementById(branchId(id))?.focus();
-                      document.getElementById(branchId(id))?.scrollIntoView({ block: "nearest" });
-                    });
-                  }}
-                />
+                <div className="spending-chart-section">
+                  <h3>Expenses before refunds</h3>
+                  <ExpensesChart
+                    currency={summary.currency}
+                    slices={slices}
+                    onSelect={(id) => {
+                      if (id) setExpanded((ids) => (ids.includes(id) ? ids : [...ids, id]));
+                      requestAnimationFrame(() => {
+                        document.getElementById(branchId(id))?.focus();
+                        document.getElementById(branchId(id))?.scrollIntoView({ block: "nearest" });
+                      });
+                    }}
+                  />
+                </div>
                 <SpendingHierarchyTable
                   data={data}
                   all={all}
-                  editing={editing}
-                  setEditing={setEditing}
                   activityLoading={activityLoading}
-                  monthEditing={monthEditing}
-                  setMonthEditing={setMonthEditing}
-                  onExpired={onExpired}
-                  load={load}
                   expanded={expanded}
                   setExpanded={setExpanded}
                   openActivity={openActivity}
                   summary={summary}
-                  SpendingLimitEditor={SpendingLimitEditor}
-                  MonthlyLimitBreakdown={MonthlyLimitBreakdown}
                 />
               </section>
             );
           })}
-          <BudgetCopyTool
-            key={`${data.periodType}-${data.periodStart}`}
-            periodType={data.periodType}
-            periodStart={data.periodStart}
-            onExpired={onExpired}
-          />
         </>
       )}
       {activityLoading && <LoadingIndicator role="status">Loading activity…</LoadingIndicator>}
@@ -220,8 +195,8 @@ export function SpendingPageView({
           {!activity.items.length && <p>No supporting expenses or refunds.</p>}
           {activity.items.map((o) => (
             <p key={o.id}>
-              {o.transactionDate} · {o.kind} · {o.amount} {o.currency} · {o.description} ·{" "}
-              {o.category?.parentName ? `${o.category.parentName} → ` : ""}
+              {o.transactionDate} · {o.kind} · {displayAmount(o.amount)} {o.currency} ·{" "}
+              {o.description} · {o.category?.parentName ? `${o.category.parentName} → ` : ""}
               {o.category?.name}
               {o.category && !o.category.available ? " (archived branch)" : ""} ·{" "}
               <Link href={`#/accounts/${o.accountId}`}>Open account</Link>

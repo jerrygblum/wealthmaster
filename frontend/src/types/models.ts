@@ -46,7 +46,17 @@ export type CreateAccount = {
   balanceMeaning: BalanceMeaning;
 };
 export type CategoryType = "INCOME" | "SPENDING";
-export type CategoryInput = { name: string; type: CategoryType; parentId: string | null };
+export type CategoryInput = {
+  normalLimit?: {
+    mode: BudgetMode;
+    limit: string | null;
+    expected: BudgetReference | null;
+    expectedPreferencesVersion: number;
+  };
+  name: string;
+  type: CategoryType;
+  parentId: string | null;
+};
 export type Category = CategoryInput & {
   id: string;
   active: boolean;
@@ -95,6 +105,7 @@ export type CurrentNetWorth = {
 };
 export type SpendingAmounts = { expenses: string; refunds: string; netSpending: string };
 export type SpendingReport = {
+  defaultCurrency: string | null;
   periodType: BudgetPeriod;
   periodStart: string;
   categories: Category[];
@@ -107,7 +118,6 @@ export type SpendingReport = {
   currencies: (SpendingAmounts & { currency: string; uncategorized: string; unbudgeted: string })[];
   limits: BudgetComparison[];
   businessDate: string;
-  settings: BudgetSetting[];
 };
 export type BudgetReference = { id: string; version: number };
 export type BudgetMode = "NONE" | "MONTH" | "YEAR";
@@ -118,6 +128,8 @@ export type BudgetSetting = {
   mode: BudgetMode;
   limit: string | null;
   version: number;
+  monthlyLimit: string | null;
+  yearlyLimit: string | null;
 };
 export type BudgetSettings = { businessDate: string; items: BudgetSetting[] };
 export type BudgetComparison = {
@@ -125,62 +137,17 @@ export type BudgetComparison = {
   currency: string;
   periodType: BudgetPeriod;
   periodStart: string;
-  source: "NORMAL" | "EXCEPTION" | "MONTHLY_ROLLUP";
   limit: string;
   actual: string;
   remaining: string;
   percentage: string | null;
   overBudget: boolean;
-  usageStart: string;
-  usageEnd: string | null;
-  currentPeriod: boolean;
   available: boolean;
-  settingReference: BudgetReference | null;
-  overrideReference: BudgetReference | null;
-  accruedMonths: number;
-  coveredMonths: number;
-};
-export type EffectiveLimitInput = {
-  categoryId: string;
-  currency: string;
-  periodType: BudgetPeriod;
-  periodStart: string;
-  limit?: string;
-  scope: "PERIOD" | "NORMAL";
-  expectedSetting: BudgetReference | null;
-  expectedOverride: BudgetReference | null;
-};
-export type MonthlyBreakdown = {
-  businessDate: string;
-  setting: BudgetSetting | null;
-  items: { periodStart: string; accrued: boolean; comparison: BudgetComparison | null }[];
 };
 export type BudgetPeriod = "MONTH" | "YEAR";
-export type Budget = {
-  id: string;
-  categoryId: string;
-  categoryName: string;
-  parentId: string | null;
-  parentName: string | null;
-  currency: string;
-  periodType: BudgetPeriod;
-  periodStart: string;
-  limit: string;
-  actual: string;
-  remaining: string;
-  percentage: string | null;
-  overBudget: boolean;
-  available: boolean;
+
+export type Preferences = {
+  defaultCurrency: string | null;
   version: number;
-};
-export type BudgetReport = {
-  periodType: BudgetPeriod;
-  periodStart: string;
-  items: Budget[];
-  currencies: {
-    currency: string;
-    netSpending: string;
-    uncategorized: string;
-    unbudgeted: string;
-  }[];
+  hasLimitsToReset: boolean;
 };

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { api, ApiError } from "../../services/api";
 import type { SpendingReport } from "../../types/models";
@@ -42,22 +42,27 @@ const report: SpendingReport = {
   ],
   limits: [],
   businessDate: "2026-10-05",
-  settings: [],
+  defaultCurrency: null,
 };
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(api.spending).mockResolvedValue(report);
 });
-it("shows spending without limits with gross expense chart and exact net table", async () => {
+it("shows spending without limits with gross expense chart and rounded net table", async () => {
   render(<SpendingPage onExpired={() => {}} />);
   await screen.findByText("Expenses before refunds");
   expect(screen.getByRole("img")).toHaveAccessibleName("Expenses before refunds — CHF");
   expect(screen.getByText("Food (inclusive) (archived branch)")).toBeVisible();
   expect(screen.queryByText("Empty (inclusive)")).toBeNull();
-  fireEvent.click(screen.getByText("Expand Food"));
+  fireEvent.click(screen.getByRole("button", { name: "Expand Food" }));
   expect(screen.getByText("↳ Groceries (archived branch)")).toBeVisible();
-  expect(screen.getAllByText("-9.87654322")).toHaveLength(2);
-  expect(screen.getAllByRole("link", { name: "Normal setting" })[0]).toHaveAttribute(
+  expect(screen.getAllByText("-9.88")).toHaveLength(2);
+  const childRow = screen.getByText("↳ Groceries (archived branch)").closest("tr")!;
+  expect(within(childRow).queryByRole("button", { name: "Edit limit" })).toBeNull();
+  expect(within(childRow).queryByRole("link", { name: "Manage limit" })).toBeNull();
+  expect(within(childRow).getByText("Included in main category")).toBeVisible();
+  expect(within(childRow).getByRole("button", { name: "Supporting activity" })).toBeVisible();
+  expect(screen.getAllByRole("link", { name: "Manage limit" })[0]).toHaveAttribute(
     "href",
     "#/categories?categoryId=food",
   );
@@ -73,7 +78,7 @@ it("keeps refund-only rows without pie slices", async () => {
   render(<SpendingPage onExpired={() => {}} />);
   expect(await screen.findByText(/No expenses to chart/)).toBeVisible();
   expect(screen.queryByRole("img")).toBeNull();
-  expect(screen.getByText("20.00000000")).toBeVisible();
+  expect(screen.getByText("20.00")).toBeVisible();
 });
 it("supports activity without a limit, pagination and account links", async () => {
   vi.mocked(api.spendingActivity).mockResolvedValue({
@@ -98,7 +103,7 @@ it("supports activity without a limit, pagination and account links", async () =
   });
   render(<SpendingPage onExpired={() => {}} />);
   await screen.findByText("Expenses before refunds");
-  fireEvent.click(screen.getAllByText("Supporting activity")[0]);
+  fireEvent.click(screen.getAllByRole("button", { name: "Supporting activity" })[0]);
   expect(await screen.findByRole("link", { name: "Open account" })).toHaveAttribute(
     "href",
     "#/accounts/account",
@@ -108,7 +113,7 @@ it("supports activity without a limit, pagination and account links", async () =
     expect(api.spendingActivity).toHaveBeenCalledWith("MONTH", "2026-10-01", "CHF", "food", 1),
   );
   fireEvent.click(screen.getByText("Close activity"));
-  fireEvent.click(screen.getAllByText("Supporting activity")[1]);
+  fireEvent.click(screen.getAllByRole("button", { name: "Supporting activity" })[1]);
   await waitFor(() =>
     expect(api.spendingActivity).toHaveBeenCalledWith("MONTH", "2026-10-01", "CHF", null, 0),
   );
@@ -127,4 +132,56 @@ it("retains independent period input, retries errors and handles expired session
   vi.mocked(api.spending).mockRejectedValueOnce(new ApiError(401, "Expired"));
   fireEvent.click(screen.getByText("Retry / reload spending"));
   await waitFor(() => expect(expired).toHaveBeenCalledOnce());
+});
+
+it("shows selected-period allowances and management links without override controls", async () => {
+  vi.mocked(api.spending).mockResolvedValue({
+    ...report,
+    limits: [
+      {
+        categoryId: "food",
+        currency: "CHF",
+        periodType: "MONTH",
+        periodStart: "2026-10-01",
+        limit: "100",
+        actual: "-9.87654322",
+        remaining: "109.87654322",
+        percentage: "-9.88",
+        overBudget: false,
+        available: false,
+      },
+    ],
+  });
+  render(<SpendingPage onExpired={() => {}} />);
+  await screen.findByText("100.00 CHF");
+  expect(screen.getByText("2026-10 · Monthly")).toBeVisible();
+  expect(screen.queryByRole("button", { name: "Edit limit" })).toBeNull();
+  expect(screen.queryByText("Spending used")).toBeNull();
+  expect(screen.getByRole("link", { name: "Manage limit" })).toHaveAttribute(
+    "href",
+    "#/categories?categoryId=food",
+  );
+  vi.mocked(api.spending).mockResolvedValue({
+    ...report,
+    periodType: "YEAR",
+    periodStart: "2026-01-01",
+    limits: [
+      {
+        categoryId: "food",
+        currency: "CHF",
+        periodType: "YEAR",
+        periodStart: "2026-01-01",
+        limit: "1200",
+        actual: "-9.87654322",
+        remaining: "1209.87654322",
+        percentage: "-0.82",
+        overBudget: false,
+        available: false,
+      },
+    ],
+  });
+  fireEvent.change(screen.getByLabelText("Period type"), { target: { value: "YEAR" } });
+  await screen.findByText("1’200.00 CHF");
+  expect(screen.getByText("2026 · Yearly")).toBeVisible();
+  expect(screen.queryByText(/Edit months/)).toBeNull();
 });

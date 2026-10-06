@@ -7,9 +7,14 @@ export const accountTypes: Record<AccountType, string> = {
   INVESTMENT: "Investment cash",
   OTHER: "Other",
 };
-// Format native decimal strings without converting financial values to binary floating point.
+// Round decimal strings for display only; stored values keep their original precision.
 export function displayAmount(value: string) {
-  const [whole, fraction = ""] = value.split(".");
-  const decimals = fraction.replace(/0+$/, "");
-  return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, "’")}${decimals ? `.${decimals}` : ""}`;
+  const negative = value.startsWith("-");
+  const [whole, fraction = ""] = value.replace(/^[+-]/, "").split(".");
+  const digits = fraction.padEnd(3, "0");
+  let cents = BigInt(whole || "0") * 100n + BigInt(digits.slice(0, 2));
+  if (digits[2] >= "5") cents += 1n;
+  const integer = (cents / 100n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "’");
+  const decimals = (cents % 100n).toString().padStart(2, "0");
+  return `${negative && cents !== 0n ? "-" : ""}${integer}.${decimals}`;
 }

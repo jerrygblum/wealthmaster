@@ -85,17 +85,17 @@ Accounts support editing, archive/restore, and confirmed permanent deletion when
 
 ### Categories and budgets
 
-The implemented category slice supports user-owned income and spending categories with one subcategory level. Either level is optional on ordinary activity; refunds use spending categories and transfers have none. Users can start empty or explicitly install an editable starter set once. Category management supports rename, archive/restore, and deletion only when never used and without children. Historical use locks type and parent even after clearing or deleting activity. Archiving a parent hides the entire branch from new assignment without changing child active flags. Renames update current labels; audit snapshots preserve prior labels. Compact spending-category cards set one normal monthly or yearly limit per currency, or No limit. Spending shows monthly/yearly expense distribution, refunds, exact net spending and effective comparisons, even without limits. Period exceptions are edited next to comparisons. Rules and bulk assignment follow later.
+The implemented category slice supports user-owned income and spending categories with one subcategory level. Either level is optional on ordinary activity; refunds use spending categories and transfers have none. Users can start empty or explicitly install an editable starter set once. Categories support rename, archive/restore, and deletion only when never used and without children. Historical ledger use locks type and parent. Archiving a main category hides its branch from new assignment without changing child active flags.
 
-- User-defined categories/subcategories.
-- Normal limits apply from the current business month/year forward. Dated revisions preserve earlier periods; specific monthly/yearly exceptions take precedence and survive normal changes. Zero limits are distinct from No limit; no rollover or FX conversion.
-- Parent limits include direct spending and immediate children; child limits may coexist and overlapping allowances are never summed.
-- Actuals use transaction-date expenses minus refunds, including archived accounts/categories. Refunds may make net spending negative.
-- Currency summaries include net, uncategorized and spending without an applicable budget, counting covered activity once.
-- Explicit exceptions can be copied to a different period; existing targets and archived branches are skipped with reasons. Normal settings are never copied.
-- Budget history permanently prevents category deletion and locks category type/parent even after limit deletion.
-- Actual, remaining, percentage used, over-budget state.
-- Optional rollover is a later capability.
+- Main spending categories have one current limit, entered as monthly or yearly, saved atomically with category details. Monthly × 12 gives yearly; yearly ÷ 12 gives monthly. No limit differs from zero. Subcategory spending counts toward its main category’s limit; subcategories have no limit controls.
+- The current limit applies to every selected month/year, including past periods. Changes replace the current allowance; there are no period overrides, dated limit revisions, rollover or accrued allowances. A selected year always uses the full yearly allowance, even in the current or a future year.
+- Spending compares the selected period’s expenses minus refunds with that period’s allowance. Current activity stops at the business date; future periods have zero activity. Archived accounts/categories remain included, and refunds can make net spending negative.
+- Limits use the explicitly selected default currency in Settings. Foreign spending remains separate and excluded from default-currency comparisons until historical FX is implemented. Changing currency requires confirmation when limits exist and clears all current limits, including their use in past reports.
+- Categories show both linked allowances. One amount and input unit are editable; changing the displayed unit preserves the original amount unless the amount itself is edited. Monetary displays use two decimals, while source values retain up to eight fractional digits. Derived yearly-to-monthly limits use eight-place HALF_UP division, always from the original amount.
+- Spending is read-only for limits, with Manage limit links to Categories. Supporting activity is available without a limit. Actual, remaining, percentage and textual over-budget status are shown. Zero limits have no percentage.
+- Net, uncategorized and unbudgeted summaries count each operation once. Main-category limits include direct and immediate child spending; inclusive parents are not added again to child rows.
+- Current-setting history permanently prevents category deletion and locks type/parent, including after selecting No limit. Failed requests retain form input; category, setting and preferences versions detect stale edits.
+- Pre-production V010 removes subcategory limits and dependent references. V011 removes every period override, override reference and dated setting revision. Current main-category settings, their references, categories, ledger data and audit records remain intact. Imports, recurring expectations, rules and bulk assignment remain deferred.
 
 ### Expected/fixed transactions
 Expected costs/income are separate from actual transactions.
@@ -159,7 +159,7 @@ Track:
 Market prices may be delayed depending on provider/licensing. UI must show quote freshness.
 
 ### Multi-currency
-- User has a base currency.
+- User explicitly chooses a default currency in Settings; no currency is inferred for existing or new owners. Category limits use it.
 - Every financial amount preserves native currency.
 - Historical reporting uses historical FX where required.
 - Current net worth uses current/latest available FX.
@@ -233,4 +233,4 @@ Outcome: a user can trust and explain the current value and understand how it ch
 - Health checks and useful structured logs.
 - Security updates/dependency maintenance considered part of product ownership.
 
-Spending uses `#/spending`; `#/planning` remains a compatibility alias. Net worth remains the landing page. Pie slices represent top-level inclusive expenses plus uncategorized expenses before refunds, counting each expense once. Refund-only periods retain table rows with an explanatory chart empty state. Parents expand into direct and child amounts; zero-activity categories are optional. Normal-setting links select the corresponding category. Current-period exception editors offer Only this period or Make this the normal limit; promotion removes that same exception atomically. Monthly views use monthly exceptions/defaults first, otherwise annual exceptions/defaults compared with year-to-date spending. Yearly views use annual exceptions/defaults first, otherwise sum monthly allowances through the current month (full current-month allowance). Rolled-up totals are read-only with an Edit months breakdown. Spending used and its dates identify comparisons that differ from displayed period activity.
+Spending uses `#/spending`; `#/planning` remains a compatibility alias. Net worth remains the landing page. Pie slices represent top-level inclusive expenses plus uncategorized expenses before refunds, counting each expense once. Refund-only periods retain table rows with an explanatory chart empty state. Parents expand into direct and child amounts; zero-activity categories are optional. Manage limit links select the corresponding main category. Month/year selection changes both the activity period and its linked allowance.

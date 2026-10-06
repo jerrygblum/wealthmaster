@@ -54,12 +54,11 @@ test("manage categories, categorize expenses/refunds, retain archived history an
     await page.getByRole("button", { name: "Save activity" }).click();
     await expect(page.getByRole("heading", { name: entry.description, exact: true })).toBeVisible();
   }
-  await expect(page.locator(".balance")).toHaveText("CHF 92.00000000");
+  await expect(page.locator(".balance")).toHaveText("CHF 92.00");
   await page.getByRole("link", { name: "Categories", exact: true }).click();
   const child = page.getByRole("article").filter({
     has: page.getByRole("heading", { name: "Synthetic Food → Synthetic Groceries", exact: true }),
   });
-  await child.locator(".category-actions summary").click();
   await child.getByRole("button", { name: "Edit category" }).click();
   await expect(page.getByLabel("Parent category (optional)")).toBeDisabled();
   await page.getByLabel("Category name").fill("Synthetic Shopping");
@@ -70,14 +69,12 @@ test("manage categories, categorize expenses/refunds, retain archived history an
   const food = page
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: "Synthetic Food", exact: true }) });
-  await food.locator(".category-actions summary").click();
   await food.getByRole("button", { name: "Archive", exact: true }).click();
   await page.getByRole("button", { name: "Archived categories" }).click();
   await expect(page.getByText("Unavailable while parent is archived")).toBeVisible();
   const archivedChild = page.getByRole("article").filter({
     has: page.getByRole("heading", { name: "Synthetic Food → Synthetic Shopping", exact: true }),
   });
-  await archivedChild.locator(".category-actions summary").click();
   await expect(archivedChild.getByRole("button", { name: "Delete", exact: true })).toBeDisabled();
   await openAccounts(page);
   await page
@@ -112,17 +109,16 @@ test("manage categories, categorize expenses/refunds, retain archived history an
   await page.getByLabel("Category (optional)").selectOption("");
   await page.getByRole("button", { name: "Save activity" }).click();
   await expect(corrected.getByText("Category: Uncategorized")).toBeVisible();
-  await expect(page.locator(".balance")).toHaveText("CHF 92.00000000");
+  await expect(page.locator(".balance")).toHaveText("CHF 92.00");
   await page.getByRole("link", { name: "Net worth", exact: true }).click();
-  await expect(page.locator(".net-worth-total")).toHaveText("CHF 92");
+  await expect(page.locator(".net-worth-total")).toHaveText("CHF 92.00");
   await page.reload();
-  await expect(page.locator(".net-worth-total")).toHaveText("CHF 92");
+  await expect(page.locator(".net-worth-total")).toHaveText("CHF 92.00");
   await page.getByRole("link", { name: "Categories", exact: true }).click();
   await page.getByRole("button", { name: "Archived categories" }).click();
   const archivedFood = page
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: "Synthetic Food", exact: true }) });
-  await archivedFood.locator(".category-actions summary").click();
   await archivedFood.getByRole("button", { name: "Restore", exact: true }).click();
   await page.getByRole("button", { name: "Active categories" }).click();
   await expect(

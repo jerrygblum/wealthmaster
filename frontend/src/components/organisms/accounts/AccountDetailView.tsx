@@ -1,3 +1,4 @@
+import { displayAmount } from "../../../utils/accountPresentation";
 import type { LedgerKind } from "../../../types/models";
 import type { AccountDetailViewModel } from "../../../types/viewModels";
 import { categoryLabel } from "../../../utils/categoryPresentation";
@@ -47,7 +48,11 @@ export function AccountDetailView({
           <h1>{account.name}</h1>
           <p className="balance">
             {account.currency}{" "}
-            {account.type === "CREDIT_CARD" && balance.startsWith("-") ? balance.slice(1) : balance}
+            {displayAmount(
+              account.type === "CREDIT_CARD" && balance.startsWith("-")
+                ? balance.slice(1)
+                : balance,
+            )}
           </p>
           <p>
             {account.type === "CREDIT_CARD" && balance.startsWith("-")
@@ -59,7 +64,7 @@ export function AccountDetailView({
           </p>
           <p>
             Opening {account.type === "INVESTMENT" ? "cash balance" : "balance"}: {account.currency}{" "}
-            {account.openingBalance} · {account.openingDate}
+            {displayAmount(account.openingBalance)} · {account.openingDate}
           </p>
           {!account.active && (
             <p className="notice">
@@ -316,7 +321,7 @@ export function AccountDetailView({
           <article className="panel" key={op.id}>
             <h3>{op.description}</h3>
             <p>
-              {op.transactionDate} · {op.kind} · {op.currency} {op.amount}
+              {op.transactionDate} · {op.kind} · {op.currency} {displayAmount(op.amount)}
             </p>
             {op.kind !== "TRANSFER" && (
               <p>

@@ -1,9 +1,4 @@
-import type { ReactNode } from "react";
 import type {
-  BudgetComparison,
-  BudgetPeriod,
-  BudgetReference,
-  Category,
   FactorKind,
   FinancialAccount,
   MfaSetup,
@@ -21,20 +16,8 @@ export type AccountFormProps = {
   onCreated: (account: FinancialAccount) => void;
   onExpired: () => void;
 };
-export type BudgetCopyToolProps = {
-  periodType: BudgetPeriod;
-  periodStart: string;
-  onExpired: () => void;
-};
 export type CategoriesPageProps = { user: User; onExpired: () => void; onLogout: () => void };
-export type CategoryLimitsProps = {
-  onExpired: () => void;
-  categories: Category[];
-  renderCategory: (category: Category) => ReactNode;
-  onChanged?: () => Promise<void>;
-  onBusyChange?: (busy: boolean) => void;
-  disabled?: boolean;
-};
+
 export type NetWorthPageProps = { user: User; onExpired: () => void; onLogout: () => void };
 export type MfaLoginProps = {
   onSession: (session: Session) => void;
@@ -62,29 +45,5 @@ export type RecoveryStepProps = {
   disabled: boolean;
   label: string;
   onConfirm: () => void;
-};
-export type SpendingLimitEditorProps = {
-  categoryId: string;
-  label: string;
-  currency: string;
-  periodType: BudgetPeriod;
-  periodStart: string;
-  comparison?: BudgetComparison | null;
-  settingReference: BudgetReference | null;
-  businessDate: string;
-  available: boolean;
-  onSaved: () => Promise<void>;
-  onCancel: () => void;
-  onExpired: () => void;
-};
-export type MonthlyLimitBreakdownProps = {
-  categoryId: string;
-  label: string;
-  currency: string;
-  year: number;
-  available: boolean;
-  onSaved: () => Promise<void>;
-  onExpired: () => void;
-  onEditingChange?: (editing: boolean) => void;
 };
 export type SpendingPageProps = { onExpired: () => void };

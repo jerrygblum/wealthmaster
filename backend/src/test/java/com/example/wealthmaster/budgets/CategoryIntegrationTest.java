@@ -64,8 +64,7 @@ class CategoryIntegrationTest {
     @BeforeEach void setup() {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         jdbc.update("DELETE FROM audit_events"); jdbc.update("DELETE FROM ledger_category_history"); jdbc.update("DELETE FROM ledger_account_history"); jdbc.update("DELETE FROM ledger_movements"); jdbc.update("DELETE FROM ledger_operations"); accounts.deleteAll();
-        jdbc.update("DELETE FROM budget_category_history"); jdbc.update("DELETE FROM spending_budgets");
-        jdbc.update("DELETE FROM budget_setting_category_history"); jdbc.update("DELETE FROM budget_setting_revisions"); jdbc.update("DELETE FROM budget_settings");
+        jdbc.update("DELETE FROM budget_setting_category_history"); jdbc.update("DELETE FROM budget_settings");
         jdbc.update("DELETE FROM categories WHERE parent_id IS NOT NULL"); jdbc.update("DELETE FROM categories"); jdbc.update("DELETE FROM category_owner_state");
     }
     String csrf(MockHttpSession session) throws Exception {

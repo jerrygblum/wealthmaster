@@ -3,7 +3,7 @@
   "info": {
     "title": "Wealth Master API",
     "version": "0.8.0",
-    "description": "Session authentication, mandatory production MFA, accounts, calculated cash balances, manual income/expenses/refunds, and same-currency paired transfers. Current net worth by native currency, including archived account cash balances. User-owned two-level income/spending categories and optional ledger assignment. Dated normal monthly/yearly limits, specific-period exceptions, native currency actuals and explicit exception copying. Spending distribution reports show expenses before refunds and exact net spending independently of limits."
+    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity and native-currency net worth. Main spending categories have one current linked monthly/yearly limit, saved with category CRUD. Spending compares selected-period net spending with its allowance, without overrides or historical limit revisions; gross expense distribution and supporting activity remain available without limits."
   },
   "servers": [
     {
@@ -1839,7 +1839,7 @@
             "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
           },
           "412": {
-            "description": "Stale category version"
+            "description": "Stale category, normal-limit or preferences version"
           },
           "428": {
             "description": "If-Match required"
@@ -1865,7 +1865,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Category details and optional current linked limit commit atomically. Omit normalLimit to preserve the setting. Only main spending categories accept limit changes. Expected setting/preferences versions supplement category If-Match; stale requests return 412. Currency comes from owner preferences. MONTH/YEAR defines the entered amount basis; both allowances apply to all report periods. No period overrides."
       }
     },
     "/categories/{id}": {
@@ -1903,7 +1904,7 @@
             "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
           },
           "412": {
-            "description": "Stale category version"
+            "description": "Stale category, normal-limit or preferences version"
           },
           "428": {
             "description": "If-Match required"
@@ -1949,7 +1950,7 @@
             }
           }
         },
-        "description": "Type and parent are locked after historical use or while children exist. Names remain editable, including archived branches."
+        "description": "Category details and optional current linked limit commit atomically. Omit normalLimit to preserve the setting. Only main spending categories accept limit changes. Expected setting/preferences versions supplement category If-Match; stale requests return 412. Currency comes from owner preferences. MONTH/YEAR defines the entered amount basis; both allowances apply to all report periods. No period overrides."
       },
       "delete": {
         "summary": "Delete an unused category without children",
@@ -2217,421 +2218,6 @@
         ]
       }
     },
-    "/budgets": {
-      "get": {
-        "summary": "Read spending limits and overlap-safe currency summaries",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetReport"
-                }
-              }
-            },
-            "headers": {
-              "Cache-Control": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "no-store"
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid decimal, currency, period or request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "CSRF or MFA restrictions"
-          },
-          "404": {
-            "description": "Missing, unowned or deleted budget/category"
-          },
-          "409": {
-            "description": "Duplicate live limit or unavailable category branch"
-          },
-          "412": {
-            "description": "Stale source/budget version; no writes committed"
-          },
-          "428": {
-            "description": "Quoted If-Match required"
-          }
-        },
-        "parameters": [
-          {
-            "name": "periodType",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "MONTH",
-                "YEAR"
-              ]
-            },
-            "description": "Defaults to MONTH"
-          },
-          {
-            "name": "periodStart",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "description": "Canonical first day; defaults to current business period"
-          }
-        ],
-        "description": "Explicit period exceptions plus resolved comparisons and overlap-safe summaries. Monthly exception/default takes precedence over annual exception/default. Annual comparisons use YTD spending; year views otherwise accrue monthly limits through the current month. Dated normal revisions preserve earlier periods. One owner-scoped repeatable-read snapshot; no-store."
-      },
-      "post": {
-        "summary": "Create an owned available spending-category limit",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Budget"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid decimal, currency, period or request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "CSRF or MFA restrictions"
-          },
-          "404": {
-            "description": "Missing, unowned or deleted budget/category"
-          },
-          "409": {
-            "description": "Duplicate live limit or unavailable category branch"
-          },
-          "412": {
-            "description": "Stale source/budget version; no writes committed"
-          },
-          "428": {
-            "description": "Quoted If-Match required"
-          }
-        },
-        "parameters": [
-          {
-            "name": "X-CSRF-TOKEN",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Fresh masked token from GET /auth/csrf."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BudgetInput"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/budgets/{id}": {
-      "parameters": [
-        {
-          "name": "id",
-          "in": "path",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
-      ],
-      "put": {
-        "summary": "Change limit only; fixed category/currency/period",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Budget"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid decimal, currency, period or request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "CSRF or MFA restrictions"
-          },
-          "404": {
-            "description": "Missing, unowned or deleted budget/category"
-          },
-          "409": {
-            "description": "Duplicate live limit or unavailable category branch"
-          },
-          "412": {
-            "description": "Stale source/budget version; no writes committed"
-          },
-          "428": {
-            "description": "Quoted If-Match required"
-          }
-        },
-        "parameters": [
-          {
-            "name": "X-CSRF-TOKEN",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Fresh masked token from GET /auth/csrf."
-          },
-          {
-            "name": "If-Match",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^\"[0-9]+\"$"
-            },
-            "description": "Quoted response version."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BudgetLimit"
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Soft-delete limit; permanent category references remain",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Success"
-          },
-          "400": {
-            "description": "Invalid decimal, currency, period or request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "CSRF or MFA restrictions"
-          },
-          "404": {
-            "description": "Missing, unowned or deleted budget/category"
-          },
-          "409": {
-            "description": "Duplicate live limit or unavailable category branch"
-          },
-          "412": {
-            "description": "Stale source/budget version; no writes committed"
-          },
-          "428": {
-            "description": "Quoted If-Match required"
-          }
-        },
-        "parameters": [
-          {
-            "name": "X-CSRF-TOKEN",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Fresh masked token from GET /auth/csrf."
-          },
-          {
-            "name": "If-Match",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^\"[0-9]+\"$"
-            },
-            "description": "Quoted response version."
-          }
-        ]
-      }
-    },
-    "/budgets/copy": {
-      "post": {
-        "summary": "Copy selected versioned limits to another period",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetCopyResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid decimal, currency, period or request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "CSRF or MFA restrictions"
-          },
-          "404": {
-            "description": "Missing, unowned or deleted budget/category"
-          },
-          "409": {
-            "description": "Duplicate live limit or unavailable category branch"
-          },
-          "412": {
-            "description": "Stale source/budget version; no writes committed"
-          },
-          "428": {
-            "description": "Quoted If-Match required"
-          }
-        },
-        "parameters": [
-          {
-            "name": "X-CSRF-TOKEN",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Fresh masked token from GET /auth/csrf."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BudgetCopy"
-              }
-            }
-          }
-        },
-        "description": "One source period and same period type required. All ownership/versions checked atomically before writes. Preserve existing targets and skip unavailable branches with explicit reasons. Source IDs are deduplicated."
-      }
-    },
-    "/budgets/{id}/activity": {
-      "get": {
-        "summary": "Supporting expenses/refunds in ledger activity order",
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActivityPage"
-                }
-              }
-            },
-            "headers": {
-              "Cache-Control": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "no-store"
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid decimal, currency, period or request"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "CSRF or MFA restrictions"
-          },
-          "404": {
-            "description": "Missing, unowned or deleted budget/category"
-          },
-          "409": {
-            "description": "Duplicate live limit or unavailable category branch"
-          },
-          "412": {
-            "description": "Stale source/budget version; no writes committed"
-          },
-          "428": {
-            "description": "Quoted If-Match required"
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 1000000,
-              "default": 0
-            }
-          }
-        ],
-        "description": "50 items ordered by transaction date descending, creation timestamp descending, ID; includes archived accounts/categories. Read-only repeatable snapshot."
-      }
-    },
     "/spending": {
       "get": {
         "summary": "Read spending distribution and selected-period comparisons",
@@ -2692,7 +2278,7 @@
             "description": "Canonical first day; defaults to current business period"
           }
         ],
-        "description": "One read-only repeatable-read snapshot, owner-scoped and no-store. Includes every spending category and archived activity; excludes deleted operations, income, transfers and opening balances. Gross expenses and refunds remain separate; net spending drives limits. Direct amounts belong to the assigned category; inclusive amounts add immediate children. Pie uses root inclusive expenses plus uncategorized, counting each expense once. No budgets are required. Effective comparisons include dated defaults, period exceptions and accrued monthly totals; usage dates and business date are explicit. Activity is capped at the business date."
+        "description": "Owner-scoped no-store REPEATABLE_READ snapshot. Includes all spending categories and archived expense/refund activity; excludes deleted transactions, income, transfers and opening balances. Pie uses root inclusive gross expenses plus uncategorized once. Comparisons use current linked category limits for the selected period: monthly allowance/month activity or full yearly allowance/year activity, including past periods. Current activity is capped at the business date; future activity is zero without prorating limits. No limits are required."
       }
     },
     "/spending/activity": {
@@ -2792,7 +2378,7 @@
     },
     "/budget-settings": {
       "get": {
-        "summary": "Read owner normal settings and business date; no-store repeatable-read",
+        "summary": "List current linked monthly/yearly category limits",
         "responses": {
           "400": {
             "description": "Invalid amount, currency, canonical period or promotion scope"
@@ -2835,10 +2421,11 @@
           {
             "session": []
           }
-        ]
+        ],
+        "description": "Owner-scoped current category settings. Each top-level spending category has one entered amount and MONTH/YEAR input basis, with both allowances derived. NONE disables both; zero enables both. No period overrides or dated revisions. Changes affect every reporting period. Writes require expected setting version/absence, use selected default currency, preserve setting references and audit, and run under the owner category lock. Archived existing limits may change input basis; new enabled limits require restoration."
       },
       "put": {
-        "summary": "Save dated normal setting from current period onward; expected head reference or absence",
+        "summary": "Save one current category limit with its input basis and expected version",
         "responses": {
           "400": {
             "description": "Invalid amount, currency, canonical period or promotion scope"
@@ -2883,168 +2470,93 @@
           {
             "session": []
           }
-        ]
+        ],
+        "description": "Owner-scoped current category settings. Each top-level spending category has one entered amount and MONTH/YEAR input basis, with both allowances derived. NONE disables both; zero enables both. No period overrides or dated revisions. Changes affect every reporting period. Writes require expected setting version/absence, use selected default currency, preserve setting references and audit, and run under the owner category lock. Archived existing limits may change input basis; new enabled limits require restoration."
       }
     },
-    "/budgets/effective-limit": {
-      "put": {
-        "summary": "Save period exception or atomically promote current-period limit to normal",
-        "responses": {
-          "400": {
-            "description": "Invalid amount, currency, canonical period or promotion scope"
-          },
-          "401": {
-            "description": "Authenticated MFA session required"
-          },
-          "403": {
-            "description": "CSRF rejected"
-          },
-          "404": {
-            "description": "Missing or unowned category/exception"
-          },
-          "409": {
-            "description": "Unavailable category branch"
-          },
-          "412": {
-            "description": "Expected setting/exception version or absence changed; no writes committed"
-          },
-          "204": {
-            "description": "Success"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EffectiveLimitInput"
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ]
-      },
-      "delete": {
-        "summary": "Remove explicit exception and restore applicable default; permanent history retained",
-        "responses": {
-          "400": {
-            "description": "Invalid amount, currency, canonical period or promotion scope"
-          },
-          "401": {
-            "description": "Authenticated MFA session required"
-          },
-          "403": {
-            "description": "CSRF rejected"
-          },
-          "404": {
-            "description": "Missing or unowned category/exception"
-          },
-          "409": {
-            "description": "Unavailable category branch"
-          },
-          "412": {
-            "description": "Expected setting/exception version or absence changed; no writes committed"
-          },
-          "204": {
-            "description": "Success"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EffectiveLimitInput"
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ]
-      }
-    },
-    "/budgets/monthly-breakdown": {
+    "/users/me/preferences": {
       "get": {
-        "summary": "Read twelve monthly comparisons for an owned category/currency/year; no-store",
+        "summary": "Read owner currency preferences",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Owner-scoped repeatable-read snapshot. Cache-Control: no-store. Accessible only after required MFA.",
         "responses": {
-          "400": {
-            "description": "Invalid amount, currency, canonical period or promotion scope"
-          },
-          "401": {
-            "description": "Authenticated MFA session required"
-          },
-          "403": {
-            "description": "CSRF rejected"
-          },
-          "404": {
-            "description": "Missing or unowned category/exception"
-          },
-          "409": {
-            "description": "Unavailable category branch"
-          },
-          "412": {
-            "description": "Expected setting/exception version or absence changed; no writes committed"
-          },
           "200": {
             "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MonthlyBreakdown"
+                  "$ref": "#/components/schemas/Preferences"
                 }
               }
-            },
-            "headers": {
-              "Cache-Control": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "no-store"
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "categoryId",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
             }
           },
-          {
-            "name": "currency",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
+          "401": {
+            "description": "Authentication required"
           },
-          {
-            "name": "year",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 9999
-            }
+          "403": {
+            "description": "MFA required"
           }
-        ],
+        }
+      },
+      "put": {
+        "summary": "Set default currency and reset applicable limits atomically",
         "security": [
           {
             "session": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesInput"
+              }
+            }
+          }
+        },
+        "description": "Requires expected preferences version and confirmation when current limits exist. Currency changes disable all current category limits, including their use in past reports; preserve ledger, setting references and audit. No FX conversion. Unchanged currency saves do not reset limits. Reset, preferences and audit commit atomically.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ISO currency or input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "409": {
+            "description": "Confirm clearing limits and entering them again in the new currency"
+          },
+          "412": {
+            "description": "Stale preferences version"
+          }
+        }
       }
     }
   },
@@ -3842,6 +3354,10 @@
               "null"
             ],
             "format": "uuid"
+          },
+          "normalLimit": {
+            "$ref": "#/components/schemas/CategoryNormalLimit",
+            "description": "Optional current linked limit for main spending categories, saved atomically with category details; omission preserves the setting. MONTH/YEAR is the input basis; current limits apply to every reporting period. Currency comes from owner preferences."
           }
         }
       },
@@ -3960,286 +3476,6 @@
           }
         ]
       },
-      "BudgetInput": {
-        "type": "object",
-        "required": [
-          "categoryId",
-          "currency",
-          "periodType",
-          "periodStart",
-          "limit"
-        ],
-        "properties": {
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "currency": {
-            "type": "string",
-            "pattern": "^[A-Z]{3}$",
-            "description": "Valid ISO 4217 currency"
-          },
-          "periodType": {
-            "type": "string",
-            "enum": [
-              "MONTH",
-              "YEAR"
-            ]
-          },
-          "periodStart": {
-            "type": "string",
-            "format": "date"
-          },
-          "limit": {
-            "type": "string",
-            "pattern": "^[0-9]{1,20}(\\.[0-9]{1,8})?$"
-          }
-        }
-      },
-      "BudgetLimit": {
-        "type": "object",
-        "required": [
-          "limit"
-        ],
-        "properties": {
-          "limit": {
-            "type": "string",
-            "pattern": "^[0-9]{1,20}(\\.[0-9]{1,8})?$"
-          }
-        }
-      },
-      "Budget": {
-        "type": "object",
-        "required": [
-          "id",
-          "categoryId",
-          "categoryName",
-          "parentId",
-          "parentName",
-          "currency",
-          "periodType",
-          "periodStart",
-          "limit",
-          "actual",
-          "remaining",
-          "percentage",
-          "overBudget",
-          "available",
-          "version"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "categoryName": {
-            "type": "string"
-          },
-          "parentId": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "uuid"
-          },
-          "parentName": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "currency": {
-            "type": "string"
-          },
-          "periodType": {
-            "type": "string",
-            "enum": [
-              "MONTH",
-              "YEAR"
-            ]
-          },
-          "periodStart": {
-            "type": "string",
-            "format": "date"
-          },
-          "limit": {
-            "type": "string"
-          },
-          "actual": {
-            "type": "string"
-          },
-          "remaining": {
-            "type": "string"
-          },
-          "percentage": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Two decimal places, HALF_UP; null for zero limits"
-          },
-          "overBudget": {
-            "type": "boolean"
-          },
-          "available": {
-            "type": "boolean"
-          },
-          "version": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "BudgetSummary": {
-        "type": "object",
-        "required": [
-          "currency",
-          "netSpending",
-          "uncategorized",
-          "unbudgeted"
-        ],
-        "properties": {
-          "currency": {
-            "type": "string"
-          },
-          "netSpending": {
-            "type": "string"
-          },
-          "uncategorized": {
-            "type": "string"
-          },
-          "unbudgeted": {
-            "type": "string"
-          }
-        }
-      },
-      "BudgetReport": {
-        "type": "object",
-        "required": [
-          "periodType",
-          "periodStart",
-          "items",
-          "currencies"
-        ],
-        "properties": {
-          "periodType": {
-            "type": "string",
-            "enum": [
-              "MONTH",
-              "YEAR"
-            ]
-          },
-          "periodStart": {
-            "type": "string",
-            "format": "date"
-          },
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Budget"
-            }
-          },
-          "currencies": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BudgetSummary"
-            }
-          },
-          "businessDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "comparisons": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BudgetComparison"
-            }
-          }
-        }
-      },
-      "BudgetSource": {
-        "type": "object",
-        "required": [
-          "id",
-          "version"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "version": {
-            "type": "integer",
-            "minimum": 0,
-            "format": "int64"
-          }
-        }
-      },
-      "BudgetCopy": {
-        "type": "object",
-        "required": [
-          "sources",
-          "targetPeriodStart"
-        ],
-        "properties": {
-          "sources": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BudgetSource"
-            },
-            "minItems": 1
-          },
-          "targetPeriodStart": {
-            "type": "string",
-            "format": "date"
-          }
-        }
-      },
-      "BudgetSkip": {
-        "type": "object",
-        "required": [
-          "id",
-          "reason"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "reason": {
-            "type": "string",
-            "enum": [
-              "TARGET_EXISTS",
-              "CATEGORY_UNAVAILABLE"
-            ]
-          }
-        }
-      },
-      "BudgetCopyResult": {
-        "type": "object",
-        "required": [
-          "created",
-          "skipped"
-        ],
-        "properties": {
-          "created": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Budget"
-            }
-          },
-          "skipped": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BudgetSkip"
-            }
-          }
-        }
-      },
       "SpendingAmounts": {
         "type": "object",
         "required": [
@@ -4331,7 +3567,7 @@
           "currencies",
           "limits",
           "businessDate",
-          "settings"
+          "defaultCurrency"
         ],
         "properties": {
           "periodType": {
@@ -4373,11 +3609,12 @@
             "type": "string",
             "format": "date"
           },
-          "settings": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BudgetSetting"
-            }
+          "defaultCurrency": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Owner preference from the report snapshot; currencies remain separate without FX."
           }
         }
       },
@@ -4406,7 +3643,9 @@
           "currency",
           "mode",
           "limit",
-          "version"
+          "version",
+          "monthlyLimit",
+          "yearlyLimit"
         ],
         "properties": {
           "id": {
@@ -4442,6 +3681,20 @@
           "version": {
             "type": "integer",
             "format": "int64"
+          },
+          "monthlyLimit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Derived from the canonical entered amount/basis; null for NONE. Yearly division uses eight-place HALF_UP rounding. Decimal string with no aggregate integer digit limit."
+          },
+          "yearlyLimit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Derived from the canonical entered amount/basis; null for NONE. Yearly division uses eight-place HALF_UP rounding. Decimal string with no aggregate integer digit limit."
           }
         }
       },
@@ -4510,74 +3763,6 @@
           }
         }
       },
-      "EffectiveLimitInput": {
-        "type": "object",
-        "required": [
-          "categoryId",
-          "currency",
-          "periodType",
-          "periodStart",
-          "scope"
-        ],
-        "properties": {
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "currency": {
-            "type": "string"
-          },
-          "periodType": {
-            "type": "string",
-            "enum": [
-              "MONTH",
-              "YEAR"
-            ]
-          },
-          "periodStart": {
-            "type": "string",
-            "format": "date"
-          },
-          "limit": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "PERIOD",
-              "NORMAL"
-            ]
-          },
-          "expectedSetting": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BudgetReference"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "expectedOverride": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BudgetReference"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
       "BudgetComparison": {
         "type": "object",
         "required": [
@@ -4585,20 +3770,12 @@
           "currency",
           "periodType",
           "periodStart",
-          "source",
           "limit",
           "actual",
           "remaining",
           "percentage",
           "overBudget",
-          "usageStart",
-          "usageEnd",
-          "currentPeriod",
-          "available",
-          "settingReference",
-          "overrideReference",
-          "accruedMonths",
-          "coveredMonths"
+          "available"
         ],
         "properties": {
           "categoryId": {
@@ -4618,14 +3795,6 @@
           "periodStart": {
             "type": "string",
             "format": "date"
-          },
-          "source": {
-            "type": "string",
-            "enum": [
-              "NORMAL",
-              "EXCEPTION",
-              "MONTHLY_ROLLUP"
-            ]
           },
           "limit": {
             "type": "string",
@@ -4653,106 +3822,97 @@
           "overBudget": {
             "type": "boolean"
           },
-          "usageStart": {
-            "type": "string",
-            "format": "date"
-          },
-          "usageEnd": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "currentPeriod": {
-            "type": "boolean"
-          },
           "available": {
             "type": "boolean"
-          },
-          "settingReference": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BudgetReference"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "overrideReference": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BudgetReference"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "accruedMonths": {
-            "type": "integer"
-          },
-          "coveredMonths": {
-            "type": "integer"
           }
         }
       },
-      "MonthlyBreakdown": {
+      "CategoryNormalLimit": {
         "type": "object",
         "required": [
-          "businessDate",
-          "setting",
-          "items"
+          "mode",
+          "expectedPreferencesVersion"
         ],
         "properties": {
-          "businessDate": {
+          "mode": {
             "type": "string",
-            "format": "date"
+            "enum": [
+              "NONE",
+              "MONTH",
+              "YEAR"
+            ]
           },
-          "setting": {
+          "limit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Exact non-negative decimal; required for MONTH/YEAR. Zero is a limit."
+          },
+          "expected": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/BudgetSetting"
+                "$ref": "#/components/schemas/BudgetReference"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Current default-currency setting reference; null means expected absence."
           },
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": [
-                "periodStart",
-                "accrued",
-                "comparison"
-              ],
-              "properties": {
-                "periodStart": {
-                  "type": "string",
-                  "format": "date"
-                },
-                "accrued": {
-                  "type": "boolean"
-                },
-                "comparison": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/BudgetComparison"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                }
-              }
-            }
+          "expectedPreferencesVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "Preferences": {
+        "type": "object",
+        "required": [
+          "defaultCurrency",
+          "version",
+          "hasLimitsToReset"
+        ],
+        "properties": {
+          "defaultCurrency": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Explicitly selected ISO 4217 currency. Null until selected."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "hasLimitsToReset": {
+            "type": "boolean",
+            "description": "Enabled current category limits exist; confirmation will be required to change currency."
+          }
+        }
+      },
+      "PreferencesInput": {
+        "type": "object",
+        "required": [
+          "defaultCurrency",
+          "expectedVersion"
+        ],
+        "properties": {
+          "defaultCurrency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "Supported ISO 4217 code; no inferred default."
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "confirmLimitReset": {
+            "type": "boolean",
+            "default": false
           }
         }
       }
