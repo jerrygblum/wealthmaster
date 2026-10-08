@@ -57,7 +57,15 @@ test("enrollment, recovery, authenticator replacement, regeneration, and TOTP lo
   expect(await passwordLogin(page, email)).toBe("MFA_REQUIRED");
   await page.getByLabel("Verification method").selectOption("RECOVERY");
   await page.getByLabel("Recovery code", { exact: true }).fill(replacementCodes[1]);
+  // Rejecting an old code checks every available password hash. Wait for the
+  // response before asserting the rendered error, including on slower runners.
+  const rejectedRecovery = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/auth/mfa/verify" &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Verify and sign in" }).click();
+  expect((await rejectedRecovery).status()).toBe(400);
   await expect(page.getByRole("alert")).toContainText("Invalid or already-used recovery code");
   await page.getByLabel("Recovery code", { exact: true }).fill(regeneratedCodes[0]);
   await page.getByRole("button", { name: "Verify and sign in" }).click();

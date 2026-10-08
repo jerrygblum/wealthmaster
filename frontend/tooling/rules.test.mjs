@@ -3,9 +3,16 @@ import test from "node:test";
 import { ESLint, Linter } from "eslint";
 import architecture from "./architecture.mjs";
 
-const eslint = new ESLint();
+// These tests repeatedly lint in-memory replacements for the same file. CI's
+// single-run optimization otherwise reads the on-disk file and then loses types.
+const eslint = new ESLint({
+  overrideConfig: {
+    languageOptions: { parserOptions: { disallowAutomaticSingleRunInference: true } },
+  },
+});
 async function messages(code) {
   const [result] = await eslint.lintText(code, { filePath: "src/pages/application/App.tsx" });
+  assert.equal(result.fatalErrorCount, 0, JSON.stringify(result.messages));
   return result.messages;
 }
 test("real configuration rejects conditional hooks", async () => {
