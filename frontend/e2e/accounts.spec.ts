@@ -35,15 +35,15 @@ test("create, edit, archive, restore, delete an account and log out", async ({
   await expect(page.getByText(/^Opening balance:/)).toContainText("2026-10-04");
   await expectCompactWorkspace(page);
   await page.getByRole("button", { name: "Back to accounts" }).click();
+  await expect(page.getByRole("heading", { name: "Accounts", exact: true })).toBeVisible();
   const edit = account.getByRole("button", { name: "Edit", exact: true });
   await expect(edit).toHaveAttribute("title", `Edit ${name}`);
-  const actionSize = await edit.evaluate((button) => ({
-    width: button.getBoundingClientRect().width,
-    height: button.getBoundingClientRect().height,
-    mobile: window.innerWidth <= 720,
-  }));
-  expect(actionSize.width).toBe(actionSize.mobile ? 40 : 32);
-  expect(actionSize.height).toBe(actionSize.mobile ? 40 : 32);
+  const actionSize = page.viewportSize()!.width <= 720 ? 40 : 32;
+  // Returning from account details can replace the list. Re-resolve the button
+  // until its rendered geometry settles instead of measuring a detached node.
+  await expect
+    .poll(() => edit.boundingBox())
+    .toMatchObject({ width: actionSize, height: actionSize });
   await edit.focus();
   await page.keyboard.press("Enter");
   const changedName = `${name} updated`;

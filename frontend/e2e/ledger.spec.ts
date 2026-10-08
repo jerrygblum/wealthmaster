@@ -51,13 +51,10 @@ test("cash activity, refunds and paired transfer corrections survive reload", as
   await expectCompactWorkspace(page);
   const edit = transfer.getByRole("button", { name: "Edit entry" });
   await expect(edit).toHaveAttribute("title", "Edit Synthetic repayment");
-  const size = await edit.evaluate((button) => ({
-    width: button.getBoundingClientRect().width,
-    height: button.getBoundingClientRect().height,
-    mobile: window.innerWidth <= 720,
-  }));
-  expect(size.width).toBe(size.mobile ? 40 : 32);
-  expect(size.height).toBe(size.mobile ? 40 : 32);
+  const actionSize = page.viewportSize()!.width <= 720 ? 40 : 32;
+  await expect
+    .poll(() => edit.boundingBox())
+    .toMatchObject({ width: actionSize, height: actionSize });
   await edit.focus();
   await page.keyboard.press("Enter");
   await page.getByLabel("Amount (CHF)").fill("90");

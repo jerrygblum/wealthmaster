@@ -60,10 +60,14 @@ test("owner controls invitation-only signup and new members complete required MF
   await page.getByLabel("Verification method").selectOption("RECOVERY");
   await page.getByLabel("Recovery code", { exact: true }).fill(ownerMfa.codes[0]);
   await page.getByRole("button", { name: "Verify and sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+  await expect(enabled).not.toBeChecked();
   const enabling = page.waitForResponse(
     (r) => new URL(r.url()).pathname === "/api/v1/registration" && r.request().method() === "PUT",
   );
-  await enabled.check();
+  // A controlled checkbox settles through React and the save request. Assert
+  // its state after saving rather than check()'s immediate native postcondition.
+  await enabled.click();
   expect((await enabling).status()).toBe(200);
   await expect(enabled).toBeChecked();
   await page.getByRole("button", { name: `Replace invitation for ${email}` }).click();
@@ -110,6 +114,7 @@ test("owner controls invitation-only signup and new members complete required MF
   expect((await page.request.get("/api/v1/registration")).status()).toBe(403);
   expect(await (await page.request.get("/api/v1/accounts")).json()).toEqual([]);
   await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Registration", exact: true })).toHaveCount(0);
   await expectCompactWorkspace(page);
   await signOut(page);
@@ -117,10 +122,12 @@ test("owner controls invitation-only signup and new members complete required MF
   await page.getByLabel("Verification method").selectOption("RECOVERY");
   await page.getByLabel("Recovery code", { exact: true }).fill(ownerMfa.codes[1]);
   await page.getByRole("button", { name: "Verify and sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+  await expect(enabled).toBeChecked();
   const disabling = page.waitForResponse(
     (r) => new URL(r.url()).pathname === "/api/v1/registration" && r.request().method() === "PUT",
   );
-  await enabled.uncheck();
+  await enabled.click();
   expect((await disabling).status()).toBe(200);
   await expect(enabled).not.toBeChecked();
   await signOut(page);
