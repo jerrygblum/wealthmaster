@@ -34,6 +34,7 @@ const statuses = {
   UPCOMING: "Upcoming",
   DUE: "Due today",
   OVERDUE: "Overdue",
+  SCHEDULED: "Scheduled",
   COMPLETED: "Completed",
   SKIPPED: "Skipped",
   NEEDS_REVIEW: "Needs review",
@@ -151,8 +152,8 @@ export function ExpectedPageView(model: ExpectedPageViewModel) {
         <section className="panel expected-editor">
           <h2>Match {selected.definition.name}</h2>
           <p className="help">
-            Same month, type, currency and accounts. Exact amounts are suggested first; confirm the
-            correct transaction.
+            Suggestions use this month, type, currency and accounts. Exact amounts come first;
+            confirm the correct transaction.
           </p>
           {candidateLoading ? (
             <LoadingIndicator role="status">Loading suggestions…</LoadingIndicator>
@@ -270,6 +271,7 @@ export function ExpectedPageView(model: ExpectedPageViewModel) {
                             <Link href={`#/accounts/${item.actual.accountId}`}>
                               {displayAmount(item.actual.amount)} {item.actual.currency}
                             </Link>
+                            <span className="help">Recorded {item.actual.transactionDate}</span>
                             <span className="help">
                               {item.difference === null
                                 ? "Currency changed"

@@ -57,12 +57,12 @@ Supported types initially:
 
 Each account has owner, name, type, institution (optional), native currency, opening balance, opening date, and active/archive status. Investment opening balances represent uninvested cash only.
 
-Accounts support editing, archive/restore, and confirmed permanent deletion when unused. Financial activity locks type, currency, opening amount, and opening date; name and institution remain editable. A nonzero opening balance alone does not block deletion. Archived accounts preserve financial history and valuation; future transaction/trade entry requires restoration. Changes retain audit snapshots, including after permanent deletion.
+Accounts support editing, archive/restore, and confirmed permanent deletion when unused. Financial activity locks type, currency and opening amount; name, institution and opening date remain editable. Opening date corrections preserve all transactions; balances include all nondeleted movements through today, including before account opening. A nonzero opening balance alone does not block deletion. Archived accounts preserve financial history and valuation; future transaction/trade entry requires restoration. Changes retain audit snapshots, including after permanent deletion.
 
 ### Ledger transactions
 - Create/edit/delete transactions with auditability.
 - Income, expense, and expense refunds (refunds reduce spending).
-- Date/value date where relevant.
+- Past, present and future transaction/value dates are allowed, including dates before account opening (years 1–9999). Historical spending uses the entered transaction date. Future-dated entries are scheduled and do not affect current balances or net worth until their transaction date.
 - Amount/currency.
 - Merchant/payee, description, notes.
 - Category/subcategory.
@@ -91,7 +91,7 @@ User-owned income and spending categories support one subcategory level. Either 
 - Compact tables show expenses, refunds and net spending by category in each native currency. Refunds reduce net spending and can make it negative. No FX conversion is applied.
 - Main-category totals include directly assigned activity and immediate children. Expand them to see the breakdown; inclusive totals are never added again to child rows. Uncategorized activity is separate.
 - Initially show categories with expenses or refunds and their ancestors; Show all categories includes zero-activity categories. Supporting activity retains ledger ordering, pagination and account links.
-- Current activity stops at the business date; future periods have zero activity. Archived accounts/categories remain included. Deleted operations, income, transfers and opening balances are excluded.
+- Current activity stops at the business date; future periods have no activity. Archived accounts/categories remain included. Deleted operations, income, transfers and opening balances are excluded.
 - Monetary displays use two decimals; backend calculations and API amounts retain exact decimal precision.
 - Categories have compact rows and inline CRUD actions, without spending-limit controls. The Spending page has no chart or budget comparisons.
 - Default currency remains an explicitly selected owner preference. Changing it is versioned and audited, without modifying ledger data or spending reports.
@@ -104,7 +104,9 @@ Recurring items have name, type, account(s), positive fixed amount, optional cat
 
 Each month shows upcoming, due today, overdue, completed, skipped or needs-review items. Suggestions are unlinked transactions within that calendar month with matching type, currency and accounts, ranked by exact amount, category/payee and due-date proximity. Users explicitly confirm or replace links. One transaction satisfies one occurrence; different actual amounts are allowed and show a difference. Deleted/incompatible transactions and links outside an edited schedule require review. Skip/undo affects only that month.
 
-Record opens a reviewed form and atomically creates ledger activity plus its confirmed match. Future months and unavailable references cannot be recorded. Expected amounts alone never affect balances, Spending or net worth. Summaries remain separate by currency and type; transfers are separate from income/expenses. Ending a recurrence preserves earlier months. Confirmed deletion releases links without deleting actual activity or audit history.
+Expectations can be recorded or explicitly linked using actual transaction dates in any month, including before account opening. The expectation stays in its selected month; spending follows the actual date. Date corrections preserve confirmed links; suggestions remain confined to the selected calendar month. Current balances include transactions before opening date and add the opening balance once.
+
+Record opens a reviewed form and atomically creates ledger activity plus its confirmed match. Future months can be recorded; unavailable references must be restored first. Confirmed future-dated entries show Scheduled and remain outstanding until their transaction date. Expected amounts alone never affect balances, Spending or net worth. Summaries remain separate by currency and type; transfers are separate from income/expenses. Ending a recurrence preserves earlier months. Confirmed deletion releases links without deleting actual activity or audit history.
 
 ### Imports
 

@@ -115,14 +115,11 @@ public class ExpectedService implements AccountUsagePolicy.ActivitySource {
     }
     private Occurrence occurrence(UUID owner,Definition d,LocalDate month) {
         var state=state(d.id(),month);var op=state.operation()==null?null:operation(owner,state.operation(),false);
-        boolean valid=ExpectedPolicy.applies(d,month) && ExpectedPolicy.compatible(d,month,op); var due=ExpectedPolicy.due(month,d.dayOfMonth());
+        boolean valid=ExpectedPolicy.applies(d,month) && ExpectedPolicy.compatible(d,op); var due=ExpectedPolicy.due(month,d.dayOfMonth());
         var status=ExpectedPolicy.status(state.skipped(),state.operation()!=null,valid,due,time.today());
-        var date=due.isAfter(time.today())?time.today():due;
-        var opening=jdbc.queryForObject("SELECT max(opening_date) FROM financial_accounts WHERE id=? OR id=?::uuid",LocalDate.class,d.accountId(),d.destinationAccountId());
-        if(opening.isAfter(date)) date=opening;
-        boolean opened=!date.isAfter(time.today()) && date.withDayOfMonth(1).equals(month);
+        if(valid && op.transactionDate().isAfter(time.today())) status="SCHEDULED";
         return new Occurrence(d,due,state.version(),status,op,op==null || !op.currency().equals(d.currency())?null:new BigDecimal(op.amount()).subtract(new BigDecimal(d.amount())).toPlainString(),
-            d.available() && opened && state.operation()==null && !state.skipped() && !month.isAfter(time.today().withDayOfMonth(1)));
+            d.available() && state.operation()==null && !state.skipped());
     }
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
     public Report report(UUID owner,LocalDate requested) {
@@ -172,7 +169,7 @@ public class ExpectedService implements AccountUsagePolicy.ActivitySource {
             var op=operation(owner,input.operationId(),true);
             if(op==null) throw new CategoryFailure(404,"Activity not found.");
             if(input.operationVersion()==null || input.operationVersion()!=op.version()) throw new CategoryFailure(412,"Activity changed. Reload suggestions.");
-            if(!ExpectedPolicy.compatible(d,month,op)) throw new IllegalArgumentException("Choose activity in this month with matching type, currency and accounts.");
+            if(!ExpectedPolicy.compatible(d,op)) throw new IllegalArgumentException("Choose activity with matching type, currency and accounts.");
             if(Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM expected_occurrences WHERE operation_id=? AND NOT(expectation_id=? AND month=?))",Boolean.class,op.id(),id,month)))
                 throw new CategoryFailure(409,"This transaction already satisfies another expectation.");
         }
@@ -182,7 +179,6 @@ public class ExpectedService implements AccountUsagePolicy.ActivitySource {
     public Occurrence record(UUID owner,UUID id,LocalDate month,String version,RecordInput input) {
         var d=change(owner,id,month,version,input.definitionVersion());var before=state(id,month);
         if(!occurrence(owner,d,month).canRecord()) throw new CategoryFailure(409,"This occurrence cannot be recorded. Restore references or reload its status.");
-        if(!input.transactionDate().withDayOfMonth(1).equals(month)) throw new IllegalArgumentException("Record activity within the selected month.");
         LedgerDtos.Operation op;
         if(d.kind()==Kind.TRANSFER) {
             if(input.categoryId()!=null) throw new IllegalArgumentException("Transfers cannot have a category.");

@@ -59,7 +59,7 @@ test("manage categories, categorize expenses/refunds, retain archived history an
     await page.getByLabel("Amount (CHF)").fill(entry.amount);
     await page.getByLabel("Description", { exact: true }).fill(entry.description);
     await page.getByRole("button", { name: "Save activity" }).click();
-    await expect(page.getByRole("heading", { name: entry.description, exact: true })).toBeVisible();
+    await expect(page.getByText(entry.description, { exact: true })).toBeVisible();
   }
   await expect(page.locator(".balance")).toHaveText("CHF 92.00");
   await page.getByRole("link", { name: "Categories", exact: true }).click();
@@ -92,15 +92,13 @@ test("manage categories, categorize expenses/refunds, retain archived history an
     page.getByText("Category: Synthetic Food → Synthetic Shopping (archived)"),
   ).toHaveCount(2);
   const purchase = page
-    .getByRole("article")
-    .filter({ has: page.getByRole("heading", { name: "Synthetic purchase", exact: true }) });
+    .getByRole("row")
+    .filter({ has: page.getByText("Synthetic purchase", { exact: true }) });
   await purchase.getByRole("button", { name: "Edit entry" }).click();
   await expect(page.getByLabel("Category (optional)")).not.toHaveValue("");
   await page.getByLabel("Description", { exact: true }).fill("Synthetic corrected purchase");
   await page.getByRole("button", { name: "Save activity" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Synthetic corrected purchase", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText("Synthetic corrected purchase", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Add transaction" }).click();
   await expect(
     page.getByRole("option", {
@@ -109,8 +107,8 @@ test("manage categories, categorize expenses/refunds, retain archived history an
     }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
-  const corrected = page.getByRole("article").filter({
-    has: page.getByRole("heading", { name: "Synthetic corrected purchase", exact: true }),
+  const corrected = page.getByRole("row").filter({
+    has: page.getByText("Synthetic corrected purchase", { exact: true }),
   });
   await corrected.getByRole("button", { name: "Edit entry" }).click();
   await page.getByLabel("Category (optional)").selectOption("");

@@ -941,3 +941,137 @@ button.compact-action-delete {
     grid-column: 2;
   }
 }
+
+/* Compact account activity uses the same borders, typography and actions as report tables. */
+.activity-table {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fff;
+}
+.activity-table table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.activity-table thead {
+  background: var(--color-background);
+}
+.activity-table th,
+.activity-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  font-size: 0.85rem;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+.activity-table thead th {
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.activity-table thead th:first-child {
+  width: 116px;
+}
+.activity-table thead th:nth-child(3) {
+  width: 24%;
+}
+.activity-table thead th:nth-child(4) {
+  width: 160px;
+}
+.activity-table thead th:last-child {
+  width: 100px;
+}
+.activity-table .activity-description {
+  font-weight: 400;
+}
+.activity-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.activity-meta {
+  display: block;
+  color: #596d64;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+.activity-table .activity-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.activity-actions > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.activity-notes {
+  margin-top: 2px;
+  font-size: 0.78rem;
+}
+.activity-notes summary {
+  cursor: pointer;
+  color: var(--color-primary);
+}
+.activity-notes p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+.workspace .activity-pagination {
+  align-items: center;
+}
+@media (max-width: 800px) {
+  .activity-table table,
+  .activity-table tbody {
+    display: block;
+  }
+  .activity-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .activity-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    position: relative;
+    padding: 8px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .activity-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .activity-table tbody th,
+  .activity-table tbody td {
+    border: 0;
+    min-width: 0;
+    padding: 6px;
+  }
+  .activity-table .activity-description {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    padding-right: 104px;
+  }
+  .activity-table .activity-date {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .activity-table .activity-amount {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .activity-table .activity-category {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+  .activity-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: #596d64;
+    font-size: 0.7rem;
+    margin-bottom: 2px;
+  }
+  .activity-table .activity-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+}

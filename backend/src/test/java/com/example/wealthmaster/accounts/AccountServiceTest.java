@@ -79,17 +79,18 @@ class AccountServiceTest {
         when(accounts.findByIdAndOwnerId(account.getId(), owner)).thenReturn(java.util.Optional.of(account));
         return account;
     }
-    @Test void usedAccountsPermitMetadataChangesButLockEachFinancialField() {
+    @Test void usedAccountsPermitOpeningDateCorrectionsButLockTypeCurrencyAndAmount() {
         var account = existing(); when(usage.hasActivity(account.getId())).thenReturn(true);
         var updated = service.update(owner, account.getId(), "\"0\"", input(AccountType.CHECKING, "5", BalanceMeaning.BALANCE, "CHF"));
         assertEquals("Test", updated.name()); assertTrue(updated.hasActivity());
         for (CreateAccount changed : java.util.List.of(
                 input(AccountType.SAVINGS, "5", BalanceMeaning.BALANCE, "CHF"),
                 input(AccountType.CHECKING, "5", BalanceMeaning.BALANCE, "EUR"),
-                input(AccountType.CHECKING, "6", BalanceMeaning.BALANCE, "CHF"),
-                new CreateAccount("Test", AccountType.CHECKING, null, "CHF", "5", BalanceMeaning.BALANCE, LocalDate.of(2025, 1, 1)))) {
+                input(AccountType.CHECKING, "6", BalanceMeaning.BALANCE, "CHF"))) {
             assertEquals(409, assertThrows(AccountFailure.class, () -> service.update(owner, account.getId(), "\"0\"", changed)).status());
         }
+        var redated = service.update(owner, account.getId(), "\"0\"", new CreateAccount("Test", AccountType.CHECKING, null, "CHF", "5", BalanceMeaning.BALANCE, LocalDate.of(2025,1,1)));
+        assertEquals(LocalDate.of(2025,1,1),redated.openingDate());
         assertEquals(409, assertThrows(AccountFailure.class, () -> service.delete(owner, account.getId(), "\"0\"")).status());
         verify(accounts, never()).delete(any());
         assertFalse(service.setActive(owner, account.getId(), "\"0\"", false).active());

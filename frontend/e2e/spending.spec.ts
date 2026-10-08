@@ -68,7 +68,7 @@ test("spending periods, category breakdowns, refunds and archived activity", asy
     await page.getByLabel("Amount (CHF)").fill(entry.amount);
     await page.getByLabel("Description", { exact: true }).fill(entry.description);
     await page.getByRole("button", { name: "Save activity" }).click();
-    await expect(page.getByRole("heading", { name: entry.description, exact: true })).toBeVisible();
+    await expect(page.getByText(entry.description, { exact: true })).toBeVisible();
   }
   await page.getByRole("navigation").getByRole("link", { name: "Spending", exact: true }).click();
   await expect(page.getByRole("table")).toBeVisible();

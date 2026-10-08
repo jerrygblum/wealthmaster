@@ -225,9 +225,24 @@ describe("workspace", () => {
     await screen.findByRole("heading", { name: "Everyday" });
     expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-    for (const label of ["Account type", "Currency", "Opening balance", "Opening date"])
+    for (const label of ["Account type", "Currency", "Opening balance"])
       expect(screen.getByLabelText(label)).toBeDisabled();
     expect(screen.getByLabelText("Account name")).not.toBeDisabled();
+    expect(screen.getByLabelText("Opening date")).toBeEnabled();
+    fireEvent.change(screen.getByLabelText("Opening date"), { target: { value: "2019-01-01" } });
+    vi.mocked(api.updateAccount).mockResolvedValue({
+      ...account,
+      hasActivity: true,
+      openingDate: "2019-01-01",
+      version: 1,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save account" }));
+    await waitFor(() =>
+      expect(api.updateAccount).toHaveBeenCalledWith(
+        expect.objectContaining({ hasActivity: true }),
+        expect.objectContaining({ openingDate: "2019-01-01" }),
+      ),
+    );
   });
   it("keeps edits on failure and reloads after cancelling a stale edit", async () => {
     vi.mocked(api.session).mockResolvedValue(session);

@@ -183,3 +183,19 @@ it("keeps partial year input local, commits on blur and restores invalid input",
   expect(input).toHaveValue(26);
   expect(api.spending).toHaveBeenCalledTimes(3);
 });
+
+it("reloads the selected spending period after returning to the tab", async () => {
+  render(<SpendingPage onExpired={() => {}} />);
+  await screen.findByText("Food (inclusive) (archived branch)");
+  fireEvent.change(screen.getByLabelText("Period"), { target: { value: "2026-01" } });
+  await waitFor(() => expect(api.spending).toHaveBeenLastCalledWith("MONTH", "2026-01-01"));
+  const updated = {
+    ...report,
+    periodStart: "2026-01-01",
+    groups: report.groups.map((g) => ({ ...g, inclusive: { ...g.inclusive, netSpending: "123" } })),
+  };
+  vi.mocked(api.spending).mockResolvedValue(updated);
+  fireEvent.focus(window);
+  await screen.findByText("123.00");
+  expect(api.spending).toHaveBeenLastCalledWith("MONTH", "2026-01-01");
+});

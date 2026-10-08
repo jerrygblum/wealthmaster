@@ -34,8 +34,8 @@ export function AccountFormView({
       <h2 id="create-heading">{account ? "Edit account" : "Create account"}</h2>
       {locked && (
         <p className="notice">
-          Financial setup is locked because this account has activity. You can change its name and
-          institution.
+          Type, currency and opening amount are locked because this account has activity. You can
+          change its name, institution and opening date.
         </p>
       )}
       {stale && <p role="status">Cancel and reload accounts before editing again.</p>}
@@ -181,14 +181,19 @@ export function AccountFormView({
           </Field>
           <Field htmlFor="opening-date" label={"Opening date"}>
             <Input
-              disabled={locked}
               id="opening-date"
+              min="0001-01-01"
+              max="9999-12-31"
               type="date"
               required
               value={input.openingDate}
               onChange={(event) => change("openingDate", event.target.value)}
               {...accessibility("openingDate")}
             />
+            <span className="help">
+              Balances include transactions from this date onward. Changing it recalculates net
+              worth; spending keeps each transaction’s own date.
+            </span>
             {fieldError("openingDate")}
           </Field>
           {error && (

@@ -15,10 +15,9 @@ final class ExpectedPolicy {
     static boolean applies(Definition d, LocalDate month) {
         return !month.isBefore(d.firstMonth()) && (d.lastMonth()==null || !month.isAfter(d.lastMonth()));
     }
-    static boolean compatible(Definition d, LocalDate month, Operation op) {
+    static boolean compatible(Definition d, Operation op) {
         return op!=null && op.kind().name().equals(d.kind().name()) && op.currency().equals(d.currency())
-            && op.accountId().equals(d.accountId()) && java.util.Objects.equals(op.destinationAccountId(),d.destinationAccountId())
-            && op.transactionDate().withDayOfMonth(1).equals(month);
+            && op.accountId().equals(d.accountId()) && java.util.Objects.equals(op.destinationAccountId(),d.destinationAccountId());
     }
     static String status(boolean skipped, boolean linked, boolean valid, LocalDate due, LocalDate today) {
         if(skipped) return "SKIPPED";

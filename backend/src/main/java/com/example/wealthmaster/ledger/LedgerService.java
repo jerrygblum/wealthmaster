@@ -27,7 +27,7 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM ledger_account_history WHERE account_id=?)", Boolean.class,id));
     }
     public BigDecimal movements(UUID id) {
-        return jdbc.queryForObject("SELECT COALESCE(SUM(m.amount),0) FROM ledger_movements m JOIN ledger_operations o ON o.id=m.operation_id WHERE m.account_id=? AND NOT o.deleted", BigDecimal.class,id);
+        return jdbc.queryForObject("SELECT COALESCE(SUM(m.amount),0) FROM ledger_movements m JOIN ledger_operations o ON o.id=m.operation_id WHERE m.account_id=? AND NOT o.deleted AND o.transaction_date<=?", BigDecimal.class,id,today());
     }
     private Operation row(java.sql.ResultSet r, int n) throws java.sql.SQLException {
         return new Operation(r.getObject("id",UUID.class),Kind.valueOf(r.getString("kind")),r.getObject("account_id",UUID.class),
@@ -64,9 +64,9 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
         if(value==null || !value.matches("[0-9]{1,20}(\\.[0-9]{1,8})?")) throw new IllegalArgumentException("Enter a positive decimal with at most 20 integer digits and 8 decimal places.");
         var amount=new BigDecimal(value); if(amount.signum()<=0) throw new IllegalArgumentException("Amount must be positive."); return amount;
     }
-    private void date(LocalDate date, Collection<FinancialAccount> accounts) {
-        if(date==null || date.isAfter(today()) || accounts.stream().anyMatch(a->date.isBefore(a.getOpeningDate())))
-            throw new IllegalArgumentException("Dates must be between account opening and today.");
+    private void date(LocalDate date) {
+        if(date==null || date.getYear()<1 || date.getYear()>9999)
+            throw new IllegalArgumentException("Dates must use years 1–9999.");
     }
     @Transactional
     public Operation transaction(UUID owner, UUID id, String match, TransactionInput input) {
@@ -82,8 +82,7 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
         var before=id==null?null:owned(owner,id,match,kind==Kind.TRANSFER);
         var locked=lock(owner,before,source,destination); var currency=locked.get(source).getCurrency();
         if(destination!=null && !currency.equals(locked.get(destination).getCurrency())) throw new IllegalArgumentException("Transfers require matching currencies.");
-        var affected=destination==null?List.of(locked.get(source)):List.of(locked.get(source),locked.get(destination));
-        date(date,affected); if(valueDate!=null) date(valueDate,affected); var amount=amount(value);
+        date(date); if(valueDate!=null) date(valueDate); var amount=amount(value);
         if(categoryId!=null || before!=null && before.categoryId()!=null) {
             categories.lock(owner);
             if(before!=null) before=jdbc.queryForObject("SELECT * FROM ledger_operations WHERE id=?",this::row,id);

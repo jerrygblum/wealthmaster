@@ -84,7 +84,7 @@ test("net worth is the default, separates currencies, and follows account activi
   await page.getByLabel("Amount (CHF)").fill("10.00000001");
   await page.getByLabel("Description", { exact: true }).fill("Synthetic cost");
   await page.getByRole("button", { name: "Save activity" }).click();
-  await expect(page.getByRole("heading", { name: "Synthetic cost", exact: true })).toBeVisible();
+  await expect(page.getByText("Synthetic cost", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Net worth", exact: true }).click();
   await expect(chf.locator(".net-worth-total")).toHaveText("CHF 890.12");
   await page.reload();

@@ -1,3 +1,4 @@
+import { useRefreshOnFocus } from "../useRefreshOnFocus";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api, ApiError } from "../../services/api";
@@ -122,6 +123,8 @@ export function useSpending({ onExpired }: SpendingPageProps) {
       if (token === activityGeneration.current) setActivityLoading(false);
     }
   }
+
+  useRefreshOnFocus(load);
 
   return {
     period,

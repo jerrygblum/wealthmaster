@@ -158,15 +158,7 @@ export function useExpected({ onExpired }: { onExpired: () => void }) {
     setSelected(item);
     setRecordForm({
       amount: item.definition.amount,
-      transactionDate: accounts
-        .filter(
-          (a) =>
-            a.id === item.definition.accountId || a.id === item.definition.destinationAccountId,
-        )
-        .map((a) => a.openingDate)
-        .concat(item.expectedDate > report!.businessDate ? report!.businessDate : item.expectedDate)
-        .sort()
-        .at(-1)!,
+      transactionDate: item.expectedDate,
       valueDate: null,
       payee: item.definition.payee ?? "",
       description: item.definition.name,

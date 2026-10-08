@@ -1015,7 +1015,7 @@
     "/accounts/{id}": {
       "put": {
         "summary": "Edit account",
-        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency, opening amount/date and prevents deletion. Archiving preserves history.",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency and opening amount and prevents deletion. Opening date remains editable and recalculates balances and net worth. Archiving preserves history.",
         "parameters": [
           {
             "name": "id",
@@ -1090,7 +1090,7 @@
       },
       "delete": {
         "summary": "Permanently delete unused account",
-        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency, opening amount/date and prevents deletion. Archiving preserves history.",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency and opening amount and prevents deletion. Opening date remains editable and recalculates balances and net worth. Archiving preserves history.",
         "parameters": [
           {
             "name": "id",
@@ -1179,7 +1179,7 @@
     "/accounts/{id}/archive": {
       "post": {
         "summary": "Archive account",
-        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency, opening amount/date and prevents deletion. Archiving preserves history.",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency and opening amount and prevents deletion. Opening date remains editable and recalculates balances and net worth. Archiving preserves history.",
         "parameters": [
           {
             "name": "id",
@@ -1246,7 +1246,7 @@
     "/accounts/{id}/restore": {
       "post": {
         "summary": "Restore account",
-        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency, opening amount/date and prevents deletion. Archiving preserves history.",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency and opening amount and prevents deletion. Opening date remains editable and recalculates balances and net worth. Archiving preserves history.",
         "parameters": [
           {
             "name": "id",
@@ -1313,7 +1313,7 @@
     "/transactions": {
       "post": {
         "summary": "Create transactions",
-        "description": "Dates between account opening and today in APP_BUSINESS_TIME_ZONE. Active owned accounts required. Transfers require distinct accounts with matching currencies. Negative resulting balances allowed. Refunds reduce spending; transfers are excluded from income/spending. Transfer edits/deletions change both movements atomically.",
+        "description": "Past and future transaction/value dates, including before account opening (years 1\u20139999). Current balances include all nondeleted transactions through the business date, including before account opening; value dates do not control balances. Active owned accounts required. Transfers require distinct accounts with matching currencies. Negative resulting balances allowed. Refunds reduce spending; transfers are excluded from income/spending. Transfer edits/deletions change both movements atomically.",
         "parameters": [
           {
             "name": "X-CSRF-TOKEN",
@@ -1540,7 +1540,7 @@
     "/transfers": {
       "post": {
         "summary": "Create transfers",
-        "description": "Dates between account opening and today in APP_BUSINESS_TIME_ZONE. Active owned accounts required. Transfers require distinct accounts with matching currencies. Negative resulting balances allowed. Refunds reduce spending; transfers are excluded from income/spending. Transfer edits/deletions change both movements atomically.",
+        "description": "Past and future transaction/value dates, including before account opening (years 1\u20139999). Current balances include all nondeleted transactions through the business date, including before account opening; value dates do not control balances. Active owned accounts required. Transfers require distinct accounts with matching currencies. Negative resulting balances allowed. Refunds reduce spending; transfers are excluded from income/spending. Transfer edits/deletions change both movements atomically.",
         "parameters": [
           {
             "name": "X-CSRF-TOKEN",
@@ -1728,7 +1728,7 @@
     "/net-worth/current": {
       "get": {
         "summary": "Calculate current net worth for the authenticated owner",
-        "description": "One repeatable-read snapshot of opening balances plus non-deleted ledger movements. Positive balances are assets; negative balances are liabilities. Includes archived accounts and investment cash, excludes future-opening accounts. Native currencies remain separate; no FX conversion or security valuation. Business date uses APP_BUSINESS_TIME_ZONE. Read-only; no CSRF token required.",
+        "description": "One repeatable-read snapshot of opening balances plus all non-deleted ledger movements through the business date, including entries before account opening. Future-dated activity is excluded until its transaction date. Positive balances are assets; negative balances are liabilities. Includes archived accounts and investment cash, excludes future-opening accounts. Native currencies remain separate; no FX conversion or security valuation. Business date uses APP_BUSINESS_TIME_ZONE. Read-only; no CSRF token required.",
         "security": [
           {
             "session": []
@@ -4215,6 +4215,7 @@
               "UPCOMING",
               "DUE",
               "OVERDUE",
+              "SCHEDULED",
               "COMPLETED",
               "SKIPPED",
               "NEEDS_REVIEW"
@@ -4240,7 +4241,7 @@
             "type": "boolean"
           }
         },
-        "description": "Version 0 denotes untouched reconciliation state. Differences are actual minus expected; null when no actual or currencies differ. Deleted, incompatible or out-of-schedule links need review."
+        "description": "Version 0 denotes untouched reconciliation state. Differences are actual minus expected; null when no actual or currencies differ. Deleted, incompatible or out-of-schedule links need review. Future-dated confirmed links show SCHEDULED until their transaction date; these amounts remain outstanding and are excluded from completed/actual totals."
       },
       "ExpectedTotals": {
         "type": "object",
@@ -4346,7 +4347,7 @@
             "default": false
           }
         },
-        "description": "Full replacement: null operationId unlinks, skipped true skips this month. Linking requires current operationVersion. One transaction can satisfy one occurrence."
+        "description": "Full replacement: null operationId unlinks, skipped true skips this month. Linking requires current operationVersion and matching type, currency and accounts; actual dates may be in any month. One transaction can satisfy one occurrence."
       },
       "ExpectedRecordInput": {
         "type": "object",
@@ -4403,7 +4404,7 @@
             "format": "uuid"
           }
         },
-        "description": "Reviewed actual fields; accounts/type come from definition. Creates ledger activity and confirms association atomically. Date must be in the occurrence month and valid under ledger rules."
+        "description": "Reviewed actual fields; accounts/type come from definition. Creates ledger activity and confirms association atomically. Date may be in any month, including before account opening, and must use years 1\u20139999. The occurrence stays in its selected month; spending uses the actual transaction date. Future months and dates are allowed; future links are scheduled until their date."
       }
     }
   }

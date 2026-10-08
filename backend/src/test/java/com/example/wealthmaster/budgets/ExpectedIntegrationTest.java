@@ -106,7 +106,7 @@ class ExpectedIntegrationTest {
     @Test void expectationsDoNotChangeBalancesAndFutureMonthsStillShowExpectations() {
         var a=account("CHF");var before=netWorth.current(owner());var d=create(a.getId(),ExpectedDtos.Kind.EXPENSE,"10.12345678");
         assertEquals(before.currencies(),netWorth.current(owner()).currencies());
-        var r=expected.report(owner(),month.plusMonths(1));assertEquals(1,r.items().size());assertFalse(r.items().getFirst().canRecord());
+        var r=expected.report(owner(),month.plusMonths(1));assertEquals(1,r.items().size());assertTrue(r.items().getFirst().canRecord());
         assertEquals("10.12345678",r.totals().getFirst().expected());assertEquals("0",r.totals().getFirst().actual());
         assertEquals(LocalDate.of(2026,11,30),r.items().getFirst().expectedDate());
         assertThrows(AccountFailure.class,()->accountService.delete(owner(),a.getId(),version(a.getVersion())));
@@ -147,7 +147,7 @@ class ExpectedIntegrationTest {
         var skipped=expected.reconcile(owner(),d.id(),month,version(0),new ExpectedDtos.Reconcile(d.version(),null,null,true));assertEquals("SKIPPED",skipped.status());
         assertEquals("UPCOMING",expected.report(owner(),month.plusMonths(1)).items().getFirst().status());
         var undone=expected.reconcile(owner(),d.id(),month,version(skipped.version()),new ExpectedDtos.Reconcile(d.version(),null,null,false));
-        var invalid=new ExpectedDtos.RecordInput(d.version(),"100",month.plusMonths(1),null,null,"Synthetic income",null,null);
+        var invalid=new ExpectedDtos.RecordInput(d.version(),"0",month.plusMonths(1),null,null,"Synthetic income",null,null);
         assertThrows(IllegalArgumentException.class,()->expected.record(owner(),d.id(),month,version(undone.version()),invalid));
         assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM ledger_operations",Integer.class));
         var valid=new ExpectedDtos.RecordInput(d.version(),"90",month.plusDays(2),null,null,"Synthetic income",null,null);
@@ -191,6 +191,46 @@ class ExpectedIntegrationTest {
             assertNotEquals(one.get(10,java.util.concurrent.TimeUnit.SECONDS),two.get(10,java.util.concurrent.TimeUnit.SECONDS));
         }
         assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM ledger_operations",Integer.class));
+    }
+
+    @Autowired SpendingService spending;
+    @Test void overdueRecordingAllowsHistoricalAndCrossMonthDatesWithStableLinks() {
+        var january=LocalDate.of(2026,1,1);var march=LocalDate.of(2026,3,1);
+        var a=accounts.saveAndFlush(new FinancialAccount(owner(),"Synthetic March account",AccountType.CASH,null,"CHF",new BigDecimal("100"),march));
+        var d=expected.save(owner(),null,null,new ExpectedDtos.Input("Synthetic historical bill",ExpectedDtos.Kind.EXPENSE,a.getId(),null,null,"12",15,january,null,null,null));
+        var due=expected.report(owner(),january).items().getFirst();
+        assertEquals("OVERDUE",due.status());assertTrue(due.canRecord());
+        var recorded=expected.record(owner(),d.id(),january,version(0),new ExpectedDtos.RecordInput(d.version(),"12",january.plusDays(14),january.plusDays(13),null,"Synthetic January expense",null,null));
+        assertEquals("COMPLETED",recorded.status());
+        assertEquals("12.00000000",spending.report(owner(),MONTH,january).currencies().getFirst().expenses());
+        assertEquals("88.00000000",netWorth.current(owner()).currencies().getFirst().netWorth());
+        var op=recorded.actual();
+        op=ledger.transaction(owner(),op.id(),version(op.version()),new TransactionInput(a.getId(),Kind.EXPENSE,"12",march.plusDays(14),null,null,"Synthetic late payment",null));
+        assertEquals("COMPLETED",expected.report(owner(),january).items().getFirst().status());
+        assertEquals(march.plusDays(14),expected.report(owner(),january).items().getFirst().actual().transactionDate());
+        assertTrue(spending.report(owner(),MONTH,january).currencies().isEmpty());
+        assertEquals("12.00000000",spending.report(owner(),MONTH,march).currencies().getFirst().expenses());
+        assertEquals("88.00000000",netWorth.current(owner()).currencies().getFirst().netWorth());
+        expected.reconcile(owner(),d.id(),january,version(recorded.version()),new ExpectedDtos.Reconcile(d.version(),null,null,false));
+        assertTrue(expected.candidates(owner(),d.id(),january,0).items().isEmpty());
+        var linked=expected.reconcile(owner(),d.id(),january,version(recorded.version()+1),link(d,op));
+        assertEquals("COMPLETED",linked.status());
+        var february=january.plusMonths(1);
+        var late=expected.record(owner(),d.id(),february,version(0),new ExpectedDtos.RecordInput(d.version(),"12",march.plusDays(15),null,null,"Synthetic late February payment",null,null));
+        assertEquals("COMPLETED",late.status());assertEquals(march.plusDays(15),late.actual().transactionDate());
+    }
+
+    @Test void futureRecordingIsScheduledUntilBusinessDateAndStaysOutOfCurrentBalances() {
+        var a=account("CHF");var d=create(a.getId(),ExpectedDtos.Kind.INCOME,"100");var next=month.plusMonths(1);
+        var scheduled=expected.record(owner(),d.id(),next,version(0),new ExpectedDtos.RecordInput(d.version(),"100",next.plusDays(2),next.plusDays(3),null,"Synthetic future salary",null,null));
+        assertEquals("SCHEDULED",scheduled.status());assertFalse(scheduled.canRecord());
+        assertEquals(0,new BigDecimal("100").compareTo(new BigDecimal(netWorth.current(owner()).currencies().getFirst().netWorth())));
+        assertEquals("0",expected.report(owner(),next).totals().getFirst().actual());
+        assertEquals("100.00000000",expected.report(owner(),next).totals().getFirst().outstanding());
+        org.mockito.Mockito.when(time.today()).thenReturn(next.plusDays(2));
+        org.mockito.Mockito.when(time.dateAt(org.mockito.ArgumentMatchers.any())).thenReturn(next.plusDays(2));
+        assertEquals("COMPLETED",expected.report(owner(),next).items().getFirst().status());
+        assertEquals("200.00000000",netWorth.current(owner()).currencies().getFirst().netWorth());
     }
 
 }

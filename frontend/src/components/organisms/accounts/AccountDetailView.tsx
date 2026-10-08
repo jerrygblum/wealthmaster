@@ -7,6 +7,7 @@ import { Button, Input, Link, LoadingIndicator, Select, Textarea } from "../../a
 import { ActionGroup } from "../../molecules/ActionGroup";
 import { Confirmation } from "../../molecules/Confirmation";
 import { WorkspaceHeading } from "../application/WorkspaceHeading";
+import { AccountActivityTable } from "./AccountActivityTable";
 import { Field } from "../../molecules/Field";
 
 export function AccountDetailView({
@@ -79,6 +80,10 @@ export function AccountDetailView({
             <p>
               Opening {account.type === "INVESTMENT" ? "cash balance" : "balance"}:{" "}
               {account.currency} {displayAmount(account.openingBalance)} · {account.openingDate}
+            </p>
+            <p className="help">
+              Current balance includes the opening balance and all recorded transactions through
+              today, including entries before the opening date.
             </p>
           </div>
           {!account.active && (
@@ -237,8 +242,8 @@ export function AccountDetailView({
                   id="ledger-date"
                   type="date"
                   required
-                  min={source?.openingDate}
-                  max={account?.balanceAsOf}
+                  min="0001-01-01"
+                  max="9999-12-31"
                   value={form.transactionDate}
                   onChange={(e) => setForm({ ...form, transactionDate: e.target.value })}
                 />
@@ -249,6 +254,8 @@ export function AccountDetailView({
                     <Input
                       id="ledger-value"
                       type="date"
+                      min="0001-01-01"
+                      max="9999-12-31"
                       value={form.valueDate ?? ""}
                       onChange={(e) => setForm({ ...form, valueDate: e.target.value || null })}
                     />
@@ -332,67 +339,42 @@ export function AccountDetailView({
       ) : items.length === 0 ? (
         <p>No activity yet.</p>
       ) : (
-        items.map((op) => (
-          <article className="panel" key={op.id}>
-            <h3>{op.description}</h3>
-            <p>
-              {op.transactionDate} · {op.kind} · {op.currency} {displayAmount(op.amount)}
-            </p>
-            {op.kind !== "TRANSFER" && (
-              <p>
-                Category:{" "}
-                {op.category
-                  ? `${op.category.parentName ? `${op.category.parentName} → ` : ""}${op.category.name}${!op.category.available ? " (archived)" : ""}`
-                  : "Uncategorized"}
-              </p>
-            )}
-            {op.kind === "TRANSFER" && (
-              <p>
-                {op.accountId === id ? "To" : "From"}{" "}
-                {
-                  accounts.find(
-                    (a) => a.id === (op.accountId === id ? op.destinationAccountId : op.accountId),
-                  )?.name
-                }
-              </p>
-            )}
-            {op.valueDate && <p>Value date: {op.valueDate}</p>}
-            {op.payee && <p>{op.payee}</p>}
-            {op.notes && <p>{op.notes}</p>}
-            <ActionGroup className="form-actions">
-              <Button
-                variant="secondary"
-                disabled={!canChange(op) || pending || !!form}
-                onClick={() => start(op.kind, op)}
-              >
-                Edit entry
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={!canChange(op) || pending || !!form}
-                onClick={() => {
-                  setDeleting(op);
-                  setStale(false);
-                  setError("");
-                }}
-              >
-                Delete entry
-              </Button>
-            </ActionGroup>
-            {!canChange(op) && <p>Restore all affected accounts to change this activity.</p>}
-          </article>
-        ))
+        <AccountActivityTable
+          account={account}
+          items={items}
+          accounts={accounts}
+          id={id}
+          canChange={canChange}
+          pending={pending}
+          form={form}
+          deleting={deleting}
+          start={start}
+          setDeleting={setDeleting}
+          setStale={setStale}
+          setError={setError}
+        />
       )}
-      <ActionGroup className="form-actions">
+      <ActionGroup className="form-actions workspace-toolbar activity-pagination">
         <Button
-          disabled={page === 0 || loading || pending || !!form}
+          variant="secondary"
+          className="compact-action"
+          aria-label="Previous page"
+          title="Previous page"
+          disabled={page === 0 || loading || pending || !!form || !!deleting}
           onClick={() => setPage(page - 1)}
         >
-          Previous page
+          <ActionIcon action="previous" />
         </Button>
         <span>Page {page + 1}</span>
-        <Button disabled={!more || loading || pending || !!form} onClick={() => setPage(page + 1)}>
-          Next page
+        <Button
+          variant="secondary"
+          className="compact-action"
+          aria-label="Next page"
+          title="Next page"
+          disabled={!more || loading || pending || !!form || !!deleting}
+          onClick={() => setPage(page + 1)}
+        >
+          <ActionIcon action="next" />
         </Button>
       </ActionGroup>
     </>

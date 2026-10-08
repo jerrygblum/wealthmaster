@@ -215,7 +215,6 @@ export function ExpectedRecordForm({
   selected,
   recordForm,
   setRecordForm,
-  accounts,
   categories,
   pending,
   stale,
@@ -225,21 +224,12 @@ export function ExpectedRecordForm({
 }: ExpectedPageViewModel) {
   if (!recordForm || !selected || !report) return null;
   const d = selected.definition;
-  const opening =
-    accounts
-      .filter((a) => a.id === d.accountId || a.id === d.destinationAccountId)
-      .map((a) => a.openingDate)
-      .sort()
-      .at(-1) ?? report.month;
-  const last = new Date(`${report.month}T00:00:00Z`);
-  last.setUTCMonth(last.getUTCMonth() + 1);
-  last.setUTCDate(0);
-  const lastDate = last.toISOString().slice(0, 10);
   return (
     <section className="panel expected-editor">
       <h2>Record {d.name}</h2>
       <p className="help">
-        Review before saving. This creates actual ledger activity and confirms the match.
+        Choose the actual transaction date, in any month. Spending uses that date; this expectation
+        stays in its selected month. Future activity remains scheduled until its date.
       </p>
       <form
         onSubmit={(e) => {
@@ -264,8 +254,8 @@ export function ExpectedRecordForm({
               id="record-date"
               required
               type="date"
-              min={opening > report.month ? opening : report.month}
-              max={lastDate < report.businessDate ? lastDate : report.businessDate}
+              min="0001-01-01"
+              max="9999-12-31"
               value={recordForm.transactionDate}
               onChange={(e) => setRecordForm({ ...recordForm, transactionDate: e.target.value })}
             />
@@ -305,8 +295,8 @@ export function ExpectedRecordForm({
                 <Input
                   id="record-value"
                   type="date"
-                  min={opening}
-                  max={report.businessDate}
+                  min="0001-01-01"
+                  max="9999-12-31"
                   value={recordForm.valueDate ?? ""}
                   onChange={(e) =>
                     setRecordForm({ ...recordForm, valueDate: e.target.value || null })

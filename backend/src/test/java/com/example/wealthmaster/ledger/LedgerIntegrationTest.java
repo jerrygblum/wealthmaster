@@ -77,6 +77,16 @@ class LedgerIntegrationTest {
     FinancialAccount account(AccountType type) { return accounts.saveAndFlush(new FinancialAccount(owner(),"Synthetic",type,null,"CHF",BigDecimal.ZERO,LocalDate.of(2020,1,1))); }
     TransactionInput input(UUID account,Kind kind,String amount) { return new TransactionInput(account,kind,amount,ledger.today(),null,"Synthetic payee","Synthetic activity",null); }
     void balance(UUID id,String value) { assertEquals(0,new BigDecimal(value).compareTo(new BigDecimal(accountService.detail(owner(),id).currentBalance()))); }
+    @Test void historicalDatesBeforeOpeningContributeToBalances() {
+        var a=account(AccountType.CASH);var b=account(AccountType.CHECKING);
+        var historical=LocalDate.of(2019,1,15);
+        var op=ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.EXPENSE,"12",historical,historical.minusDays(1),null,"Synthetic historical expense",null));
+        assertEquals(historical,op.transactionDate());assertEquals(historical.minusDays(1),op.valueDate());
+        ledger.transfer(owner(),null,null,new TransferInput(a.getId(),b.getId(),"5",historical,"Synthetic historical transfer",null));
+        balance(a.getId(),"-17");balance(b.getId(),"5");
+        ledger.transaction(owner(),op.id(),"\"0\"",new TransactionInput(a.getId(),Kind.EXPENSE,"12",a.getOpeningDate(),null,null,"Synthetic corrected expense",null));
+        balance(a.getId(),"-17");
+    }
     @Test void exactIncomeExpenseRefundDeletionAndCreditCardRepayment() {
         var bank=account(AccountType.CHECKING); var card=account(AccountType.CREDIT_CARD); var investment=account(AccountType.INVESTMENT);
         ledger.transaction(owner(),null,null,input(bank.getId(),Kind.INCOME,"99999999999999999999.12345678"));
@@ -111,11 +121,9 @@ class LedgerIntegrationTest {
         balance(a.getId(),"2");balance(b.getId(),"0");balance(c.getId(),"-2");
         accountService.setActive(owner(),c.getId(),"\"0\"",false);
         assertEquals(409,assertThrows(AccountFailure.class,()->ledger.delete(owner(),id,"\"1\"",true)).status());
-        assertThrows(IllegalArgumentException.class,()->ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.INCOME,"1",ledger.today().plusDays(1),null,null,"Synthetic",null)));
-        assertThrows(IllegalArgumentException.class,()->ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.INCOME,"1",LocalDate.of(2019,1,1),null,null,"Synthetic",null)));
+        assertThrows(IllegalArgumentException.class,()->ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.INCOME,"1",LocalDate.of(0,1,1),null,null,"Synthetic",null)));
         var eur=accounts.saveAndFlush(new FinancialAccount(owner(),"Synthetic EUR",AccountType.CASH,null,"EUR",BigDecimal.ZERO,LocalDate.of(2020,1,1)));
         assertThrows(IllegalArgumentException.class,()->ledger.transfer(owner(),null,null,new TransferInput(a.getId(),eur.getId(),"1",ledger.today(),"Synthetic",null)));
-        assertThrows(IllegalArgumentException.class,()->ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.INCOME,"1",ledger.today(),ledger.today().plusDays(1),null,"Synthetic",null)));
         assertThrows(IllegalArgumentException.class,()->ledger.transfer(owner(),null,null,new TransferInput(a.getId(),a.getId(),"1",ledger.today(),"Synthetic",null)));
         assertEquals(1,ledger.list(owner(),a.getId(),0).items().size());
     }
@@ -209,4 +217,21 @@ class LedgerIntegrationTest {
             balance(a.getId(),made==200?"-1":"0");balance(b.getId(),made==200?"1":"0");
         }
     }
+    @Test void futureTransactionsTransfersAndValueDatesCanBeRecordedAndCorrected() {
+        var a=account(AccountType.CASH);var b=account(AccountType.CASH);var future=ledger.today().plusDays(10);
+        var income=ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.INCOME,"20",future,future.plusDays(1),null,"Synthetic future income",null));
+        var expense=ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.EXPENSE,"3",future,null,null,"Synthetic future expense",null));
+        var refund=ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.REFUND,"1",future,null,null,"Synthetic future refund",null));
+        var transfer=ledger.transfer(owner(),null,null,new TransferInput(a.getId(),b.getId(),"5",future,"Synthetic future transfer",null));
+        balance(a.getId(),"0");balance(b.getId(),"0");assertEquals(4,ledger.list(owner(),a.getId(),0).items().size());
+        income=ledger.transaction(owner(),income.id(),"\"0\"",new TransactionInput(a.getId(),Kind.INCOME,"20",ledger.today(),future,null,"Synthetic corrected income",null));
+        balance(a.getId(),"20");
+        transfer=ledger.transfer(owner(),transfer.id(),"\"0\"",new TransferInput(a.getId(),b.getId(),"5",ledger.today(),"Synthetic corrected transfer",null));
+        balance(a.getId(),"15");balance(b.getId(),"5");
+        transfer=ledger.transfer(owner(),transfer.id(),"\"1\"",new TransferInput(a.getId(),b.getId(),"5",future,"Synthetic rescheduled transfer",null));
+        balance(a.getId(),"20");balance(b.getId(),"0");
+        ledger.delete(owner(),expense.id(),"\"0\"",false);ledger.delete(owner(),refund.id(),"\"0\"",false);ledger.delete(owner(),transfer.id(),"\"2\"",true);
+        balance(a.getId(),"20");assertEquals(1,ledger.list(owner(),a.getId(),0).items().size());
+    }
+
 }

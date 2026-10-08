@@ -209,14 +209,31 @@ class SpendingIntegrationTest {
         jdbc.update("DELETE FROM user_preferences");
         var a=account();var today=ledger.today();
         spend(a.getId(),null,Kind.EXPENSE,"2",today);
-        // Normal ledger entry rejects future dates. Seed one directly to exercise the report cutoff.
-        var future=ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.EXPENSE,"7",today,null,null,"Synthetic future fixture",null,null));
-        jdbc.update("UPDATE ledger_operations SET transaction_date=? WHERE id=?",today.plusDays(1),future.id());
+        var future=ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.EXPENSE,"7",today.plusDays(1),null,null,"Synthetic future fixture",null,null));
         var report=spendingReport.report(owner(),null,null);
         assertEquals(today.withDayOfMonth(1),report.periodStart());money("2",report.currencies().getFirst().expenses());
         money("2",spendingReport.report(owner(),YEAR,today.withDayOfYear(1)).currencies().getFirst().expenses());
         assertTrue(spendingReport.report(owner(),MONTH,today.withDayOfMonth(1).plusMonths(1)).currencies().isEmpty());
         assertEquals(1,spendingReport.activity(owner(),null,null,"CHF",null,0).items().size());
+    }
+    @Test void openingDateCorrectionsAndLedgerMutationsImmediatelyRecalculateReports() {
+        var january=LocalDate.of(2026,1,1);var march=LocalDate.of(2026,3,1);
+        var a=accounts.saveAndFlush(new FinancialAccount(owner(),"Synthetic baseline",AccountType.CASH,null,"CHF",new BigDecimal("100"),march));
+        var category=categories.create(owner(),spending("Synthetic food",null));
+        var op=ledger.transaction(owner(),null,null,new TransactionInput(a.getId(),Kind.EXPENSE,"12",january.plusDays(14),null,null,"Synthetic January purchase",null,category.id()));
+        money("12",spendingReport.report(owner(),MONTH,january).currencies().getFirst().netSpending());
+        money("88",netWorth.current(owner()).currencies().getFirst().netWorth());
+        var changed=accountService.update(owner(),a.getId(),"\"0\"",new AccountDtos.CreateAccount(a.getName(),AccountType.CASH,null,"CHF","100",AccountDtos.BalanceMeaning.BALANCE,january));
+        assertEquals(january,changed.openingDate());money("88",changed.currentBalance());
+        money("88",netWorth.current(owner()).currencies().getFirst().netWorth());
+        assertEquals(412,assertThrows(AccountFailure.class,()->accountService.update(owner(),a.getId(),"\"0\"",new AccountDtos.CreateAccount(a.getName(),AccountType.CASH,null,"CHF","100",AccountDtos.BalanceMeaning.BALANCE,march))).status());
+        var edited=ledger.transaction(owner(),op.id(),"\"0\"",new TransactionInput(a.getId(),Kind.EXPENSE,"20",january.plusDays(14),null,null,"Synthetic corrected purchase",null,category.id()));
+        money("80",netWorth.current(owner()).currencies().getFirst().netWorth());
+        money("20",spendingReport.report(owner(),MONTH,january).currencies().getFirst().netSpending());
+        ledger.delete(owner(),edited.id(),"\"1\"",false);
+        money("100",netWorth.current(owner()).currencies().getFirst().netWorth());
+        assertTrue(spendingReport.report(owner(),MONTH,january).currencies().isEmpty());
+        assertTrue(jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE event_type='ACCOUNT_UPDATED'",Integer.class)>0);
     }
     @Test void migrationsRemoveBudgetingAndPreserveLedgerCategoriesPreferencesAndAudit() throws Exception {
         var root=categories.create(owner(),spending("Food",null));

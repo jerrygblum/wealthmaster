@@ -196,3 +196,12 @@ it("preserves the recovery-login redirect to settings", async () => {
   await screen.findByRole("heading", { name: "Settings" });
   expect(api.currentNetWorth).not.toHaveBeenCalled();
 });
+
+it("reloads net worth when returning after activity changes in another tab", async () => {
+  render(<NetWorthPage user={user} onExpired={() => {}} />);
+  await waitFor(() => expect(api.currentNetWorth).toHaveBeenCalledTimes(1));
+  vi.mocked(api.currentNetWorth).mockResolvedValue(report);
+  fireEvent.focus(window);
+  await screen.findByText("CHF 199’999’999’999’999’999’868.25");
+  expect(api.currentNetWorth).toHaveBeenCalledTimes(2);
+});

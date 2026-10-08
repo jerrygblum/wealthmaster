@@ -103,6 +103,40 @@ beforeEach(() => {
   ]);
   vi.mocked(api.categories).mockResolvedValue({ items: [], starterSetAvailable: true });
 });
+it("records future months using the expected date and shows confirmed future activity as scheduled", async () => {
+  const futureItem = { ...occurrence, expectedDate: "2026-11-01" };
+  vi.mocked(api.expected).mockResolvedValue({
+    ...report,
+    month: "2026-11-01",
+    items: [futureItem],
+  });
+  render(<ExpectedPage onExpired={() => {}} />);
+  await screen.findByText("Overdue");
+  fireEvent.click(screen.getByRole("button", { name: "Record Synthetic bill" }));
+  expect(screen.getByLabelText("Transaction date")).toHaveValue("2026-11-01");
+  expect(screen.getByLabelText("Transaction date")).toHaveAttribute("max", "9999-12-31");
+  expect(screen.getByLabelText("Value date (optional)")).toHaveAttribute("max", "9999-12-31");
+  vi.mocked(api.expected).mockResolvedValue({
+    ...report,
+    month: "2026-11-01",
+    items: [
+      {
+        ...futureItem,
+        status: "SCHEDULED",
+        actual: { ...operation, transactionDate: "2026-11-01" },
+        canRecord: false,
+      },
+    ],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save actual transaction" }));
+  await screen.findByText("Scheduled");
+  expect(api.recordExpected).toHaveBeenCalledWith(
+    futureItem,
+    "2026-11-01",
+    expect.objectContaining({ transactionDate: "2026-11-01" }),
+  );
+  expect(screen.queryByRole("button", { name: "Record Synthetic bill" })).toBeNull();
+});
 it("shows rounded expectations and changes month automatically", async () => {
   render(<ExpectedPage onExpired={() => {}} />);
   await screen.findByText("Overdue");
@@ -234,4 +268,41 @@ it("handles expired sessions", async () => {
   const expired = vi.fn();
   render(<ExpectedPage onExpired={expired} />);
   await waitFor(() => expect(expired).toHaveBeenCalled());
+});
+
+it("records overdue expectations before account opening or in another month", async () => {
+  const historical = { ...occurrence, expectedDate: "2026-01-01" };
+  const historicalReport = { ...report, month: "2026-01-01", items: [historical] };
+  vi.mocked(api.expected).mockResolvedValue(historicalReport);
+  const accounts = await api.accounts();
+  vi.mocked(api.accounts).mockResolvedValue(
+    accounts.map((a) => ({ ...a, openingDate: "2026-03-01" })),
+  );
+  render(<ExpectedPage onExpired={() => {}} />);
+  await screen.findByText("Overdue");
+  fireEvent.click(screen.getByRole("button", { name: "Record Synthetic bill" }));
+  const date = screen.getByLabelText("Transaction date");
+  expect(date).toHaveValue("2026-01-01");
+  expect(date).toHaveAttribute("min", "0001-01-01");
+  expect(date).toHaveAttribute("max", "9999-12-31");
+  expect(screen.getByLabelText("Value date (optional)")).toHaveAttribute("min", "0001-01-01");
+  fireEvent.change(date, { target: { value: "2026-03-15" } });
+  vi.mocked(api.expected).mockResolvedValue({
+    ...historicalReport,
+    items: [
+      {
+        ...historical,
+        status: "COMPLETED",
+        actual: { ...operation, transactionDate: "2026-03-15" },
+        canRecord: false,
+      },
+    ],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save actual transaction" }));
+  await screen.findByText("Recorded 2026-03-15");
+  expect(api.recordExpected).toHaveBeenCalledWith(
+    historical,
+    "2026-01-01",
+    expect.objectContaining({ transactionDate: "2026-03-15" }),
+  );
 });

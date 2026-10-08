@@ -142,7 +142,7 @@ export type ExpectedOccurrence = {
   definition: ExpectedDefinition;
   expectedDate: string;
   version: number;
-  status: "UPCOMING" | "DUE" | "OVERDUE" | "COMPLETED" | "SKIPPED" | "NEEDS_REVIEW";
+  status: "UPCOMING" | "DUE" | "OVERDUE" | "SCHEDULED" | "COMPLETED" | "SKIPPED" | "NEEDS_REVIEW";
   actual: Operation | null;
   difference: string | null;
   canRecord: boolean;

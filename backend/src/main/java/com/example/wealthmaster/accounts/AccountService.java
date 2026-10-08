@@ -41,6 +41,8 @@ public class AccountService {
         return input.institution() == null || input.institution().isBlank() ? null : input.institution().strip();
     }
     private BigDecimal openingAmount(CreateAccount input) {
+        if(input.openingDate()==null || input.openingDate().getYear()<1 || input.openingDate().getYear()>9999)
+            throw new IllegalArgumentException("Opening dates must use years 1–9999.");
         try {
             if (Currency.getInstance(input.currency()).getDefaultFractionDigits() < 0) {
                 throw new IllegalArgumentException();
@@ -81,8 +83,8 @@ public class AccountService {
         var account = owned(owner, id, match);
         var amount = openingAmount(input);
         if (usage.hasActivity(id) && (account.getType() != input.type() || !account.getCurrency().equals(input.currency())
-                || account.getOpeningBalance().compareTo(amount) != 0 || !account.getOpeningDate().equals(input.openingDate())))
-            throw new AccountFailure(409, "Financial setup is locked because this account has activity. Only name and institution can change.");
+                || account.getOpeningBalance().compareTo(amount) != 0))
+            throw new AccountFailure(409, "Financial setup is locked because this account has activity. Name, institution and opening date can change.");
         var before = response(account);
         account.update(input.name().strip(), institution(input), input.type(), input.currency(), amount, input.openingDate());
         accounts.flush();
