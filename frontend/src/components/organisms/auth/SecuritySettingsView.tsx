@@ -24,7 +24,6 @@ export function SecuritySettingsView({
   load,
   cancel,
   complete,
-  logout,
   verifyIdentity,
   verifyAuthenticator,
   requiredSetup,
@@ -39,17 +38,7 @@ export function SecuritySettingsView({
 }) {
   return (
     <>
-      <WorkspaceHeading
-        title={<>Settings</>}
-        subtitle={<>Preferences and security</>}
-        actions={
-          <>
-            <Button variant="secondary" disabled={action.pending} onClick={logout}>
-              Sign out
-            </Button>
-          </>
-        }
-      />
+      <WorkspaceHeading title={<>Settings</>} subtitle={<>Preferences and security</>} />
       {preferencesPanel}
       {requiredSetup && (
         <Message role="status" className="notice">

@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { syntheticUser, passwordLogin, enroll, openAccounts } from "./helpers";
+import {
+  syntheticUser,
+  passwordLogin,
+  enroll,
+  openAccounts,
+  expectCompactWorkspace,
+} from "./helpers";
 
 test("net worth is the default, separates currencies, and follows account activity", async ({
   page,
@@ -7,6 +13,7 @@ test("net worth is the default, separates currencies, and follows account activi
   const email = await syntheticUser();
   if ((await passwordLogin(page, email)) === "MFA_SETUP_REQUIRED") await enroll(page);
   await expect(page.getByRole("heading", { name: "Net worth", exact: true })).toBeVisible();
+  await expectCompactWorkspace(page);
   await expect(page.getByText("Start with your first account")).toBeVisible();
   await openAccounts(page);
   for (const fixture of [

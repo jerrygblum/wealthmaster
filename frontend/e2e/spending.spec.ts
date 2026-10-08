@@ -1,6 +1,12 @@
 import type { SpendingReport } from "../src/types/models";
 import { test, expect } from "@playwright/test";
-import { syntheticUser, passwordLogin, enroll, openAccounts } from "./helpers";
+import {
+  syntheticUser,
+  passwordLogin,
+  enroll,
+  openAccounts,
+  expectCompactWorkspace,
+} from "./helpers";
 
 test("spending periods, category breakdowns, refunds and archived activity", async ({
   page,
@@ -8,6 +14,7 @@ test("spending periods, category breakdowns, refunds and archived activity", asy
   const email = await syntheticUser();
   if ((await passwordLogin(page, email)) === "MFA_SETUP_REQUIRED") await enroll(page);
   await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await expectCompactWorkspace(page);
   await page.getByLabel("Default currency (ISO code)").fill("CHF");
   await page.getByRole("button", { name: "Save default currency" }).click();
   await expect(page.getByText("Default currency saved.")).toBeVisible();
@@ -65,6 +72,10 @@ test("spending periods, category breakdowns, refunds and archived activity", asy
   }
   await page.getByRole("navigation").getByRole("link", { name: "Spending", exact: true }).click();
   await expect(page.getByRole("table")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Show period", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Refresh spending", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("banner").getByRole("button", { name: "Sign out" })).toBeVisible();
+  await expectCompactWorkspace(page);
   await expect(page.getByRole("img", { name: /Expenses before refunds/ })).toHaveCount(0);
   await expect(page.getByText(/Uncategorized net spending: 3.00/)).toBeVisible();
   await page.getByRole("button", { name: "Expand Synthetic Food" }).click();
@@ -72,10 +83,19 @@ test("spending periods, category breakdowns, refunds and archived activity", asy
   const report = (await (await page.request.get("/api/v1/spending")).json()) as SpendingReport;
   expect(report.currencies.find((c) => c.currency === "CHF")?.expenses).toBe("13.12345678");
   await expect(page.getByRole("table").getByRole("link", { name: "Manage limit" })).toHaveCount(0);
-  await page.getByLabel("Period type").selectOption("YEAR");
+  await page.getByRole("button", { name: "Year", exact: true }).click();
   await expect(page.getByLabel("Period", { exact: true })).toHaveAttribute("type", "number");
   await expect(page.getByRole("table").getByText("-1.88", { exact: true }).first()).toBeVisible();
-  await page.getByLabel("Period type").selectOption("MONTH");
+  await page.getByRole("button", { name: "Month", exact: true }).click();
+  await expect(page.getByLabel("Period", { exact: true })).toHaveAttribute("type", "month");
+  await expect(page.getByRole("button", { name: "Previous period" })).toBeEnabled();
+  await page.getByRole("button", { name: "Previous period" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "Next period" })).toBeEnabled();
+  await page.getByRole("button", { name: "Next period" }).click();
+  await expect(page.getByLabel("Period", { exact: true })).toBeEnabled();
+  await page.getByLabel("Period", { exact: true }).fill(report.periodStart.slice(0, 7));
+  await expect(page.getByText(/Uncategorized net spending: 3.00/)).toBeVisible();
   await page.getByRole("link", { name: "Categories", exact: true }).click();
   const food = page
     .getByRole("article")

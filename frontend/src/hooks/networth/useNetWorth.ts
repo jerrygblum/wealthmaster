@@ -3,11 +3,10 @@ import { api, ApiError } from "../../services/api";
 import type { NetWorthPageProps } from "../../types/componentProps";
 import type { CurrentNetWorth } from "../../types/models";
 
-export function useNetWorth({ user, onExpired, onLogout }: NetWorthPageProps) {
+export function useNetWorth({ user, onExpired }: NetWorthPageProps) {
   const [report, setReport] = useState<CurrentNetWorth>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [loggingOut, setLoggingOut] = useState(false);
   const fail = useCallback(
     (err: unknown) => {
       if (err instanceof ApiError && err.status === 401) onExpired();
@@ -32,19 +31,5 @@ export function useNetWorth({ user, onExpired, onLogout }: NetWorthPageProps) {
   useEffect(() => {
     void load();
   }, [load]);
-  async function logout() {
-    setLoggingOut(true);
-    setError("");
-    try {
-      await api.logout();
-      onLogout();
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) onLogout();
-      else fail(err);
-    } finally {
-      setLoggingOut(false);
-    }
-  }
-
-  return { report, loading, error, loggingOut, load, logout, user };
+  return { report, loading, error, load, user };
 }

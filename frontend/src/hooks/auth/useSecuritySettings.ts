@@ -19,7 +19,6 @@ export function useSecuritySettings({
   requiredSetup,
   onSession,
   onExpired,
-  onLogout,
 }: SecuritySettingsProps) {
   const [status, setStatus] = useState<SecurityStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -50,12 +49,6 @@ export function useSecuritySettings({
     onSession(session);
     await load();
   }
-
-  const logout = () =>
-    void action.run(async () => {
-      await api.logout();
-      onLogout();
-    });
 
   const verifyIdentity = (password: string, factor: string, kind: FactorKind) =>
     void action.run(async () => {
@@ -89,7 +82,6 @@ export function useSecuritySettings({
     load,
     cancel,
     complete,
-    logout,
     verifyIdentity,
     verifyAuthenticator,
     requiredSetup,

@@ -2,9 +2,11 @@ import { displayAmount } from "../../../utils/accountPresentation";
 import type { LedgerKind } from "../../../types/models";
 import type { AccountDetailViewModel } from "../../../types/viewModels";
 import { categoryLabel } from "../../../utils/categoryPresentation";
+import { ActionIcon } from "../../atoms/ActionIcon";
 import { Button, Input, Link, LoadingIndicator, Select, Textarea } from "../../atoms/Controls";
 import { ActionGroup } from "../../molecules/ActionGroup";
 import { Confirmation } from "../../molecules/Confirmation";
+import { WorkspaceHeading } from "../application/WorkspaceHeading";
 import { Field } from "../../molecules/Field";
 
 export function AccountDetailView({
@@ -40,38 +42,51 @@ export function AccountDetailView({
 }: AccountDetailViewModel) {
   return (
     <>
-      <Button variant="secondary" disabled={pending} onClick={onBack}>
-        Back to accounts
-      </Button>
+      <WorkspaceHeading
+        title={account?.name ?? "Account activity"}
+        actions={
+          <Button
+            variant="secondary"
+            className="compact-action"
+            aria-label="Back to accounts"
+            title="Back to accounts"
+            disabled={pending}
+            onClick={onBack}
+          >
+            <ActionIcon action="previous" />
+          </Button>
+        }
+      />
       {account && (
         <>
-          <h1>{account.name}</h1>
-          <p className="balance">
-            {account.currency}{" "}
-            {displayAmount(
-              account.type === "CREDIT_CARD" && balance.startsWith("-")
-                ? balance.slice(1)
-                : balance,
-            )}
-          </p>
-          <p>
-            {account.type === "CREDIT_CARD" && balance.startsWith("-")
-              ? "Amount owed"
-              : account.type === "INVESTMENT"
-                ? "Current cash balance"
-                : "Current balance"}{" "}
-            · {account.balanceAsOf}
-          </p>
-          <p>
-            Opening {account.type === "INVESTMENT" ? "cash balance" : "balance"}: {account.currency}{" "}
-            {displayAmount(account.openingBalance)} · {account.openingDate}
-          </p>
+          <div className="account-overview">
+            <p className="balance">
+              {account.currency}{" "}
+              {displayAmount(
+                account.type === "CREDIT_CARD" && balance.startsWith("-")
+                  ? balance.slice(1)
+                  : balance,
+              )}
+            </p>
+            <p>
+              {account.type === "CREDIT_CARD" && balance.startsWith("-")
+                ? "Amount owed"
+                : account.type === "INVESTMENT"
+                  ? "Current cash balance"
+                  : "Current balance"}{" "}
+              · {account.balanceAsOf}
+            </p>
+            <p>
+              Opening {account.type === "INVESTMENT" ? "cash balance" : "balance"}:{" "}
+              {account.currency} {displayAmount(account.openingBalance)} · {account.openingDate}
+            </p>
+          </div>
           {!account.active && (
             <p className="notice">
               Archived activity is read-only. Restore this account from Accounts to make changes.
             </p>
           )}
-          <ActionGroup className="form-actions">
+          <ActionGroup className="form-actions workspace-toolbar">
             <Button disabled={!account.active || pending} onClick={() => start("EXPENSE")}>
               Add transaction
             </Button>

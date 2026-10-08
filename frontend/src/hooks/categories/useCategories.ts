@@ -5,7 +5,7 @@ import { api, ApiError } from "../../services/api";
 import type { CategoriesPageProps } from "../../types/componentProps";
 import type { Category, CategoryInput, CategoryList } from "../../types/models";
 
-export function useCategories({ user, onExpired, onLogout }: CategoriesPageProps) {
+export function useCategories({ user, onExpired }: CategoriesPageProps) {
   const [data, setData] = useState<CategoryList>();
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
@@ -84,18 +84,6 @@ export function useCategories({ user, onExpired, onLogout }: CategoriesPageProps
     const input: CategoryInput = { ...form };
     await action(() => api.saveCategory(input, editing), "Category saved.");
   }
-  async function logout() {
-    setPending(true);
-    try {
-      await api.logout();
-      onLogout();
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) onLogout();
-      else fail(err);
-    } finally {
-      setPending(false);
-    }
-  }
   const items = data?.items ?? [];
   const locked = !!editing && (editing.hasActivity || editing.hasChildren);
   const parents = items.filter(
@@ -149,7 +137,6 @@ export function useCategories({ user, onExpired, onLogout }: CategoriesPageProps
     load,
     start,
     save,
-    logout,
     items,
     locked,
     parents,

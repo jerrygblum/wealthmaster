@@ -30,6 +30,8 @@ export function useApp() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
   const restore = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -48,10 +50,12 @@ export function useApp() {
   const expire = useCallback(() => {
     setSession(null);
     setNotice("Your session expired. Please sign in again.");
+    setLogoutError(null);
   }, []);
   function acceptSession(result: Session) {
     setSession(result);
     setNotice(null);
+    setLogoutError(null);
     if (result.status === "AUTHENTICATED" && result.recoveryUsed) {
       setPage("settings");
       window.location.hash = "#/settings";
@@ -60,9 +64,38 @@ export function useApp() {
   const loggedOut = () => {
     setSession(null);
     setNotice(null);
+    setLogoutError(null);
     setPage("net-worth");
     window.location.hash = "#/net-worth";
   };
 
-  return { page, session, loading, error, notice, restore, expire, acceptSession, loggedOut };
+  async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError(null);
+    try {
+      await api.logout();
+      loggedOut();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) loggedOut();
+      else setLogoutError(errorMessage(err));
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
+  return {
+    page,
+    session,
+    loading,
+    error,
+    notice,
+    restore,
+    expire,
+    acceptSession,
+    loggedOut,
+    logout,
+    loggingOut,
+    logoutError,
+  };
 }

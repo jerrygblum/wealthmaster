@@ -94,6 +94,12 @@ describe("workspace", () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Everyday" });
     expect(api.login).not.toHaveBeenCalled();
+    expect(screen.queryByText("Your workspace")).toBeNull();
+    for (const name of ["Edit", "Archive", "Delete"]) {
+      const action = screen.getByRole("button", { name });
+      expect(action).toHaveAccessibleName(name);
+      expect(action).toHaveAttribute("title", `${name} ${account.name}`);
+    }
   });
   it("shows an invalid-login error and clears the password", async () => {
     vi.mocked(api.login).mockRejectedValue(new ApiError(401, "Invalid email or password."));
@@ -269,4 +275,31 @@ it.each(["#/spending", "#/planning"])("opens Spending for %s", async (hash) => {
   expect(await screen.findByRole("heading", { name: "Spending" })).toBeVisible();
   expect(screen.getByRole("link", { name: "Spending" })).toHaveAttribute("href", "#/spending");
   expect(screen.getByRole("link", { name: "Spending" })).toHaveAttribute("aria-current", "page");
+});
+
+it("keeps a single icon sign-out action in the shared header on Spending", async () => {
+  window.location.hash = "#/spending";
+  vi.mocked(api.session).mockResolvedValue(session);
+  vi.mocked(api.spending).mockResolvedValue({
+    periodType: "MONTH",
+    periodStart: "2026-10-01",
+    categories: [],
+    groups: [],
+    currencies: [],
+    businessDate: "2026-10-05",
+  });
+  vi.mocked(api.logout).mockRejectedValueOnce(new ApiError(0, "Unable to sign out"));
+  render(<App />);
+  await screen.findByRole("heading", { name: "Spending" });
+  const signOut = screen.getByRole("button", { name: "Sign out" });
+  expect(signOut.closest("header")).toHaveClass("application-header");
+  expect(signOut).toHaveAttribute("title", "Sign out");
+  expect(screen.getAllByRole("button", { name: "Sign out" })).toHaveLength(1);
+  fireEvent.click(signOut);
+  await screen.findByText("Unable to sign out");
+  expect(screen.getByRole("heading", { name: "Spending" })).toBeVisible();
+  vi.mocked(api.logout).mockRejectedValueOnce(new ApiError(401, "Expired"));
+  fireEvent.click(signOut);
+  await screen.findByRole("heading", { name: "Welcome back" });
+  expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
 });

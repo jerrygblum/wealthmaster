@@ -1,18 +1,21 @@
 import { displayAmount } from "../../../utils/accountPresentation";
-import { Button, Checkbox, Input, Link, LoadingIndicator, Select } from "../../atoms/Controls";
+import { Button, Checkbox, Input, Link, LoadingIndicator } from "../../atoms/Controls";
+import { ActionIcon } from "../../atoms/ActionIcon";
 import { ActionGroup } from "../../molecules/ActionGroup";
+import { WorkspaceHeading } from "../application/WorkspaceHeading";
 import { SpendingHierarchyTable } from "./SpendingHierarchyTable";
 
-import type { SpendingPeriod } from "../../../types/models";
 import type { SpendingPageViewModel } from "../../../types/viewModels";
 
 export function SpendingPageView({
   period,
-  setPeriod,
+  changePeriod,
   start,
-  setStart,
   entry,
-  setEntry,
+  changeEntry,
+  commitEntry,
+  canPrevious,
+  canNext,
   data,
   loading,
   error,
@@ -31,54 +34,65 @@ export function SpendingPageView({
 }: SpendingPageViewModel) {
   return (
     <>
-      <h1>Spending</h1>
-      <p>
+      <WorkspaceHeading title="Spending" />
+      <p className="workspace-description">
         See expenses, refunds and net spending by category. Each currency is reported separately.
       </p>
-      <ActionGroup className="form-actions spending-toolbar">
-        <label>
-          Period type{" "}
-          <Select
-            disabled={loading}
-            value={period}
-            onChange={(e) => {
-              setPeriod(e.target.value as SpendingPeriod);
-              setStart("");
-            }}
+      <ActionGroup className="workspace-toolbar spending-toolbar">
+        <div className="period-type-control" role="group" aria-label="Period type">
+          {(["MONTH", "YEAR"] as const).map((type) => (
+            <Button
+              key={type}
+              variant="secondary"
+              aria-pressed={period === type}
+              disabled={loading}
+              onClick={() => changePeriod(type)}
+            >
+              {type === "MONTH" ? "Month" : "Year"}
+            </Button>
+          ))}
+        </div>
+        <div className="period-navigation">
+          <Button
+            variant="secondary"
+            className="compact-action"
+            aria-label="Previous period"
+            title={`Previous ${period === "MONTH" ? "month" : "year"}`}
+            disabled={loading || !canPrevious}
+            onClick={() => move(-1)}
           >
-            <option value="MONTH">Month</option>
-            <option value="YEAR">Year</option>
-          </Select>
-        </label>
-        <Button disabled={loading} onClick={() => move(-1)}>
-          Previous period
-        </Button>
-        <form
-          className="form-actions"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setStart(period === "MONTH" ? `${entry}-01` : `${entry.padStart(4, "0")}-01-01`);
-          }}
-        >
-          <label>
-            Period{" "}
+            <ActionIcon action="previous" />
+          </Button>
+          <label className={`period-field ${period === "YEAR" ? "period-field-year" : ""}`}>
+            <span className="sr-only">Period</span>
             <Input
               required
+              disabled={loading}
               type={period === "MONTH" ? "month" : "number"}
-              min={period === "YEAR" ? "1" : undefined}
+              min={period === "YEAR" ? "1" : "0001-01"}
               max={period === "YEAR" ? "9999" : "9999-12"}
               value={entry}
-              onChange={(e) => setEntry(e.target.value)}
+              onChange={(e) => changeEntry(e.target.value)}
+              onBlur={commitEntry}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitEntry();
+                }
+              }}
             />
           </label>
-          <Button disabled={loading}>Show period</Button>
-        </form>
-        <Button disabled={loading} onClick={() => move(1)}>
-          Next period
-        </Button>
-        <Button disabled={loading} onClick={() => void load()}>
-          Refresh spending
-        </Button>
+          <Button
+            variant="secondary"
+            className="compact-action"
+            aria-label="Next period"
+            title={`Next ${period === "MONTH" ? "month" : "year"}`}
+            disabled={loading || !canNext}
+            onClick={() => move(1)}
+          >
+            <ActionIcon action="next" />
+          </Button>
+        </div>
       </ActionGroup>
       {error && (
         <div role="alert" className="error">

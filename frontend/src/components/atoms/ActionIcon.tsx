@@ -2,9 +2,24 @@ export function ActionIcon({
   action,
 }: {
   action:
-    "edit" | "archive" | "restore" | "delete" | "activity" | "settings" | "expand" | "collapse";
+    | "refresh"
+    | "logout"
+    | "previous"
+    | "next"
+    | "edit"
+    | "archive"
+    | "restore"
+    | "delete"
+    | "activity"
+    | "settings"
+    | "expand"
+    | "collapse";
 }) {
   const paths = {
+    refresh: "M20 11a8 8 0 1 0-2 6 M20 4v7h-7",
+    logout: "M9 4H4v16h5 M14 8l4 4-4 4 M9 12h11",
+    previous: "M15 5l-7 7 7 7",
+    next: "M9 5l7 7-7 7",
     activity: "M4 4h16v16H4Z M8 8h8 M8 12h8 M8 16h5",
     settings: "M4 6h16 M4 12h16 M4 18h16 M8 3v6 M16 9v6 M10 15v6",
     expand: "M9 5l7 7-7 7",

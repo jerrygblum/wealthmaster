@@ -9,7 +9,7 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
 }
 
-export function useAccounts({ user, onExpired, onLogout }: AccountsPageProps) {
+export function useAccounts({ user, onExpired }: AccountsPageProps) {
   const [selected, setSelected] = useState<string | null>(
     window.location.hash.match(/^#\/accounts\/([a-f0-9-]+)$/)?.[1] ?? null,
   );
@@ -60,7 +60,6 @@ export function useAccounts({ user, onExpired, onLogout }: AccountsPageProps) {
       setActionPending(false);
     }
   }
-  const [loggingOut, setLoggingOut] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,20 +76,6 @@ export function useAccounts({ user, onExpired, onLogout }: AccountsPageProps) {
   useEffect(() => {
     if (!selected) void load();
   }, [load, selected]);
-  async function logout() {
-    setLoggingOut(true);
-    setError(null);
-    try {
-      await api.logout();
-      onLogout();
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) onLogout();
-      else setError(errorMessage(err));
-    } finally {
-      setLoggingOut(false);
-    }
-  }
-
   return {
     selected,
     setSelected,
@@ -113,11 +98,9 @@ export function useAccounts({ user, onExpired, onLogout }: AccountsPageProps) {
     setStale,
     visibleAccounts,
     manage,
-    loggingOut,
     notice,
     setNotice,
     load,
-    logout,
     user,
     onExpired,
   };

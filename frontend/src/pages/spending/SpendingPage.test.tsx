@@ -116,16 +116,16 @@ it("supports activity without a limit, pagination and account links", async () =
     expect(api.spendingActivity).toHaveBeenCalledWith("MONTH", "2026-10-01", "CHF", null, 0),
   );
 });
-it("retains independent period input, retries errors and handles expired sessions", async () => {
+it("loads a selected month automatically, retries errors and handles expired sessions", async () => {
   const expired = vi.fn();
   render(<SpendingPage onExpired={expired} />);
   await screen.findByText("Food (inclusive) (archived branch)");
+  expect(screen.queryByRole("button", { name: "Show period" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Refresh spending" })).toBeNull();
+  vi.mocked(api.spending).mockRejectedValueOnce(new ApiError(0, "Disconnected"));
   fireEvent.change(screen.getByLabelText("Period", { exact: true }), {
     target: { value: "2027-02" },
   });
-  expect(api.spending).toHaveBeenCalledTimes(1);
-  vi.mocked(api.spending).mockRejectedValueOnce(new ApiError(0, "Disconnected"));
-  fireEvent.click(screen.getByText("Show period"));
   await screen.findByText("Disconnected");
   vi.mocked(api.spending).mockRejectedValueOnce(new ApiError(401, "Expired"));
   fireEvent.click(screen.getByText("Retry / reload spending"));
@@ -140,9 +140,9 @@ it("switches months and years and shows a clear empty period", async () => {
     periodType: "YEAR",
     periodStart: "2026-01-01",
   });
-  fireEvent.change(screen.getByLabelText("Period type"), { target: { value: "YEAR" } });
+  fireEvent.click(screen.getByRole("button", { name: "Year" }));
   await screen.findByRole("heading", { name: "2026" });
-  expect(api.spending).toHaveBeenLastCalledWith("YEAR", undefined);
+  expect(api.spending).toHaveBeenLastCalledWith("YEAR", "2026-01-01");
   vi.mocked(api.spending).mockResolvedValue({
     ...report,
     periodType: "YEAR",
@@ -150,8 +150,36 @@ it("switches months and years and shows a clear empty period", async () => {
     groups: [],
     currencies: [],
   });
-  fireEvent.click(screen.getByText("Previous period"));
+  fireEvent.click(screen.getByRole("button", { name: "Previous period" }));
   await screen.findByText("No expenses or refunds recorded in this period.");
   expect(api.spending).toHaveBeenLastCalledWith("YEAR", "2025-01-01");
   expect(screen.queryByRole("table")).toBeNull();
+});
+
+it("keeps partial year input local, commits on blur and restores invalid input", async () => {
+  vi.mocked(api.spending).mockResolvedValue({
+    ...report,
+    periodType: "YEAR",
+    periodStart: "2026-01-01",
+  });
+  render(<SpendingPage onExpired={() => {}} />);
+  await screen.findByRole("button", { name: "Year" });
+  await waitFor(() => expect(screen.getByRole("button", { name: "Year" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Year" }));
+  await screen.findByRole("heading", { name: "2026" });
+  const input = screen.getByLabelText("Period", { exact: true });
+  fireEvent.change(input, { target: { value: "26" } });
+  expect(api.spending).toHaveBeenCalledTimes(2);
+  vi.mocked(api.spending).mockResolvedValue({
+    ...report,
+    periodType: "YEAR",
+    periodStart: "0026-01-01",
+  });
+  fireEvent.blur(input);
+  await screen.findByRole("heading", { name: "0026" });
+  expect(api.spending).toHaveBeenLastCalledWith("YEAR", "0026-01-01");
+  fireEvent.change(input, { target: { value: "10000" } });
+  fireEvent.blur(input);
+  expect(input).toHaveValue(26);
+  expect(api.spending).toHaveBeenCalledTimes(3);
 });

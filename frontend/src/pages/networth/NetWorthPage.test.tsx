@@ -79,7 +79,7 @@ beforeEach(() => {
 });
 it("renders exact totals, signed contributions, archived status and excluded future accounts", async () => {
   vi.mocked(api.currentNetWorth).mockResolvedValue(report);
-  render(<NetWorthPage user={user} onExpired={() => {}} onLogout={() => {}} />);
+  render(<NetWorthPage user={user} onExpired={() => {}} />);
   await screen.findByText("CHF 199’999’999’999’999’999’868.25");
   expect(screen.getByText("CHF 150.00")).toBeVisible();
   expect(screen.getByText("Archived · included in totals")).toBeVisible();
@@ -101,7 +101,7 @@ it("shows loading without fabricated zero totals, then handles an empty report",
         resolve = done;
       }),
   );
-  render(<NetWorthPage user={user} onExpired={() => {}} onLogout={() => {}} />);
+  render(<NetWorthPage user={user} onExpired={() => {}} />);
   expect(screen.getByRole("status")).toHaveTextContent("Calculating");
   expect(screen.queryByText("Assets")).not.toBeInTheDocument();
   resolve(empty);
@@ -112,9 +112,9 @@ it("marks failed refreshes as previous calculations and retries", async () => {
     .mockResolvedValueOnce(report)
     .mockRejectedValueOnce(new ApiError(0, "Disconnected"))
     .mockResolvedValueOnce(empty);
-  render(<NetWorthPage user={user} onExpired={() => {}} onLogout={() => {}} />);
+  render(<NetWorthPage user={user} onExpired={() => {}} />);
   await screen.findByText("Account contributions");
-  fireEvent.click(screen.getByText("Refresh net worth"));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh net worth" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("previous calculation");
   fireEvent.click(screen.getByText("Try again"));
   await screen.findByText("Start with your first account");
@@ -125,9 +125,9 @@ it("handles future-only reports and expired sessions", async () => {
     .mockResolvedValueOnce({ ...empty, excludedFutureAccounts: report.excludedFutureAccounts })
     .mockRejectedValueOnce(new ApiError(401, "Expired"));
   const expired = vi.fn();
-  render(<NetWorthPage user={user} onExpired={expired} onLogout={() => {}} />);
+  render(<NetWorthPage user={user} onExpired={expired} />);
   await screen.findByText("No accounts are open yet");
-  fireEvent.click(screen.getByText("Refresh net worth"));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh net worth" }));
   await waitFor(() => expect(expired).toHaveBeenCalled());
 });
 it("defaults a restored session to net worth and reloads on re-entry", async () => {
@@ -171,7 +171,7 @@ it("resets the destination on intentional logout and lands an ordinary login on 
   vi.mocked(api.login).mockResolvedValue({ status: "AUTHENTICATED", user });
   render(<App />);
   await screen.findByRole("heading", { name: "Accounts" });
-  fireEvent.click(screen.getByText("Sign out"));
+  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
   await screen.findByRole("heading", { name: "Welcome back" });
   expect(window.location.hash).toBe("#/net-worth");
   fireEvent.change(screen.getByLabelText("Email"), { target: { value: user.email } });

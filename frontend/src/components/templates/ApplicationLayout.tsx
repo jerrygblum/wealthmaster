@@ -8,15 +8,23 @@ export function ApplicationLayout({
   page,
   authenticated,
   recoveryUsed,
+  headerActions,
+  headerFeedback,
 }: {
   children: ReactNode;
   page: string;
   authenticated: boolean;
   recoveryUsed: boolean;
+  headerActions?: ReactNode;
+  headerFeedback?: ReactNode;
 }) {
   return (
     <AppShell>
-      <Brand />
+      <header className="application-header">
+        <Brand />
+        {headerActions}
+      </header>
+      {headerFeedback}
       {authenticated && <WorkspaceNavigation page={page} />}{" "}
       {recoveryUsed && (
         <Message className="notice">

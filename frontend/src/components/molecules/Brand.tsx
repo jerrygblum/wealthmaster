@@ -1,10 +1,10 @@
 export function Brand() {
   return (
-    <header className="brand">
+    <div className="brand">
       <span className="brand-mark" aria-hidden="true">
         W
       </span>
       <span>Wealth Master</span>
-    </header>
+    </div>
   );
 }

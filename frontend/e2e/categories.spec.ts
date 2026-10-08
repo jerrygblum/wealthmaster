@@ -1,6 +1,12 @@
 import type { CategoryList } from "../src/types/models";
 import { test, expect } from "@playwright/test";
-import { syntheticUser, passwordLogin, enroll, openAccounts } from "./helpers";
+import {
+  syntheticUser,
+  passwordLogin,
+  enroll,
+  openAccounts,
+  expectCompactWorkspace,
+} from "./helpers";
 
 test("manage categories, categorize expenses/refunds, retain archived history and handle stale edits", async ({
   page,
@@ -9,6 +15,7 @@ test("manage categories, categorize expenses/refunds, retain archived history an
   if ((await passwordLogin(page, email)) === "MFA_SETUP_REQUIRED") await enroll(page);
   await page.getByRole("link", { name: "Categories", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Categories", exact: true })).toBeVisible();
+  await expectCompactWorkspace(page);
   await expect(page.getByRole("button", { name: "Add starter categories" })).toBeVisible();
   for (const category of [
     { name: "Synthetic Food", type: "SPENDING", parent: null },

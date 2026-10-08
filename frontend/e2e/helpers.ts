@@ -90,3 +90,21 @@ export async function openAccounts(page: Page) {
   await page.getByRole("link", { name: "Accounts", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Accounts", exact: true })).toBeVisible();
 }
+
+export async function expectCompactWorkspace(page: Page) {
+  const title = page.getByRole("main").getByRole("heading", { level: 1 });
+  await expect(title).toBeVisible();
+  const dimensions = await title.evaluate((element) => ({
+    fontSize: parseFloat(getComputedStyle(element).fontSize),
+    paddingTop: parseFloat(getComputedStyle(element.closest("main")!).paddingTop),
+    mobile: window.innerWidth <= 720,
+  }));
+  expect(dimensions.fontSize).toBe(dimensions.mobile ? 24 : 28);
+  expect(dimensions.paddingTop).toBe(12);
+  await expect(page.getByText("Your workspace", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("banner").getByRole("button", { name: "Sign out" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("button", { name: "Sign out" })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+}

@@ -1,3 +1,4 @@
+import { ActionIcon } from "../../atoms/ActionIcon";
 import { Button, LoadingIndicator } from "../../atoms/Controls";
 import { ActionGroup } from "../../molecules/ActionGroup";
 import { Confirmation } from "../../molecules/Confirmation";
@@ -31,11 +32,9 @@ export function AccountsPageView({
   setStale,
   visibleAccounts,
   manage,
-  loggingOut,
   notice,
   setNotice,
   load,
-  logout,
   user,
   onExpired,
   AccountForm,
@@ -44,21 +43,11 @@ export function AccountsPageView({
 }) {
   return (
     <>
-      <WorkspaceHeading
-        title={<>Accounts</>}
-        subtitle={<>{user.email}</>}
-        actions={
-          <>
-            <Button variant="secondary" disabled={loggingOut} onClick={() => void logout()}>
-              {loggingOut ? "Signing out…" : "Sign out"}
-            </Button>
-          </>
-        }
-      />
+      <WorkspaceHeading title={<>Accounts</>} subtitle={<>{user.email}</>} />
       <div className="section-heading">
         <p>Keep track of where your money lives.</p>
         <Button
-          disabled={showForm || actionPending || loggingOut || loading || !!error}
+          disabled={showForm || actionPending || loading || !!error}
           onClick={() => {
             setEditing(undefined);
             setShowForm(true);
@@ -199,18 +188,67 @@ export function AccountsPageView({
             const owed = account.type === "CREDIT_CARD" && balance.startsWith("-");
             return (
               <article className="panel account-card" key={account.id}>
-                <p className="eyebrow">{accountTypes[account.type]}</p>
-                <h2>
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      window.location.hash = `#/accounts/${account.id}`;
-                      setSelected(account.id);
-                    }}
-                  >
-                    {account.name}
-                  </Button>
-                </h2>
+                <div className="account-card-heading">
+                  <div className="account-card-title">
+                    <p className="eyebrow">{accountTypes[account.type]}</p>
+                    <h2>
+                      <Button
+                        className="account-name-control"
+                        variant="secondary"
+                        onClick={() => {
+                          window.location.hash = `#/accounts/${account.id}`;
+                          setSelected(account.id);
+                        }}
+                      >
+                        {account.name}
+                      </Button>
+                    </h2>
+                  </div>
+                  <ActionGroup className="account-card-actions">
+                    <Button
+                      variant="secondary"
+                      className="compact-action"
+                      aria-label="Edit"
+                      title={`Edit ${account.name}`}
+                      disabled={showForm || actionPending || !!deleting}
+                      onClick={() => {
+                        setEditing(account);
+                        setShowForm(true);
+                        setNotice(null);
+                      }}
+                    >
+                      <ActionIcon action="edit" />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="compact-action"
+                      disabled={showForm || actionPending || !!deleting}
+                      aria-label={account.active ? "Archive" : "Restore"}
+                      title={`${account.active ? "Archive" : "Restore"} ${account.name}`}
+                      onClick={() => void manage(account, account.active ? "archive" : "restore")}
+                    >
+                      <ActionIcon action={account.active ? "archive" : "restore"} />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="compact-action compact-action-delete"
+                      aria-label="Delete"
+                      title={
+                        account.hasActivity
+                          ? "Financial history prevents deletion; archive instead."
+                          : `Delete ${account.name}`
+                      }
+                      disabled={showForm || actionPending || !!deleting || account.hasActivity}
+                      onClick={() => {
+                        setDeleting(account);
+                        setActionError(null);
+                        setStale(false);
+                      }}
+                    >
+                      <ActionIcon action="delete" />
+                    </Button>
+                  </ActionGroup>
+                </div>
                 {account.institution && <p className="muted">{account.institution}</p>}
                 <p className="balance">
                   {account.currency} {displayAmount(owed ? balance.slice(1) : balance)}
@@ -228,37 +266,6 @@ export function AccountsPageView({
                   </time>
                 </p>
                 {!account.active && <p className="muted">Archived</p>}
-                <ActionGroup className="form-actions">
-                  <Button
-                    variant="secondary"
-                    disabled={showForm || actionPending || !!deleting}
-                    onClick={() => {
-                      setEditing(account);
-                      setShowForm(true);
-                      setNotice(null);
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={showForm || actionPending || !!deleting}
-                    onClick={() => void manage(account, account.active ? "archive" : "restore")}
-                  >
-                    {account.active ? "Archive" : "Restore"}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={showForm || actionPending || !!deleting || account.hasActivity}
-                    onClick={() => {
-                      setDeleting(account);
-                      setActionError(null);
-                      setStale(false);
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </ActionGroup>
                 {account.hasActivity && (
                   <p className="help">
                     Financial history is preserved. Archive this account instead of deleting it.

@@ -66,21 +66,22 @@
   font-size: 2.2rem;
 }
 .workspace {
-  padding-top: 50px;
+  padding-top: 12px;
 }
 .workspace h1 {
-  font-size: clamp(2.2rem, 5vw, 3.4rem);
-  margin-bottom: 10px;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  margin: 0;
 }
 .workspace-heading,
 .section-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 8px;
 }
 .section-heading {
-  margin: 20px 0 24px;
+  margin: 10px 0 12px;
 }
 .section-heading p {
   margin: 0;
@@ -171,16 +172,15 @@
     align-items: flex-start;
   }
   .section-heading {
-    flex-direction: column;
-    align-items: stretch;
+    flex-wrap: wrap;
   }
 }
 .workspace-nav {
   display: flex;
-  gap: 22px;
-  margin-top: 22px;
+  gap: 8px 16px;
+  margin-top: 12px;
   border-bottom: 1px solid var(--color-border);
-  padding-bottom: 12px;
+  padding-bottom: 6px;
 }
 .workspace-nav a {
   color: #24554c;
@@ -263,8 +263,8 @@
 .account-filter {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin: 1rem 0;
+  gap: 8px;
+  margin: 8px 0 12px;
 }
 .account-filter button.secondary[aria-pressed="true"] {
   background: var(--color-primary);
@@ -487,19 +487,6 @@
   justify-content: flex-end;
   gap: 4px;
 }
-.category-row-actions .category-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  min-width: 32px;
-  min-height: 32px;
-  padding: 0;
-  border-radius: 6px;
-}
-.category-row-actions .category-action-delete {
-  color: #a32b2b;
-}
 .category-row-editor {
   grid-column: 1 / -1;
   padding: 12px 0;
@@ -527,29 +514,9 @@
     grid-column: 2;
     grid-row: 1 / span 2;
   }
-  .category-row-actions .category-action {
-    width: 40px;
-    min-width: 40px;
-    min-height: 40px;
-  }
   .category-row-child .category-row-name {
     padding-left: 8px;
   }
-}
-.spending-toolbar {
-  align-items: end;
-  gap: 8px;
-  margin: 20px 0;
-}
-.spending-toolbar button {
-  min-height: 36px;
-  padding: 7px 12px;
-  font-size: 0.85rem;
-}
-.spending-toolbar input,
-.spending-toolbar select {
-  min-height: 36px;
-  padding: 7px 10px;
 }
 .spending-summary {
   border: 1px solid var(--color-border);
@@ -605,7 +572,6 @@
   justify-content: flex-end;
   gap: 4px;
 }
-.spending-row-actions .spending-action,
 .spending-row-name .spending-expand {
   display: inline-flex;
   align-items: center;
@@ -630,19 +596,10 @@
   background: var(--color-background);
 }
 @media (max-width: 600px) {
-  .spending-row-actions .spending-action {
-    min-width: 40px;
-    width: 40px;
-    min-height: 40px;
-  }
   .spending-row-name .spending-expand {
     min-width: 32px;
     width: 32px;
     min-height: 32px;
-  }
-  .spending-toolbar > label,
-  .spending-toolbar > form {
-    flex: 1 1 100%;
   }
 }
 
@@ -701,10 +658,191 @@
   .spending-child-row .spending-row-name {
     padding-left: 12px;
   }
-  .spending-row-actions .spending-action,
   .spending-row-name .spending-expand {
     min-width: 40px;
     width: 40px;
     min-height: 40px;
+  }
+}
+
+/* Workspace density: scoped to signed-in pages so authentication forms retain their sizing. */
+.workspace-heading {
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.workspace-heading-copy {
+  min-width: 0;
+  flex: 1 1 180px;
+}
+.workspace-heading-copy p {
+  font-size: 0.8rem;
+  margin: 2px 0 0;
+}
+.workspace-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.workspace-description,
+.workspace > .section-heading p {
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+.workspace > .help {
+  margin-bottom: 8px;
+}
+.workspace > .section-heading {
+  flex-wrap: wrap;
+}
+.workspace .workspace-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+.workspace > .section-heading button:not(.compact-action),
+.workspace > .account-filter button:not(.compact-action),
+.workspace-heading-actions button:not(.compact-action),
+.workspace .workspace-toolbar button:not(.compact-action) {
+  min-height: 36px;
+  padding: 7px 12px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+.workspace .workspace-toolbar label {
+  margin-bottom: 0;
+  font-size: 0.8rem;
+}
+.workspace .workspace-toolbar input,
+.workspace .workspace-toolbar select {
+  min-height: 36px;
+  padding: 7px 10px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+.account-overview p {
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+.account-overview .balance {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+.account-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.account-card-title {
+  min-width: 0;
+  flex: 1 1 160px;
+}
+.account-card-title .eyebrow {
+  margin-bottom: 4px;
+}
+.account-card-title h2 {
+  margin-bottom: 0;
+  font-size: 1.15rem;
+}
+button.account-name-control {
+  display: block;
+  max-width: 100%;
+  text-align: left;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  overflow-wrap: anywhere;
+}
+.account-card-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+button.compact-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 6px;
+}
+button.compact-action-delete {
+  color: #a32b2b;
+}
+@media (max-width: 720px) {
+  .workspace h1 {
+    font-size: 1.5rem;
+  }
+  .category-row {
+    grid-template-columns: minmax(0, 1fr) 128px;
+  }
+  .workspace > .section-heading button:not(.compact-action),
+  .workspace > .account-filter button:not(.compact-action),
+  .workspace-heading-actions button:not(.compact-action),
+  .workspace .workspace-toolbar button:not(.compact-action),
+  .workspace .workspace-toolbar input,
+  .workspace .workspace-toolbar select,
+  button.compact-action {
+    min-height: 40px;
+  }
+  button.compact-action {
+    width: 40px;
+    min-width: 40px;
+  }
+}
+
+.application-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.application-header + .error {
+  margin-top: 8px;
+}
+.workspace .spending-toolbar {
+  align-items: center;
+  gap: 12px;
+}
+.period-type-control {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.workspace .spending-toolbar .period-type-control button {
+  border: 0;
+  border-radius: 0;
+  min-height: 34px;
+}
+.workspace .period-type-control button[aria-pressed="true"] {
+  background: var(--color-primary);
+  color: #fff;
+}
+.period-navigation {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.workspace .spending-toolbar .period-field {
+  width: 176px;
+  min-width: 0;
+  margin: 0;
+}
+.workspace .spending-toolbar .period-field-year {
+  width: 90px;
+}
+@media (max-width: 720px) {
+  .workspace .spending-toolbar .period-type-control button {
+    min-height: 38px;
   }
 }

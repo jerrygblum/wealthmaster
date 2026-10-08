@@ -27,7 +27,6 @@ export function CategoriesPageView(model: CategoriesPageViewModel) {
     setDeleting,
     load,
     start,
-    logout,
     items,
     busy,
     visible,
@@ -38,16 +37,8 @@ export function CategoriesPageView(model: CategoriesPageViewModel) {
   } = model;
   return (
     <>
-      <WorkspaceHeading
-        title={<>Categories</>}
-        subtitle={<>{user.email}</>}
-        actions={
-          <Button variant="secondary" disabled={pending} onClick={() => void logout()}>
-            Sign out
-          </Button>
-        }
-      />
-      <p>
+      <WorkspaceHeading title={<>Categories</>} subtitle={<>{user.email}</>} />
+      <p className="workspace-description">
         Organize income and spending. Expenses and refunds share spending categories; transfers have
         none.
       </p>
@@ -57,12 +48,15 @@ export function CategoriesPageView(model: CategoriesPageViewModel) {
         </Button>
         <Button
           variant="secondary"
+          className="compact-action"
+          aria-label="Refresh categories"
+          title="Refresh categories"
           disabled={busy}
           onClick={() => {
             void load();
           }}
         >
-          Refresh categories
+          <ActionIcon action="refresh" />
         </Button>
       </div>
       {error && (
@@ -184,7 +178,7 @@ export function CategoriesPageView(model: CategoriesPageViewModel) {
                         <ActionGroup className="category-row-actions">
                           <Button
                             variant="secondary"
-                            className="category-action"
+                            className="category-action compact-action"
                             aria-label="Edit category"
                             title={`Edit ${categoryLabel(c, items)}`}
                             disabled={busy}
@@ -194,7 +188,7 @@ export function CategoriesPageView(model: CategoriesPageViewModel) {
                           </Button>
                           <Button
                             variant="secondary"
-                            className="category-action"
+                            className="category-action compact-action"
                             aria-label={c.active ? "Archive" : "Restore"}
                             title={`${c.active ? "Archive" : "Restore"} ${categoryLabel(c, items)}`}
                             disabled={busy}
@@ -204,7 +198,7 @@ export function CategoriesPageView(model: CategoriesPageViewModel) {
                           </Button>
                           <Button
                             variant="secondary"
-                            className="category-action category-action-delete"
+                            className="category-action compact-action compact-action-delete"
                             aria-label="Delete"
                             title={
                               c.hasActivity || c.hasChildren

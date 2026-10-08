@@ -76,7 +76,7 @@ export function SpendingHierarchyTable({
               <div className="spending-row-actions">
                 <Button
                   variant="secondary"
-                  className="spending-action"
+                  className="spending-action compact-action"
                   aria-label="Supporting activity"
                   title={`View activity for ${label}`}
                   disabled={activityLoading}

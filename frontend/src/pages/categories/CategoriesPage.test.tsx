@@ -44,8 +44,8 @@ beforeEach(() => {
   });
   vi.mocked(api.categories).mockResolvedValue({ items: [], starterSetAvailable: true });
 });
-function renderPage(expired = vi.fn(), logout = vi.fn()) {
-  render(<CategoriesPage user={user} onExpired={expired} onLogout={logout} />);
+function renderPage(expired = vi.fn()) {
+  render(<CategoriesPage user={user} onExpired={expired} />);
 }
 it("offers optional starters only for eligible empty lists", async () => {
   vi.mocked(api.installCategoryStarters).mockResolvedValue({

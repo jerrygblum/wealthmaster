@@ -1,34 +1,24 @@
 import type { NetWorthPageViewModel } from "../../../types/viewModels";
 import { accountTypes, displayAmount } from "../../../utils/accountPresentation";
+import { ActionIcon } from "../../atoms/ActionIcon";
 import { Button, Link, LoadingIndicator } from "../../atoms/Controls";
 import { WorkspaceHeading } from "../application/WorkspaceHeading";
 
-export function NetWorthPageView({
-  report,
-  loading,
-  error,
-  loggingOut,
-  load,
-  logout,
-  user,
-}: NetWorthPageViewModel) {
+export function NetWorthPageView({ report, loading, error, load, user }: NetWorthPageViewModel) {
   return (
     <>
-      <WorkspaceHeading
-        title={<>Net worth</>}
-        subtitle={<>{user.email}</>}
-        actions={
-          <>
-            <Button variant="secondary" disabled={loggingOut} onClick={() => void logout()}>
-              {loggingOut ? "Signing out…" : "Sign out"}
-            </Button>
-          </>
-        }
-      />
+      <WorkspaceHeading title={<>Net worth</>} subtitle={<>{user.email}</>} />
       <div className="section-heading">
         <p>What you own, less what you owe.</p>
-        <Button disabled={loading || loggingOut} onClick={() => void load()}>
-          Refresh net worth
+        <Button
+          variant="secondary"
+          className="compact-action"
+          aria-label="Refresh net worth"
+          title="Refresh net worth"
+          disabled={loading}
+          onClick={() => void load()}
+        >
+          <ActionIcon action="refresh" />
         </Button>
       </div>
       <p className="help">
@@ -42,7 +32,7 @@ export function NetWorthPageView({
           {report && (
             <p>The previous calculation is shown below. Refresh to get updated balances.</p>
           )}
-          <Button variant="secondary" disabled={loading || loggingOut} onClick={() => void load()}>
+          <Button variant="secondary" disabled={loading} onClick={() => void load()}>
             Try again
           </Button>
         </div>

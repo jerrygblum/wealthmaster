@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { syntheticUser, passwordLogin, enroll, openAccounts } from "./helpers";
+import {
+  syntheticUser,
+  passwordLogin,
+  enroll,
+  openAccounts,
+  expectCompactWorkspace,
+} from "./helpers";
 
 test("create, edit, archive, restore, delete an account and log out", async ({
   page,
@@ -11,6 +17,7 @@ test("create, edit, archive, restore, delete an account and log out", async ({
     await enroll(page);
   }
   await openAccounts(page);
+  await expectCompactWorkspace(page);
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await page.getByLabel("Account name").fill(name);
   await page.getByLabel("Account type").selectOption("SAVINGS");
@@ -26,8 +33,19 @@ test("create, edit, archive, restore, delete an account and log out", async ({
   await expect(account).toContainText("CHF 1’234.56");
   await account.getByRole("button", { name, exact: true }).click();
   await expect(page.getByText(/^Opening balance:/)).toContainText("2026-10-04");
+  await expectCompactWorkspace(page);
   await page.getByRole("button", { name: "Back to accounts" }).click();
-  await account.getByRole("button", { name: "Edit", exact: true }).click();
+  const edit = account.getByRole("button", { name: "Edit", exact: true });
+  await expect(edit).toHaveAttribute("title", `Edit ${name}`);
+  const actionSize = await edit.evaluate((button) => ({
+    width: button.getBoundingClientRect().width,
+    height: button.getBoundingClientRect().height,
+    mobile: window.innerWidth <= 720,
+  }));
+  expect(actionSize.width).toBe(actionSize.mobile ? 40 : 32);
+  expect(actionSize.height).toBe(actionSize.mobile ? 40 : 32);
+  await edit.focus();
+  await page.keyboard.press("Enter");
   const changedName = `${name} updated`;
   await page.getByLabel("Account name").fill(changedName);
   await page.getByLabel("Opening balance", { exact: true }).fill("99999999999999999999.12345678");
@@ -38,6 +56,7 @@ test("create, edit, archive, restore, delete an account and log out", async ({
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: changedName, exact: true }) });
   await expect(changed).toContainText("CHF 99’999’999’999’999’999’999.12");
+  await expectCompactWorkspace(page);
   await changed.getByRole("button", { name: "Archive", exact: true }).click();
   await expect(page.getByRole("heading", { name: changedName, exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Archived accounts" }).click();

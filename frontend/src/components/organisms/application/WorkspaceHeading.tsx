@@ -5,17 +5,16 @@ export function WorkspaceHeading({
   actions,
 }: {
   title: ReactNode;
-  subtitle: ReactNode;
-  actions: ReactNode;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
 }) {
   return (
     <div className="workspace-heading">
-      <div>
-        <p className="eyebrow">Your workspace</p>
+      <div className="workspace-heading-copy">
         <h1>{title}</h1>
-        <p className="muted">{subtitle}</p>
+        {subtitle && <p className="muted">{subtitle}</p>}
       </div>
-      {actions}
+      {actions && <div className="workspace-heading-actions">{actions}</div>}
     </div>
   );
 }
