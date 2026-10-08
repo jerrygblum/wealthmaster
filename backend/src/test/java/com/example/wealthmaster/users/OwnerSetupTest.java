@@ -18,6 +18,7 @@ class OwnerSetupTest {
         var capture = ArgumentCaptor.forClass(AppUser.class);
         verify(users).save(capture.capture());
         assertEquals("owner@example.test", capture.getValue().getEmail());
+        assertEquals(AppUser.Role.OWNER, capture.getValue().getRole());
         assertNotEquals("synthetic-password", capture.getValue().getPasswordHash());
         assertTrue(encoder.matches("synthetic-password", capture.getValue().getPasswordHash()));
     }

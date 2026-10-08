@@ -61,3 +61,5 @@ Account detail activity uses compact table rows, inline edit/delete icons and ar
 Ledger forms allow historical and future transaction/value dates, including before account opening. Historical spending uses the transaction date; current balances include all nondeleted movements through the business date, including before account opening. Future activity is labeled Scheduled and stays out of current balances and spending until its transaction date. Expected recording supports future months; confirmed future activity stays Scheduled and outstanding until that date.
 
 Spending and Net worth reload on navigation and when a visible browser tab regains focus. Account opening dates remain editable after activity; saving preserves transaction dates and returns the recalculated account balance.
+
+Invitation registration uses `#/register`, shown from Login only when enabled. OWNER users manage the toggle and seven-day email invitations in Settings; MEMBER users cannot see that panel. Codes are displayed once and never placed in URLs. Existing atomic-design boundaries apply to the registration pages, hooks and controlled organisms.

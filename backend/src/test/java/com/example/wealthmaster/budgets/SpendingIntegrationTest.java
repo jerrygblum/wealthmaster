@@ -247,7 +247,7 @@ class SpendingIntegrationTest {
                 org.flywaydb.core.Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema).target("9").load().migrate();
                 db.execute("SET search_path TO "+schema);
                 for(var table:List.of("app_users","financial_accounts","categories","ledger_operations","ledger_movements","ledger_account_history","ledger_category_history","user_preferences","audit_events"))
-                    db.execute("INSERT INTO "+schema+"."+table+" SELECT * FROM public."+table);
+                    db.execute("INSERT INTO "+schema+"."+table+" SELECT "+(table.equals("app_users")?"id,email,password_hash,created_at":"*")+" FROM public."+table);
                 var rootBudget=UUID.randomUUID();
                 db.update("INSERT INTO spending_budgets(id,owner_id,category_id,currency,period_type,period_start,amount) VALUES(?,?,?,'CHF','YEAR',DATE '2024-01-01',80)",rootBudget,owner(),root.id());
                 db.update("INSERT INTO budget_category_history(budget_id,category_id) VALUES(?,?)",rootBudget,root.id());
@@ -290,8 +290,8 @@ class SpendingIntegrationTest {
                 }
                 org.flywaydb.core.Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema).target("10").load().migrate();
                 db.execute("SET search_path TO "+schema);
-                for(var entry:preserved.entrySet()) assertEquals(entry.getValue(),db.queryForList("SELECT * FROM "+entry.getKey()+" ORDER BY 1,2"),entry.getKey());
-                for(var entry:limits.entrySet()) assertEquals(entry.getValue(),db.queryForList("SELECT * FROM "+entry.getKey()+" ORDER BY 1,2"),entry.getKey());
+                for(var entry:preserved.entrySet()) assertEquals(entry.getValue(),db.queryForList("SELECT "+(entry.getKey().equals("app_users")?"id,email,password_hash,created_at":"*")+" FROM "+entry.getKey()+" ORDER BY 1,2"),entry.getKey());
+                for(var entry:limits.entrySet()) assertEquals(entry.getValue(),db.queryForList("SELECT "+(entry.getKey().equals("app_users")?"id,email,password_hash,created_at":"*")+" FROM "+entry.getKey()+" ORDER BY 1,2"),entry.getKey());
                 assertEquals(0,db.queryForObject("SELECT count(*) FROM spending_budgets b JOIN categories c ON c.id=b.category_id WHERE c.parent_id IS NOT NULL",Integer.class));
                 assertEquals(0,db.queryForObject("SELECT count(*) FROM budget_settings s JOIN categories c ON c.id=s.category_id WHERE c.parent_id IS NOT NULL",Integer.class));
                 var heads=db.queryForList("SELECT * FROM budget_settings ORDER BY 1,2");
@@ -304,8 +304,10 @@ class SpendingIntegrationTest {
                 db.execute("SET search_path TO "+schema);
                 for(var table:List.of("spending_budgets","budget_category_history","budget_settings","budget_setting_revisions","budget_setting_category_history"))
                     assertNull(db.queryForObject("SELECT to_regclass(?)",String.class,schema+"."+table));
-                for(var entry:preserved.entrySet()) assertEquals(entry.getValue(),db.queryForList("SELECT * FROM "+entry.getKey()+" ORDER BY 1,2"),entry.getKey());
+                for(var entry:preserved.entrySet()) assertEquals(entry.getValue(),db.queryForList("SELECT "+(entry.getKey().equals("app_users")?"id,email,password_hash,created_at":"*")+" FROM "+entry.getKey()+" ORDER BY 1,2"),entry.getKey());
 
+                assertEquals(1,db.queryForObject("SELECT count(*) FROM app_users WHERE role='OWNER'",Integer.class));
+                assertFalse(Boolean.TRUE.equals(db.queryForObject("SELECT enabled FROM registration_settings WHERE id=1",Boolean.class)));
             } finally {
                 db.execute("SET search_path TO public");
                 db.execute("DROP SCHEMA IF EXISTS "+schema+" CASCADE");

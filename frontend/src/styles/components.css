@@ -1075,3 +1075,57 @@ button.compact-action-delete {
     right: 8px;
   }
 }
+
+.registration-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.registration-table th,
+.registration-table td {
+  padding: 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  overflow-wrap: anywhere;
+}
+.registration-table th:last-child,
+.registration-table td:last-child {
+  width: 6.5rem;
+}
+@media (max-width: 800px) {
+  .registration-table thead {
+    display: none;
+  }
+  .registration-table tbody,
+  .registration-table tr,
+  .registration-table td {
+    display: block;
+    width: auto;
+  }
+  .registration-table tr {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .registration-table td {
+    border: 0;
+    padding: 0.25rem;
+  }
+  .registration-table td::before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+  }
+  .registration-table td:last-child {
+    width: auto;
+  }
+}
+
+.registration-page.center-card {
+  margin: 24px auto;
+}
+.registration-page h1 {
+  font-size: 1.75rem;
+}
+.registration-page fieldset {
+  display: grid;
+  gap: 12px;
+}

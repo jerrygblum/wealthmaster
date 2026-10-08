@@ -2,6 +2,7 @@ export function ActionIcon({
   action,
 }: {
   action:
+    | "copy"
     | "add"
     | "link"
     | "unlink"
@@ -21,6 +22,7 @@ export function ActionIcon({
     | "collapse";
 }) {
   const paths = {
+    copy: "M9 3h12v14H9Z M5 7H3v14h12v-2",
     add: "M12 4v16 M4 12h16",
     link: "M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2 M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2",
     unlink: "M3 3l18 18 M10 13l3-3 M4 14l-1 1a5 5 0 0 0 7 7l2-2 M14 3a5 5 0 0 1 7 7l-2 2",

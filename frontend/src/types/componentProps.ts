@@ -25,6 +25,7 @@ export type MfaLoginProps = {
   onLogout: () => void;
 };
 export type SecuritySettingsProps = {
+  user?: User;
   requiredSetup: boolean;
   onSession: (session: Session) => void;
   onExpired: () => void;

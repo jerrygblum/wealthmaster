@@ -2997,6 +2997,411 @@
           }
         }
       }
+    },
+    "/auth/registration": {
+      "get": {
+        "summary": "Read registration availability",
+        "security": [],
+        "description": "Cache-Control: no-store. ",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationPolicy"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register using an email-bound, single-use invitation",
+        "security": [],
+        "description": "Cache-Control: no-store.  Registration defaults to disabled. Codes expire after seven days. Email is normalized; code is case-sensitive. Invalid, expired, revoked, used, mismatched and duplicate-account attempts use a generic rejection. Account creation and consumption are atomic. Five failures per server-resolved client address lock registration attempts for five minutes, independently of login. Signed-in and MFA-pending sessions must sign out first. Successful signup establishes the existing MFA session flow (required in production).",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationSignup"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/registration": {
+      "get": {
+        "summary": "Read registration settings and invitations",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Cache-Control: no-store. Only the installation OWNER, after required MFA. Financial data permissions remain owner-scoped.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationManagement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "412": {
+            "description": "Stale version"
+          },
+          "428": {
+            "description": "Version required"
+          }
+        }
+      },
+      "put": {
+        "summary": "Enable or disable invitation-only registration",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Cache-Control: no-store. Only the installation OWNER, after required MFA. Financial data permissions remain owner-scoped.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "412": {
+            "description": "Stale version"
+          },
+          "428": {
+            "description": "Version required"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationSettingInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Quoted current settings or invitation version."
+          }
+        ]
+      }
+    },
+    "/registration/invitations": {
+      "post": {
+        "summary": "Issue a seven-day email invitation",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Cache-Control: no-store. Only the installation OWNER, after required MFA. Financial data permissions remain owner-scoped.",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedInvitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "412": {
+            "description": "Stale version"
+          },
+          "428": {
+            "description": "Version required"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/registration/invitations/{id}/replace": {
+      "post": {
+        "summary": "Invalidate the previous code and issue a replacement",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Cache-Control: no-store. Only the installation OWNER, after required MFA. Financial data permissions remain owner-scoped.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedInvitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "412": {
+            "description": "Stale version"
+          },
+          "428": {
+            "description": "Version required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Quoted current settings or invitation version."
+          }
+        ]
+      }
+    },
+    "/registration/invitations/{id}/revoke": {
+      "post": {
+        "summary": "Revoke an unused invitation",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Cache-Control: no-store. Only the installation OWNER, after required MFA. Financial data permissions remain owner-scoped.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "412": {
+            "description": "Stale version"
+          },
+          "428": {
+            "description": "Version required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Quoted current settings or invitation version."
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3049,11 +3454,19 @@
               "email": {
                 "type": "string",
                 "format": "email"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "OWNER",
+                  "MEMBER"
+                ]
               }
             },
             "required": [
               "id",
-              "email"
+              "email",
+              "role"
             ]
           },
           "recoveryUsed": {
@@ -4405,6 +4818,162 @@
           }
         },
         "description": "Reviewed actual fields; accounts/type come from definition. Creates ledger activity and confirms association atomically. Date may be in any month, including before account opening, and must use years 1\u20139999. The occurrence stays in its selected month; spending uses the actual transaction date. Future months and dates are allowed; future links are scheduled until their date."
+      },
+      "RegistrationPolicy": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RegistrationSettings": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "version"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "RegistrationSettingInput": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RegistrationSignup": {
+        "type": "object",
+        "required": [
+          "email",
+          "code",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "writeOnly": true
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 72,
+            "writeOnly": true,
+            "description": "At most 72 UTF-8 bytes."
+          }
+        }
+      },
+      "InvitationInput": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          }
+        }
+      },
+      "Invitation": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "createdAt",
+          "expiresAt",
+          "status",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "EXPIRED",
+              "REVOKED",
+              "USED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "IssuedInvitation": {
+        "type": "object",
+        "required": [
+          "invitation",
+          "code"
+        ],
+        "properties": {
+          "invitation": {
+            "$ref": "#/components/schemas/Invitation"
+          },
+          "code": {
+            "type": "string",
+            "description": "Secret code returned once, never available on reads."
+          }
+        }
+      },
+      "RegistrationManagement": {
+        "type": "object",
+        "required": [
+          "settings",
+          "invitations"
+        ],
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/RegistrationSettings"
+          },
+          "invitations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Invitation"
+            }
+          }
+        }
       }
     }
   }

@@ -17,7 +17,7 @@ Deployment validation and the first backup/restore drill are explicitly deferred
 Goal: represent financial accounts and trustworthy manual activity.
 
 - [x] Email/password login, server sessions, initial owner setup
-- [ ] Self-service registration page
+- [x] Invitation-only self-service registration, disabled by default, with owner controls and seven-day email invitations
 - [x] TOTP MFA + recovery codes, required in production and optional enrollment in development
 - [x] Security settings, verified activation, authenticator replacement, recovery-code regeneration
 - [x] Multi-user isolation for account creation/listing

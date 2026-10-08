@@ -1,4 +1,9 @@
 import type {
+  RegistrationSettings,
+  RegistrationInput,
+  RegistrationManagement,
+  IssuedInvitation,
+  Invitation,
   ExpectedInput,
   ExpectedDefinition,
   ExpectedOccurrence,
@@ -214,6 +219,32 @@ export const api = {
       "DELETE",
       undefined,
       operation.version,
+    ),
+  registrationPolicy: () => request<{ enabled: boolean }>("/auth/registration"),
+  register: (input: RegistrationInput) =>
+    post<Session>("/auth/register", JSON.stringify(input), "application/json"),
+  registrationManagement: () => request<RegistrationManagement>("/registration"),
+  configureRegistration: (settings: RegistrationSettings, enabled: boolean) =>
+    ledgerMutation<RegistrationSettings>("/registration", "PUT", { enabled }, settings.version),
+  invite: (email: string) =>
+    post<IssuedInvitation>(
+      "/registration/invitations",
+      JSON.stringify({ email }),
+      "application/json",
+    ),
+  replaceInvitation: (invitation: Invitation) =>
+    ledgerMutation<IssuedInvitation>(
+      `/registration/invitations/${invitation.id}/replace`,
+      "POST",
+      undefined,
+      invitation.version,
+    ),
+  revokeInvitation: (invitation: Invitation) =>
+    ledgerMutation<Invitation>(
+      `/registration/invitations/${invitation.id}/revoke`,
+      "POST",
+      undefined,
+      invitation.version,
     ),
   session: () => request<Session>("/auth/session"),
   login: (email: string, password: string) =>

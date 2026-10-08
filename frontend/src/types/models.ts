@@ -1,4 +1,4 @@
-export type User = { id: string; email: string };
+export type User = { id: string; email: string; role?: "OWNER" | "MEMBER" };
 export type Session =
   | { status: "AUTHENTICATED"; user: User; recoveryUsed?: boolean }
   | { status: "MFA_REQUIRED"; user?: User }
@@ -170,3 +170,16 @@ export type ExpectedRecordInput = {
   notes: string;
   categoryId: string | null;
 };
+
+export type RegistrationSettings = { enabled: boolean; version: number };
+export type Invitation = {
+  id: string;
+  email: string;
+  createdAt: string;
+  expiresAt: string;
+  status: "ACTIVE" | "EXPIRED" | "REVOKED" | "USED";
+  version: number;
+};
+export type IssuedInvitation = { invitation: Invitation; code: string };
+export type RegistrationManagement = { settings: RegistrationSettings; invitations: Invitation[] };
+export type RegistrationInput = { email: string; code: string; password: string };

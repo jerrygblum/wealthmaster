@@ -39,7 +39,7 @@ Before V1:
 ## Functional requirements
 
 ### Identity and security
-- Account creation and login. Initially provision the owner through environment configuration; the registration page is deferred.
+- Account creation and login. Provision the initial owner through environment configuration. Self-service registration is disabled by default and requires a single-use invitation for an exact approved email. Only the owner manages registration and invitations in Settings; invitations expire after seven days. Disabling registration preserves existing logins.
 - Mandatory MFA for normal accounts in production. Enrollment is optional only in the explicit development profile; enabled MFA is enforced at every login in both modes.
 - TOTP with single-use recovery codes, verified enrollment, authenticator replacement, and recovery-code regeneration through user security settings. No disable action.
 - Secure recovery/reset workflow.

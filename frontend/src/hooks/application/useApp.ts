@@ -5,6 +5,7 @@ import type { Session } from "../../types/models";
 
 function currentPage() {
   const hash = window.location.hash;
+  if (hash === "#/register") return "register";
   if (hash === "#/expected") return "expected";
   return hash === "#/planning" || hash === "#/spending"
     ? "spending"
@@ -55,6 +56,10 @@ export function useApp() {
   }, []);
   function acceptSession(result: Session) {
     setSession(result);
+    if (window.location.hash === "#/register") {
+      setPage("net-worth");
+      window.location.hash = "#/net-worth";
+    }
     setNotice(null);
     setLogoutError(null);
     if (result.status === "AUTHENTICATED" && result.recoveryUsed) {

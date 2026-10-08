@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { api } from "../../services/api";
 
@@ -10,6 +10,22 @@ function errorMessage(error: unknown) {
 }
 
 export function useLogin({ notice, onLogin }: LoginPageProps) {
+  const [registrationEnabled, setRegistrationEnabled] = useState(false);
+  useEffect(() => {
+    let active = true;
+    async function loadPolicy() {
+      try {
+        const policy = await api.registrationPolicy();
+        if (active) setRegistrationEnabled(policy.enabled);
+      } catch {
+        /* Registration availability must not block login. */
+      }
+    }
+    void loadPolicy();
+    return () => {
+      active = false;
+    };
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
@@ -28,5 +44,15 @@ export function useLogin({ notice, onLogin }: LoginPageProps) {
     }
   }
 
-  return { email, setEmail, password, setPassword, pending, error, submit, notice };
+  return {
+    registrationEnabled,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    pending,
+    error,
+    submit,
+    notice,
+  };
 }

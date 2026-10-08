@@ -51,7 +51,7 @@ public class SecurityConfig {
             AuthenticationProvider provider) throws Exception {
         return http.authenticationManager(new org.springframework.security.authentication.ProviderManager(provider))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/api/v1/meta/status", "/api/v1/auth/csrf", "/api/v1/auth/login").permitAll()
+                        .requestMatchers("/actuator/health", "/api/v1/meta/status", "/api/v1/auth/csrf", "/api/v1/auth/login", "/api/v1/auth/registration", "/api/v1/auth/register").permitAll()
                         .requestMatchers("/api/v1/auth/session").hasAnyRole("USER", "MFA_PENDING", "MFA_SETUP")
                         .requestMatchers("/api/v1/auth/mfa/verify").hasRole("MFA_PENDING")
                         .requestMatchers("/api/v1/users/me/mfa/replacement/**", "/api/v1/users/me/mfa/recovery/**").hasRole("USER")

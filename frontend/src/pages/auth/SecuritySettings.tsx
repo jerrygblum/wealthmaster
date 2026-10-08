@@ -6,6 +6,7 @@ import { AuthenticatorStep } from "./AuthenticatorStep";
 import { IdentityStep } from "./IdentityStep";
 import { RecoveryStep } from "./RecoveryStep";
 
+import { RegistrationPanel } from "./RegistrationPanel";
 import { PreferencesPanel } from "./PreferencesPanel";
 
 export function SecuritySettings(props: SecuritySettingsProps) {
@@ -15,7 +16,12 @@ export function SecuritySettings(props: SecuritySettingsProps) {
       <SecuritySettingsView
         {...model}
         preferencesPanel={
-          !props.requiredSetup ? <PreferencesPanel onExpired={props.onExpired} /> : null
+          !props.requiredSetup ? (
+            <>
+              <PreferencesPanel onExpired={props.onExpired} />
+              {props.user?.role === "OWNER" && <RegistrationPanel onExpired={props.onExpired} />}
+            </>
+          ) : null
         }
 
         IdentityStep={IdentityStep}

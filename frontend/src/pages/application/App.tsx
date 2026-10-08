@@ -4,6 +4,7 @@ import { ApplicationLayout } from "../../components/templates/ApplicationLayout"
 import { AuthenticationLayout } from "../../components/templates/AuthenticationLayout";
 import { useApp } from "../../hooks/application/useApp";
 import { AccountsPage } from "../accounts/AccountsPage";
+import { RegistrationPage } from "../auth/RegistrationPage";
 import { LoginPage } from "../auth/LoginPage";
 import { MfaLogin } from "../auth/MfaLogin";
 import { SecuritySettings } from "../auth/SecuritySettings";
@@ -69,6 +70,7 @@ export default function App() {
       ) : session?.status === "MFA_SETUP_REQUIRED" ||
         (session?.status === "AUTHENTICATED" && page === "settings") ? (
         <SecuritySettings
+          user={session.user}
           requiredSetup={session.status === "MFA_SETUP_REQUIRED"}
           onSession={acceptSession}
           onExpired={expire}
@@ -79,12 +81,14 @@ export default function App() {
         <SpendingPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "categories" ? (
         <CategoriesPage user={session.user} onExpired={expire} />
-      ) : session?.status === "AUTHENTICATED" && page === "net-worth" ? (
+      ) : session?.status === "AUTHENTICATED" && (page === "net-worth" || page === "register") ? (
         <NetWorthPage user={session.user} onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" ? (
         <AccountsPage user={session.user} onExpired={expire} />
       ) : session?.status === "MFA_REQUIRED" ? (
         <MfaLogin onSession={acceptSession} onExpired={expire} onLogout={loggedOut} />
+      ) : page === "register" ? (
+        <RegistrationPage onLogin={acceptSession} />
       ) : (
         <LoginPage notice={notice} onLogin={acceptSession} />
       )}

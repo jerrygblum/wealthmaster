@@ -1,9 +1,10 @@
-import { Button, Input } from "../../atoms/Controls";
+import { Button, Input, Link } from "../../atoms/Controls";
 import { Message } from "../../molecules/Message";
 
 import type { LoginPageViewModel } from "../../../types/viewModels";
 
 export function LoginPageView({
+  registrationEnabled,
   email,
   setEmail,
   password,
@@ -64,6 +65,11 @@ export function LoginPageView({
             </Button>
           </fieldset>
         </form>
+        {registrationEnabled && (
+          <p>
+            <Link href="#/register">Register with an invitation</Link>
+          </p>
+        )}
       </section>
     </>
   );

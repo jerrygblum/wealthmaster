@@ -57,6 +57,7 @@ class AuthenticationTest {
         when(mfa.snapshot(any())).thenReturn(new MfaService.Snapshot(false, 0, false, null, false));
         owner = new AppUser("owner@example.test", encoder.encode("synthetic-password"));
         when(users.findByEmail("owner@example.test")).thenReturn(Optional.of(owner));
+        when(users.findById(owner.getId())).thenReturn(Optional.of(owner));
         when(accounts.list(owner.getId())).thenReturn(List.of());
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
     }

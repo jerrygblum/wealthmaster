@@ -30,3 +30,10 @@ export type PreferencesViewModel = ReturnType<typeof usePreferences>;
 
 import type { useExpected } from "../hooks/expected/useExpected";
 export type ExpectedPageViewModel = ReturnType<typeof useExpected>;
+
+export type RegistrationFormViewModel = ReturnType<
+  typeof import("../hooks/auth/useRegistration").useRegistration
+>;
+export type RegistrationPanelViewModel = ReturnType<
+  typeof import("../hooks/auth/useRegistrationManagement").useRegistrationManagement
+>;

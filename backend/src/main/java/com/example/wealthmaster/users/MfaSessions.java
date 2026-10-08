@@ -22,7 +22,8 @@ public class MfaSessions {
     private static final String BINDING = "wealthmaster.mfa.binding";
     private final MfaService mfa;
     private final Clock clock;
-    public MfaSessions(MfaService mfa, Clock clock) { this.mfa = mfa; this.clock = clock; }
+    private final UserRepository users;
+    public MfaSessions(MfaService mfa, Clock clock, UserRepository users) { this.mfa = mfa; this.clock = clock; this.users=users; }
     public AuthController.SessionResponse passwordAccepted(OwnerPrincipal owner, HttpServletRequest request, HttpServletResponse response) {
         var snapshot = mfa.snapshot(owner.id());
         var status = snapshot.enabled() ? MFA_REQUIRED : snapshot.required() ? MFA_SETUP_REQUIRED : AUTHENTICATED;
@@ -87,7 +88,7 @@ public class MfaSessions {
         new HttpSessionCsrfTokenRepository().saveToken(null, request, response);
     }
     private AuthController.SessionResponse response(SessionState state) {
-        return new AuthController.SessionResponse(state.status(), new AuthController.UserResponse(state.userId(), state.email()), state.recoveryUsed());
+        return new AuthController.SessionResponse(state.status(), new AuthController.UserResponse(state.userId(), state.email(), users.findById(state.userId()).orElseThrow(() -> new SecurityFailure(401,"Please sign in.")).getRole()), state.recoveryUsed());
     }
     public record SessionState(UUID userId, String email, AuthController.AuthenticationStatus status, long version,
             Instant expiresAt, Instant verifiedAt, boolean recoveryUsed) implements Serializable {}

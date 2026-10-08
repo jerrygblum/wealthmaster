@@ -34,7 +34,7 @@ public class OwnerSetup implements ApplicationRunner {
                 || password.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new IllegalStateException("Initial setup requires INITIAL_OWNER_EMAIL and INITIAL_OWNER_PASSWORD (12–72 characters, at most 72 UTF-8 bytes). No credentials were logged.");
         }
-        users.save(new AppUser(credentials.email(), encoder.encode(password)));
+        users.save(new AppUser(credentials.email(), encoder.encode(password), AppUser.Role.OWNER));
     }
     private record InitialCredentials(@NotBlank @Email @Size(max = 254) String email,
             @NotBlank @Size(min = 12, max = 72) String password) {}
