@@ -13,7 +13,7 @@ public class CategoryService {
     private final ObjectMapper mapper;
     public CategoryService(JdbcTemplate jdbc, ObjectMapper mapper) { this.jdbc = jdbc; this.mapper = mapper; }
     private static final String SELECT = """
-        SELECT c.*, EXISTS(SELECT 1 FROM ledger_category_history h WHERE h.category_id=c.id) AS used,
+        SELECT c.*, (EXISTS(SELECT 1 FROM ledger_category_history h WHERE h.category_id=c.id) OR EXISTS(SELECT 1 FROM expected_category_history h WHERE h.category_id=c.id)) AS used,
         EXISTS(SELECT 1 FROM categories child WHERE child.parent_id=c.id) AS children,
         (c.active AND COALESCE(p.active,TRUE)) AS available
         FROM categories c LEFT JOIN categories p ON p.id=c.parent_id

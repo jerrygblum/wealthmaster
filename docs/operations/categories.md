@@ -14,6 +14,6 @@ Archiving a parent makes children unavailable without changing their own active 
 
 Lifecycle and ledger assignment serialize through a per-owner state row. Audits, references and ledger changes share transactions; no partial starter set or assignment survives rollback. Categorization leaves balances and net worth unchanged. No scheduled jobs or new monitoring configuration is needed; existing health checks and database backups cover the new tables.
 
-Budgeting is deferred. Pre-production V012 removes current spending-limit settings and budget-only category references. Only permanent ledger history and existing children restrict category deletion or structure changes. Ledger and audit history remain intact.
+Budgeting is deferred. Pre-production V012 removes current spending-limit settings and budget-only category references. Permanent ledger and expectation history, plus existing children, restrict category deletion or structure changes. Ledger and audit history remain intact.
 
 Income and spending categories use consistent compact rows with inline edit/archive/delete actions. Forms edit only category name, type and parent. Stale category versions return 412; failed requests retain input. See [spending operations](spending.md) for period/category reports.

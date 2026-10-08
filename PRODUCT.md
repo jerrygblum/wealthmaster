@@ -95,18 +95,20 @@ User-owned income and spending categories support one subcategory level. Either 
 - Monetary displays use two decimals; backend calculations and API amounts retain exact decimal precision.
 - Categories have compact rows and inline CRUD actions, without spending-limit controls. The Spending page has no chart or budget comparisons.
 - Default currency remains an explicitly selected owner preference. Changing it is versioned and audited, without modifying ledger data or spending reports.
-- Budgeting is deferred. Pre-production V012 removes current limit settings and their category references; categories, ledger history, currency preferences and audit records remain intact. Budget-only use no longer locks category structure or deletion. Imports, recurring expectations, rules and bulk assignment remain deferred.
+- Budgeting is deferred. Pre-production V012 removes current limit settings and their category references; categories, ledger history, currency preferences and audit records remain intact. Budget-only use no longer locks category structure or deletion. Imports, categorization rules and bulk assignment remain deferred.
 
-### Expected/fixed transactions
-Expected costs/income are separate from actual transactions.
+### Expected monthly transactions
+Expected income, expenses and same-currency transfers are separate from actual ledger activity. The compact Expected page (`#/expected`) shows one calendar month, defaults to the business month, and loads automatically when the period changes.
 
-Fields include name, expected account/category, expected amount or range, frequency, expected date/day, start/end date, and matching rules.
+Recurring items have name, type, account(s), positive fixed amount, optional category/payee/notes, due day, first month and optional inclusive last month. Currency follows the account; transfers have no category. Days beyond month end clamp to its final day. Editing settings updates past months too; schedule revisions and amount overrides are intentionally absent.
 
-Period views show found/missing expected items and allow manual correction of matches.
+Each month shows upcoming, due today, overdue, completed, skipped or needs-review items. Suggestions are unlinked transactions within that calendar month with matching type, currency and accounts, ranked by exact amount, category/payee and due-date proximity. Users explicitly confirm or replace links. One transaction satisfies one occurrence; different actual amounts are allowed and show a difference. Deleted/incompatible transactions and links outside an edited schedule require review. Skip/undo affects only that month.
+
+Record opens a reviewed form and atomically creates ledger activity plus its confirmed match. Future months and unavailable references cannot be recorded. Expected amounts alone never affect balances, Spending or net worth. Summaries remain separate by currency and type; transfers are separate from income/expenses. Ending a recurrence preserves earlier months. Confirmed deletion releases links without deleting actual activity or audit history.
 
 ### Imports
 
-Imports and recurring expectations remain deferred while category management and spending reports are available.
+Imports remain deferred while category management, spending reports and monthly expectations are available.
 Supported sequence:
 1. CSV
 2. XLSX

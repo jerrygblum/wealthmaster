@@ -3,7 +3,7 @@
   "info": {
     "title": "Wealth Master API",
     "version": "0.9.0",
-    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred."
+    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording."
   },
   "servers": [
     {
@@ -2457,6 +2457,546 @@
           }
         }
       }
+    },
+    "/expected-transactions": {
+      "get": {
+        "summary": "Monthly expectations, reconciliation and separate currency/type totals",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedReport"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "First day of month; defaults to current business month."
+          }
+        ]
+      },
+      "post": {
+        "summary": "Create a recurring monthly expectation",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedDefinition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expected-transactions/{id}": {
+      "put": {
+        "summary": "Update definition for all months",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedDefinition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted version: definition for CRUD; occurrence for reconciliation/recording."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete expectation and release links, preserving ledger and audit",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted version: definition for CRUD; occurrence for reconciliation/recording."
+          }
+        ]
+      }
+    },
+    "/expected-transactions/{id}/occurrences/{month}/candidates": {
+      "get": {
+        "summary": "Same-month suggestions ranked by amount, category, payee and date; never auto-confirmed",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityPage"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "First day of the selected month."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0
+            }
+          }
+        ]
+      }
+    },
+    "/expected-transactions/{id}/occurrences/{month}": {
+      "put": {
+        "summary": "Confirm/replace/unlink transaction or skip/undo this month",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedOccurrence"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "First day of the selected month."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted version: definition for CRUD; occurrence for reconciliation/recording."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedReconcile"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expected-transactions/{id}/occurrences/{month}/record": {
+      "post": {
+        "summary": "Record actual activity and link atomically",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedOccurrence"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "First day of the selected month."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted version: definition for CRUD; occurrence for reconciliation/recording."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedRecordInput"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3534,6 +4074,336 @@
             "minimum": 0
           }
         }
+      },
+      "ExpectedInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "accountId",
+          "amount",
+          "dayOfMonth",
+          "firstMonth"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "TRANSFER"
+            ]
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationAccountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "categoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^[0-9]{1,20}(\\.[0-9]{1,8})?$"
+          },
+          "dayOfMonth": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "firstMonth": {
+            "type": "string",
+            "format": "date"
+          },
+          "lastMonth": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "payee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          }
+        },
+        "description": "Monthly only. Months use their first calendar day; lastMonth is inclusive. Dates use years 1\u20139999. Amount must be positive. Currency follows account. Transfers require distinct same-currency accounts and no category. Edits update historical months too."
+      },
+      "ExpectedDefinition": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ExpectedInput"
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "currency",
+              "version",
+              "available"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "available": {
+                "type": "boolean"
+              }
+            }
+          }
+        ]
+      },
+      "ExpectedOccurrence": {
+        "type": "object",
+        "required": [
+          "definition",
+          "expectedDate",
+          "version",
+          "status",
+          "actual",
+          "difference",
+          "canRecord"
+        ],
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/ExpectedDefinition"
+          },
+          "expectedDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "UPCOMING",
+              "DUE",
+              "OVERDUE",
+              "COMPLETED",
+              "SKIPPED",
+              "NEEDS_REVIEW"
+            ]
+          },
+          "actual": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerOperation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "difference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "canRecord": {
+            "type": "boolean"
+          }
+        },
+        "description": "Version 0 denotes untouched reconciliation state. Differences are actual minus expected; null when no actual or currencies differ. Deleted, incompatible or out-of-schedule links need review."
+      },
+      "ExpectedTotals": {
+        "type": "object",
+        "required": [
+          "currency",
+          "kind",
+          "expected",
+          "completed",
+          "actual",
+          "outstanding"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "TRANSFER"
+            ]
+          },
+          "expected": {
+            "type": "string"
+          },
+          "completed": {
+            "type": "string"
+          },
+          "actual": {
+            "type": "string"
+          },
+          "outstanding": {
+            "type": "string"
+          }
+        },
+        "description": "Exact decimal strings. Skipped items excluded. Completed is expected amounts for compatible confirmed links; actual is their ledger amounts. Transfers remain separate."
+      },
+      "ExpectedReport": {
+        "type": "object",
+        "required": [
+          "month",
+          "businessDate",
+          "definitions",
+          "items",
+          "totals"
+        ],
+        "properties": {
+          "month": {
+            "type": "string",
+            "format": "date"
+          },
+          "businessDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "definitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpectedDefinition"
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpectedOccurrence"
+            }
+          },
+          "totals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpectedTotals"
+            }
+          }
+        }
+      },
+      "ExpectedReconcile": {
+        "type": "object",
+        "required": [
+          "definitionVersion"
+        ],
+        "properties": {
+          "definitionVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "operationVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "skipped": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "description": "Full replacement: null operationId unlinks, skipped true skips this month. Linking requires current operationVersion. One transaction can satisfy one occurrence."
+      },
+      "ExpectedRecordInput": {
+        "type": "object",
+        "required": [
+          "definitionVersion",
+          "amount",
+          "transactionDate",
+          "description"
+        ],
+        "properties": {
+          "definitionVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^[0-9]{1,20}(\\.[0-9]{1,8})?$"
+          },
+          "transactionDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "valueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "payee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "categoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "description": "Reviewed actual fields; accounts/type come from definition. Creates ledger activity and confirms association atomically. Date must be in the occurrence month and valid under ledger rules."
       }
     }
   }

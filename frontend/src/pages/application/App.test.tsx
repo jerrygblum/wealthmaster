@@ -11,6 +11,8 @@ vi.mock("../../services/api", async (original) => {
     ...actual,
     api: {
       spending: vi.fn(),
+      expected: vi.fn(),
+      categories: vi.fn(),
       session: vi.fn(),
       login: vi.fn(),
       logout: vi.fn(),
@@ -302,4 +304,21 @@ it("keeps a single icon sign-out action in the shared header on Spending", async
   fireEvent.click(signOut);
   await screen.findByRole("heading", { name: "Welcome back" });
   expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+});
+
+it("opens the Expected route with shared header navigation", async () => {
+  window.location.hash = "#/expected";
+  vi.mocked(api.session).mockResolvedValue(session);
+  vi.mocked(api.expected).mockResolvedValue({
+    month: "2026-10-01",
+    businessDate: "2026-10-08",
+    definitions: [],
+    items: [],
+    totals: [],
+  });
+  vi.mocked(api.categories).mockResolvedValue({ items: [], starterSetAvailable: true });
+  render(<App />);
+  await screen.findByText(/No expected items/);
+  expect(screen.getByRole("link", { name: "Expected" })).toHaveAttribute("aria-current", "page");
+  expect(screen.getByRole("button", { name: "Sign out" }).closest("header")).toBeInTheDocument();
 });

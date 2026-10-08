@@ -51,14 +51,15 @@ Goal: migrate historical Excel workflow without manual re-entry.
 Release outcome: existing historical Excel/CSV data can be migrated confidently.
 
 ## 0.3 — Spending by category and period (current priority)
-Goal: understand actual spending clearly before returning to budgets or expected cash flow. Imports, recurring expectations, matching, forecasts and FX conversion remain deferred.
+Goal: understand actual spending and expected monthly activity. Imports, budgets, forecasts and FX conversion remain deferred.
 
 - [x] Compact monthly/yearly spending tables with expenses, refunds, net totals, inclusive category breakdowns and transaction activity
 - [x] Consistent category CRUD rows without limits; no pie chart
 - [x] Pre-production removal of all budget settings and references (V012), preserving ledger, categories, currency preferences and audit history
 - [ ] Budgeting — deferred pending a simpler future design
-- [ ] Expected recurring expenses/income and matching
-- [ ] Missing expected items and basic cash-flow projection
+- [x] Expected monthly income, expenses and transfers, confirmed suggestions, skip/undo and reviewed actual recording
+- [x] Upcoming, due, overdue and needs-review expected items
+- [ ] Basic cash-flow projection
 
 ## 0.4 — Wealth / Investments
 Goal: represent investment wealth accurately.

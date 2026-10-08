@@ -846,3 +846,98 @@ button.compact-action-delete {
     min-height: 38px;
   }
 }
+
+.workspace .expected-toolbar {
+  align-items: center;
+}
+.expected-toolbar .period-field {
+  width: 176px;
+  margin: 0;
+}
+.expected-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
+.expected-table th,
+.expected-table td {
+  overflow-wrap: anywhere;
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+.expected-table th[scope="row"] {
+  font-weight: 400;
+}
+.expected-table .help {
+  display: block;
+  margin: 2px 0 0;
+}
+.expected-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.expected-candidates,
+.expected-definitions {
+  list-style: none;
+  padding: 0;
+}
+.expected-candidates li,
+.expected-definitions li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.expected-candidates li span,
+.expected-definitions li span {
+  flex: 1 1 200px;
+}
+.expected-editor {
+  margin-bottom: 12px;
+}
+.expected-totals p {
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+@media (max-width: 900px) {
+  .expected-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .expected-table,
+  .expected-table tbody,
+  .expected-table tr {
+    display: block;
+  }
+  .expected-table tr {
+    margin-bottom: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+  }
+  .expected-table th,
+  .expected-table td {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr);
+    overflow-wrap: anywhere;
+  }
+  .expected-table th[scope="row"] {
+    display: block;
+  }
+  .expected-table td::before {
+    content: attr(data-label);
+    font-weight: 650;
+  }
+  .expected-table td .help {
+    grid-column: 2;
+  }
+}

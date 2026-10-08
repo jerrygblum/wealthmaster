@@ -6,6 +6,7 @@ export function WorkspaceNavigation({ page }: { page: string }) {
         { id: "net-worth", name: "Net worth" },
         { id: "accounts", name: "Accounts" },
         { id: "spending", name: "Spending" },
+        { id: "expected", name: "Expected" },
         { id: "categories", name: "Categories" },
         { id: "settings", name: "Settings" },
       ].map((item) => (

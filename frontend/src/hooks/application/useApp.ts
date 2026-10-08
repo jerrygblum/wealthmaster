@@ -5,6 +5,7 @@ import type { Session } from "../../types/models";
 
 function currentPage() {
   const hash = window.location.hash;
+  if (hash === "#/expected") return "expected";
   return hash === "#/planning" || hash === "#/spending"
     ? "spending"
     : hash.split("?")[0] === "#/categories"

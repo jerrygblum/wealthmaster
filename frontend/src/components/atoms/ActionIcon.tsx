@@ -2,6 +2,11 @@ export function ActionIcon({
   action,
 }: {
   action:
+    | "add"
+    | "link"
+    | "unlink"
+    | "skip"
+    | "record"
     | "refresh"
     | "logout"
     | "previous"
@@ -16,6 +21,11 @@ export function ActionIcon({
     | "collapse";
 }) {
   const paths = {
+    add: "M12 4v16 M4 12h16",
+    link: "M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2 M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2",
+    unlink: "M3 3l18 18 M10 13l3-3 M4 14l-1 1a5 5 0 0 0 7 7l2-2 M14 3a5 5 0 0 1 7 7l-2 2",
+    skip: "M5 4l10 8-10 8Z M19 4v16",
+    record: "M4 4h16v16H4Z M8 12l3 3 5-6",
     refresh: "M20 11a8 8 0 1 0-2 6 M20 4v7h-7",
     logout: "M9 4H4v16h5 M14 8l4 4-4 4 M9 12h11",
     previous: "M15 5l-7 7 7 7",

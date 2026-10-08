@@ -193,7 +193,7 @@ The budgets module retains category management and spending reporting; no module
 
 GET /api/v1/spending and /spending/activity run in single read-only REPEATABLE_READ snapshots and disable caching. Report aggregation establishes the snapshot before category labels are loaded, so concurrent corrections cannot mix amounts and labels. Currencies remain separate. Reports contain direct and inclusive parent expense/refund/net amounts, uncategorized net totals and business dates. Income, transfers, opening balances and deleted operations are excluded; archived activity remains included.
 
-Supporting activity includes immediate children or uncategorized activity when no category is selected, retaining 50-row ledger ordering and account links. Category CRUD calls CategoryService directly with optimistic category versions. Only permanent ledger references and existing children restrict category structure/deletion.
+Supporting activity includes immediate children or uncategorized activity when no category is selected, retaining 50-row ledger ordering and account links. Category CRUD calls CategoryService directly with optimistic category versions. Permanent ledger and expectation references, plus existing children, restrict category structure/deletion.
 
 Historical Flyway V007/V008 introduced budgeting, V010 removed subcategory limits, and V011 removed period overrides and dated revisions. Pre-production V012 drops remaining budget_settings and budget_setting_category_history. Ledger/category data, user_preferences and audit events survive. All budget APIs and category limit inputs are retired without a compatibility layer.
 
@@ -208,3 +208,11 @@ Prettier formats frontend sources and configuration; ESLint checks typed correct
 ### Owner currency preference
 
 Flyway V009 adds owner-scoped user_preferences with nullable default_currency and optimistic version. GET /users/me/preferences is a no-store repeatable-read snapshot. PUT validates ISO 4217 codes, checks the preference version and records an audit event atomically under the existing owner lock. Currency changes no longer detect or reset limits. The preference does not change transaction currencies or convert spending totals. No currency is inferred.
+
+### Expected monthly activity
+
+The budgets module owns monthly definitions and reconciliation; LedgerService remains the only actual-activity writer. V013 adds expected_transactions, sparse expected_occurrences and permanent account/category references (including category parents). Definitions are versioned and soft-deleted; the latest definition applies to all months. An unchanged, untouched occurrence has version zero; its first reconciliation stores version one. Confirmed links remain unique per ledger operation and are checked against current operation state when read. Historical links outside an edited recurrence remain visible as Needs review.
+
+Owner-scoped mutations serialize on expectation_owner_state, then lock referenced operations/accounts as needed and acquire the category owner lock last. Category writers never acquire expectation/account/operation locks. Restrictive owner-matching foreign keys, permanent reference checks and transactional audits protect deletion and structural changes. Expectations count as account usage and permanently lock account setup and category structure, even after deletion. Reports/candidates use repeatable-read read-only snapshots and no-store responses; reads never create owner-state rows.
+
+GET /expected-transactions returns definitions, monthly occurrences and exact currency/type totals. CRUD uses definition If-Match; reconciliation and record routes use occurrence If-Match plus definitionVersion. Confirming links also checks operationVersion. Suggestions only read same-month unlinked operations; they never mutate state. Reviewed recording calls LedgerService within the expectation transaction, then writes the link; either both commit or both roll back. There are no generated monthly jobs, automatic ledger writes, caches or FX conversions.

@@ -1,4 +1,9 @@
 import type {
+  ExpectedInput,
+  ExpectedDefinition,
+  ExpectedOccurrence,
+  ExpectedReport,
+  ExpectedRecordInput,
   Preferences,
   SpendingPeriod,
   Category,
@@ -99,6 +104,50 @@ async function ledgerMutation<T>(
 }
 
 export const api = {
+  expected: (month?: string) =>
+    request<ExpectedReport>(`/expected-transactions${month ? `?month=${month}` : ""}`),
+  saveExpected: (input: ExpectedInput, definition?: ExpectedDefinition) =>
+    ledgerMutation<ExpectedDefinition>(
+      `/expected-transactions${definition ? `/${definition.id}` : ""}`,
+      definition ? "PUT" : "POST",
+      input,
+      definition?.version,
+    ),
+  deleteExpected: (definition: ExpectedDefinition) =>
+    ledgerMutation<void>(
+      `/expected-transactions/${definition.id}`,
+      "DELETE",
+      undefined,
+      definition.version,
+    ),
+  expectedCandidates: (item: ExpectedOccurrence, month: string, page: number) =>
+    request<{ items: Operation[]; page: number; hasMore: boolean }>(
+      `/expected-transactions/${item.definition.id}/occurrences/${month}/candidates?page=${page}`,
+    ),
+  reconcileExpected: (
+    item: ExpectedOccurrence,
+    month: string,
+    operation?: Operation,
+    skipped = false,
+  ) =>
+    ledgerMutation<ExpectedOccurrence>(
+      `/expected-transactions/${item.definition.id}/occurrences/${month}`,
+      "PUT",
+      {
+        definitionVersion: item.definition.version,
+        operationId: operation?.id ?? null,
+        operationVersion: operation?.version ?? null,
+        skipped,
+      },
+      item.version,
+    ),
+  recordExpected: (item: ExpectedOccurrence, month: string, input: ExpectedRecordInput) =>
+    ledgerMutation<ExpectedOccurrence>(
+      `/expected-transactions/${item.definition.id}/occurrences/${month}/record`,
+      "POST",
+      { ...input, definitionVersion: item.definition.version },
+      item.version,
+    ),
   preferences: () => request<Preferences>("/users/me/preferences"),
   savePreferences: (input: { defaultCurrency: string; expectedVersion: number }) =>
     ledgerMutation<Preferences>("/users/me/preferences", "PUT", input),

@@ -117,3 +117,56 @@ export type Preferences = {
   defaultCurrency: string | null;
   version: number;
 };
+
+export type ExpectedKind = "INCOME" | "EXPENSE" | "TRANSFER";
+export type ExpectedInput = {
+  name: string;
+  kind: ExpectedKind;
+  accountId: string;
+  destinationAccountId: string | null;
+  categoryId: string | null;
+  amount: string;
+  dayOfMonth: number;
+  firstMonth: string;
+  lastMonth: string | null;
+  payee: string;
+  notes: string;
+};
+export type ExpectedDefinition = ExpectedInput & {
+  id: string;
+  currency: string;
+  version: number;
+  available: boolean;
+};
+export type ExpectedOccurrence = {
+  definition: ExpectedDefinition;
+  expectedDate: string;
+  version: number;
+  status: "UPCOMING" | "DUE" | "OVERDUE" | "COMPLETED" | "SKIPPED" | "NEEDS_REVIEW";
+  actual: Operation | null;
+  difference: string | null;
+  canRecord: boolean;
+};
+export type ExpectedReport = {
+  month: string;
+  businessDate: string;
+  definitions: ExpectedDefinition[];
+  items: ExpectedOccurrence[];
+  totals: {
+    currency: string;
+    kind: ExpectedKind;
+    expected: string;
+    completed: string;
+    actual: string;
+    outstanding: string;
+  }[];
+};
+export type ExpectedRecordInput = {
+  amount: string;
+  transactionDate: string;
+  valueDate: string | null;
+  payee: string;
+  description: string;
+  notes: string;
+  categoryId: string | null;
+};

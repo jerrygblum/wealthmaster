@@ -9,6 +9,7 @@ import { MfaLogin } from "../auth/MfaLogin";
 import { SecuritySettings } from "../auth/SecuritySettings";
 import { CategoriesPage } from "../categories/CategoriesPage";
 import { NetWorthPage } from "../networth/NetWorthPage";
+import { ExpectedPage } from "../expected/ExpectedPage";
 import { SpendingPage } from "../spending/SpendingPage";
 
 export default function App() {
@@ -72,6 +73,8 @@ export default function App() {
           onSession={acceptSession}
           onExpired={expire}
         />
+      ) : session?.status === "AUTHENTICATED" && page === "expected" ? (
+        <ExpectedPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "spending" ? (
         <SpendingPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "categories" ? (

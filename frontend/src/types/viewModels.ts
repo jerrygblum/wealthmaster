@@ -27,3 +27,6 @@ export type SpendingPageViewModel = ReturnType<typeof useSpending>;
 
 import type { usePreferences } from "../hooks/auth/usePreferences";
 export type PreferencesViewModel = ReturnType<typeof usePreferences>;
+
+import type { useExpected } from "../hooks/expected/useExpected";
+export type ExpectedPageViewModel = ReturnType<typeof useExpected>;
