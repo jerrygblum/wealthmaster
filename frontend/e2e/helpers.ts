@@ -94,13 +94,16 @@ export async function openAccounts(page: Page) {
 export async function expectCompactWorkspace(page: Page) {
   const title = page.getByRole("main").getByRole("heading", { level: 1 });
   await expect(title).toBeVisible();
-  const dimensions = await title.evaluate((element) => ({
-    fontSize: parseFloat(getComputedStyle(element).fontSize),
-    paddingTop: parseFloat(getComputedStyle(element.closest("main")!).paddingTop),
-    mobile: window.innerWidth <= 720,
-  }));
-  expect(dimensions.fontSize).toBe(dimensions.mobile ? 24 : 28);
-  expect(dimensions.paddingTop).toBe(12);
+  // Navigation can replace the heading between visibility and style checks.
+  // Poll the locator again so measurements come from the attached destination.
+  await expect
+    .poll(async () =>
+      title.evaluate((element) => ({
+        fontSize: parseFloat(getComputedStyle(element).fontSize),
+        paddingTop: parseFloat(getComputedStyle(element.closest("main")!).paddingTop),
+      })),
+    )
+    .toEqual({ fontSize: page.viewportSize()!.width <= 720 ? 24 : 28, paddingTop: 12 });
   await expect(page.getByText("Your workspace", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("banner").getByRole("button", { name: "Sign out" })).toBeVisible();
   await expect(page.getByRole("main").getByRole("button", { name: "Sign out" })).toHaveCount(0);

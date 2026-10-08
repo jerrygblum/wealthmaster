@@ -14,6 +14,7 @@ test("spending periods, category breakdowns, refunds and archived activity", asy
   const email = await syntheticUser();
   if ((await passwordLogin(page, email)) === "MFA_SETUP_REQUIRED") await enroll(page);
   await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
   await expectCompactWorkspace(page);
   await page.getByLabel("Default currency (ISO code)").fill("CHF");
   await page.getByRole("button", { name: "Save default currency" }).click();

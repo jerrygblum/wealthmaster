@@ -71,11 +71,21 @@ test("owner controls invitation-only signup and new members complete required MF
   expect(replacement).not.toBe(code);
   await signOut(page);
   await page.getByRole("link", { name: "Register with an invitation" }).click();
+  // Sign-in and registration both label their email field "Email". Wait for
+  // the destination page so a fast runner cannot fill the outgoing form.
+  await expect(
+    page.getByRole("heading", { name: "Create your account", exact: true }),
+  ).toBeVisible();
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Invitation code", { exact: true }).fill(code);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Confirm password").fill(password);
+  await expect(page.getByLabel("Email", { exact: true })).toHaveValue(email);
+  const rejectedSignup = page.waitForResponse(
+    (r) => new URL(r.url()).pathname === "/api/v1/auth/register" && r.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Create account", exact: true }).click();
+  expect((await rejectedSignup).status()).toBe(403);
   await expect(page.getByText(/Unable to register with these details/)).toBeVisible();
   await expect(page.getByLabel("Email", { exact: true })).toHaveValue(email);
   await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
