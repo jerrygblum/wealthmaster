@@ -1,11 +1,9 @@
 import { displayAmount } from "../../../utils/accountPresentation";
-import { nonzero, zero } from "../../../utils/spendingPresentation";
 import { Button, Checkbox, Input, Link, LoadingIndicator, Select } from "../../atoms/Controls";
 import { ActionGroup } from "../../molecules/ActionGroup";
-import { ExpensesChart } from "./ExpensesChart";
 import { SpendingHierarchyTable } from "./SpendingHierarchyTable";
 
-import type { BudgetPeriod } from "../../../types/models";
+import type { SpendingPeriod } from "../../../types/models";
 import type { SpendingPageViewModel } from "../../../types/viewModels";
 
 export function SpendingPageView({
@@ -35,15 +33,7 @@ export function SpendingPageView({
     <>
       <h1>Spending</h1>
       <p>
-        Category limits apply to every period. Monthly and yearly allowances are linked; refunds
-        reduce spending. Manage limits in Categories.
-      </p>
-      <p className="help">
-        {data?.defaultCurrency
-          ? `Default currency: ${data.defaultCurrency}. `
-          : "Choose a default currency in Settings before enabling limits. "}
-        Foreign-currency spending is not converted and is excluded from default-currency limit
-        comparisons. Each currency is reported separately.
+        See expenses, refunds and net spending by category. Each currency is reported separately.
       </p>
       <ActionGroup className="form-actions spending-toolbar">
         <label>
@@ -52,7 +42,7 @@ export function SpendingPageView({
             disabled={loading}
             value={period}
             onChange={(e) => {
-              setPeriod(e.target.value as BudgetPeriod);
+              setPeriod(e.target.value as SpendingPeriod);
               setStart("");
             }}
           >
@@ -100,19 +90,30 @@ export function SpendingPageView({
       {loading && <LoadingIndicator role="status">Loading spending…</LoadingIndicator>}
       {data && !loading && data.periodType === period && (!start || data.periodStart === start) && (
         <>
+          <h2>
+            {data.periodType === "MONTH"
+              ? data.periodStart.slice(0, 7)
+              : data.periodStart.slice(0, 4)}
+          </h2>
+          {data.periodStart.slice(0, data.periodType === "MONTH" ? 7 : 4) ===
+            data.businessDate.slice(0, data.periodType === "MONTH" ? 7 : 4) && (
+            <p className="help">
+              Activity through {data.businessDate}. Net spending is expenses minus refunds.
+            </p>
+          )}
           <label>
             <Checkbox checked={all} onChange={(e) => setAll(e.target.checked)} /> Show all
             categories
           </label>
           {!data.currencies.length && (
             <>
-              <p>No spending or limits recorded in this period.</p>
+              <p>No expenses or refunds recorded in this period.</p>
               {all && (
                 <ul>
                   {data.categories.map((c) => (
                     <li key={c.id}>
                       {c.name}
-                      {!c.available ? " (archived branch)" : ""} · No activity or limits
+                      {!c.available ? " (archived branch)" : ""} · No activity
                     </li>
                   ))}
                 </ul>
@@ -120,21 +121,6 @@ export function SpendingPageView({
             </>
           )}
           {data.currencies.map((summary) => {
-            const amount = (id: string | null, direct = false) => {
-              const group = data.groups.find(
-                (g) => g.currency === summary.currency && g.categoryId === id,
-              );
-              return (direct ? group?.direct : group?.inclusive) || zero;
-            };
-            const slices = [
-              ...data.categories
-                .filter((c) => !c.parentId)
-                .map((c) => ({ id: c.id, label: c.name, value: amount(c.id).expenses })),
-              { id: null, label: "Uncategorized", value: amount(null).expenses },
-            ].filter((s) => nonzero(s.value));
-            const branchId = (id: string | null) =>
-              `spending-${summary.currency}-${id || "uncategorized"}`;
-
             return (
               <section key={summary.currency}>
                 <h2>{summary.currency}</h2>
@@ -142,26 +128,14 @@ export function SpendingPageView({
                   <p>
                     Expenses: {displayAmount(summary.expenses)} · Refunds:{" "}
                     {displayAmount(summary.refunds)} · Net spending:{" "}
-                    {displayAmount(summary.netSpending)} {summary.currency}
+                    <strong>
+                      {displayAmount(summary.netSpending)} {summary.currency}
+                    </strong>
                   </p>
                   <p>
-                    Uncategorized net spending: {displayAmount(summary.uncategorized)} · Without an
-                    applicable budget: {displayAmount(summary.unbudgeted)} {summary.currency}
+                    Uncategorized net spending: {displayAmount(summary.uncategorized)}{" "}
+                    {summary.currency}
                   </p>
-                </div>
-                <div className="spending-chart-section">
-                  <h3>Expenses before refunds</h3>
-                  <ExpensesChart
-                    currency={summary.currency}
-                    slices={slices}
-                    onSelect={(id) => {
-                      if (id) setExpanded((ids) => (ids.includes(id) ? ids : [...ids, id]));
-                      requestAnimationFrame(() => {
-                        document.getElementById(branchId(id))?.focus();
-                        document.getElementById(branchId(id))?.scrollIntoView({ block: "nearest" });
-                      });
-                    }}
-                  />
                 </div>
                 <SpendingHierarchyTable
                   data={data}

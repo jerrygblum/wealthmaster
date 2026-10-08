@@ -8,7 +8,7 @@ The product should answer four questions well:
 
 1. What do I own and owe right now?
 2. Where did my money go and what is still expected?
-3. Am I staying within my budgets?
+3. How much did I spend in each category and period?
 4. How is my wealth changing over time, including investments?
 
 ## Users
@@ -30,7 +30,7 @@ Before V1:
 - historical Excel/CSV transactions can be imported;
 - all relevant financial accounts can be represented;
 - transfers are correct and do not distort spending;
-- categories and budgets can be represented;
+- categories and spending by period can be represented;
 - expected recurring costs/income can be tracked;
 - investment holdings can be represented;
 - current and historical net worth can be calculated;
@@ -83,19 +83,19 @@ Accounts support editing, archive/restore, and confirmed permanent deletion when
 - Bill payment is a transfer from a bank account to the card account.
 - Statement import avoids double counting.
 
-### Categories and budgets
+### Categories and spending
 
-The implemented category slice supports user-owned income and spending categories with one subcategory level. Either level is optional on ordinary activity; refunds use spending categories and transfers have none. Users can start empty or explicitly install an editable starter set once. Categories support rename, archive/restore, and deletion only when never used and without children. Historical ledger use locks type and parent. Archiving a main category hides its branch from new assignment without changing child active flags.
+User-owned income and spending categories support one subcategory level. Either level is optional on ordinary activity; refunds use spending categories and transfers have none. Users can start empty or explicitly install an editable starter set once. Categories support rename, archive/restore, and deletion only when never used and without children. Permanent ledger history locks type and parent. Archiving a main category hides its branch from new assignment without changing child active flags.
 
-- Main spending categories have one current limit, entered as monthly or yearly, saved atomically with category details. Monthly × 12 gives yearly; yearly ÷ 12 gives monthly. No limit differs from zero. Subcategory spending counts toward its main category’s limit; subcategories have no limit controls.
-- The current limit applies to every selected month/year, including past periods. Changes replace the current allowance; there are no period overrides, dated limit revisions, rollover or accrued allowances. A selected year always uses the full yearly allowance, even in the current or a future year.
-- Spending compares the selected period’s expenses minus refunds with that period’s allowance. Current activity stops at the business date; future periods have zero activity. Archived accounts/categories remain included, and refunds can make net spending negative.
-- Limits use the explicitly selected default currency in Settings. Foreign spending remains separate and excluded from default-currency comparisons until historical FX is implemented. Changing currency requires confirmation when limits exist and clears all current limits, including their use in past reports.
-- Categories show both linked allowances. One amount and input unit are editable; changing the displayed unit preserves the original amount unless the amount itself is edited. Monetary displays use two decimals, while source values retain up to eight fractional digits. Derived yearly-to-monthly limits use eight-place HALF_UP division, always from the original amount.
-- Spending is read-only for limits, with Manage limit links to Categories. Supporting activity is available without a limit. Actual, remaining, percentage and textual over-budget status are shown. Zero limits have no percentage.
-- Net, uncategorized and unbudgeted summaries count each operation once. Main-category limits include direct and immediate child spending; inclusive parents are not added again to child rows.
-- Current-setting history permanently prevents category deletion and locks type/parent, including after selecting No limit. Failed requests retain form input; category, setting and preferences versions detect stale edits.
-- Pre-production V010 removes subcategory limits and dependent references. V011 removes every period override, override reference and dated setting revision. Current main-category settings, their references, categories, ledger data and audit records remain intact. Imports, recurring expectations, rules and bulk assignment remain deferred.
+- Spending shows one selected calendar month or year, defaulting to the current business month, with previous/next controls and period entry.
+- Compact tables show expenses, refunds and net spending by category in each native currency. Refunds reduce net spending and can make it negative. No FX conversion is applied.
+- Main-category totals include directly assigned activity and immediate children. Expand them to see the breakdown; inclusive totals are never added again to child rows. Uncategorized activity is separate.
+- Initially show categories with expenses or refunds and their ancestors; Show all categories includes zero-activity categories. Supporting activity retains ledger ordering, pagination and account links.
+- Current activity stops at the business date; future periods have zero activity. Archived accounts/categories remain included. Deleted operations, income, transfers and opening balances are excluded.
+- Monetary displays use two decimals; backend calculations and API amounts retain exact decimal precision.
+- Categories have compact rows and inline CRUD actions, without spending-limit controls. The Spending page has no chart or budget comparisons.
+- Default currency remains an explicitly selected owner preference. Changing it is versioned and audited, without modifying ledger data or spending reports.
+- Budgeting is deferred. Pre-production V012 removes current limit settings and their category references; categories, ledger history, currency preferences and audit records remain intact. Budget-only use no longer locks category structure or deletion. Imports, recurring expectations, rules and bulk assignment remain deferred.
 
 ### Expected/fixed transactions
 Expected costs/income are separate from actual transactions.
@@ -106,7 +106,7 @@ Period views show found/missing expected items and allow manual correction of ma
 
 ### Imports
 
-Imports and recurring expectations remain deferred while category limits and spending reports are available.
+Imports and recurring expectations remain deferred while category management and spending reports are available.
 Supported sequence:
 1. CSV
 2. XLSX
@@ -159,7 +159,7 @@ Track:
 Market prices may be delayed depending on provider/licensing. UI must show quote freshness.
 
 ### Multi-currency
-- User explicitly chooses a default currency in Settings; no currency is inferred for existing or new owners. Category limits use it.
+- User explicitly chooses a default currency in Settings; no currency is inferred for existing or new owners. Spending remains in native transaction currencies; the preference does not convert amounts.
 - Every financial amount preserves native currency.
 - Historical reporting uses historical FX where required.
 - Current net worth uses current/latest available FX.
@@ -233,4 +233,4 @@ Outcome: a user can trust and explain the current value and understand how it ch
 - Health checks and useful structured logs.
 - Security updates/dependency maintenance considered part of product ownership.
 
-Spending uses `#/spending`; `#/planning` remains a compatibility alias. Net worth remains the landing page. Pie slices represent top-level inclusive expenses plus uncategorized expenses before refunds, counting each expense once. Refund-only periods retain table rows with an explanatory chart empty state. Parents expand into direct and child amounts; zero-activity categories are optional. Manage limit links select the corresponding main category. Month/year selection changes both the activity period and its linked allowance.
+Spending uses `#/spending`; `#/planning` remains a compatibility alias. Net worth remains the landing page. Month/year selection controls the activity period. Compact category tables show exact expense/refund/net calculations rounded to two decimals for display, with expandable inclusive parents and transaction drill-down. Budgeting and charts are deferred.

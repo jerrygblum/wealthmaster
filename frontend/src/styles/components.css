@@ -349,11 +349,9 @@
 .category-card h3 {
   overflow-wrap: anywhere;
 }
-.limits .form-actions,
 .spending .form-actions {
   flex-wrap: wrap;
 }
-.limits input[type="checkbox"],
 .spending input[type="checkbox"] {
   width: 20px;
   min-height: 20px;
@@ -361,24 +359,8 @@
   vertical-align: middle;
   margin-right: 8px;
 }
-.limits article,
-.limits .panel {
-  margin: 16px 0;
-  overflow-wrap: anywhere;
-}
-.limits .form-actions label,
 .spending .form-actions label {
   max-width: 100%;
-}
-.spending-chart {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem;
-}
-.spending-chart svg {
-  width: min(100%, 260px);
-  flex-shrink: 0;
 }
 .spending-table {
   max-width: 100%;
@@ -404,7 +386,6 @@
 .category-card[data-selected="true"] {
   outline: 2px solid #2563eb;
 }
-.limits .form-actions form,
 .spending .form-actions form {
   max-width: 100%;
 }
@@ -444,42 +425,6 @@
   cursor: pointer;
   color: #24554c;
 }
-.limit-mode {
-  display: inline-flex;
-  border: 1px solid #b8c7c1;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.limit-mode button {
-  border-radius: 0;
-  background: transparent;
-  color: #24554c;
-  border: 0;
-  padding: 8px 10px;
-  min-height: 40px;
-}
-.limit-mode button[aria-pressed="true"] {
-  background: var(--color-primary);
-  color: white;
-}
-.limit-amount {
-  max-width: 170px;
-  flex: 1 1 110px;
-}
-.limit-amount input {
-  min-height: 40px;
-  padding: 8px;
-}
-.limit-currency {
-  font-size: 0.9rem;
-  font-weight: 650;
-}
-.spending-table td small {
-  display: block;
-  min-width: 130px;
-  font-size: 0.8rem;
-  margin-top: 4px;
-}
 @media (max-width: 600px) {
   .compact-category h3 {
     padding-right: 0;
@@ -488,32 +433,12 @@
     position: static;
     margin-bottom: 8px;
   }
-  .limit-mode {
-    max-width: 100%;
-  }
 }
 .field-label {
   display: block;
   font-size: 0.9rem;
   font-weight: 650;
   margin: 0 0 7px;
-}
-.category-limit-fields {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: start;
-}
-.category-limit-fields > p {
-  flex-basis: 100%;
-  margin: 0;
-}
-.category-limit-fields label {
-  min-width: 10rem;
-}
-.category-limit-summary {
-  margin: 0.5rem 0;
-  font-weight: 600;
 }
 .category-list {
   border: 1px solid var(--color-border);
@@ -524,7 +449,7 @@
 .category-list-heading,
 .category-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.65fr) 112px;
+  grid-template-columns: minmax(0, 1fr) 112px;
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
@@ -557,10 +482,6 @@
 .category-row-child .category-row-name {
   padding-left: 16px;
 }
-.category-row-limit {
-  font-size: 0.85rem;
-  overflow-wrap: anywhere;
-}
 .category-row-actions {
   display: flex;
   justify-content: flex-end;
@@ -586,10 +507,6 @@
 .category-row[data-selected="true"] {
   box-shadow: inset 3px 0 #2563eb;
 }
-.category-list-income .category-list-heading,
-.category-list-income .category-row {
-  grid-template-columns: minmax(0, 1fr) 112px;
-}
 @media (max-width: 600px) {
   .category-list-heading {
     display: none;
@@ -606,11 +523,6 @@
     grid-column: 1;
     grid-row: 1;
   }
-  .category-row-limit {
-    grid-column: 1;
-    grid-row: 2;
-    font-size: 0.78rem;
-  }
   .category-row-actions {
     grid-column: 2;
     grid-row: 1 / span 2;
@@ -619,9 +531,6 @@
     width: 40px;
     min-width: 40px;
     min-height: 40px;
-  }
-  .category-list-income .category-row {
-    grid-template-columns: minmax(0, 1fr) 128px;
   }
   .category-row-child .category-row-name {
     padding-left: 8px;
@@ -652,21 +561,6 @@
 .spending-summary p {
   margin: 4px 0;
 }
-.spending-chart-section {
-  margin: 16px 0;
-}
-.spending-chart-section h3 {
-  font-size: 1rem;
-  margin-bottom: 8px;
-}
-.spending-chart-section .spending-chart svg {
-  width: min(100%, 180px);
-}
-.spending-chart-section ul {
-  font-size: 0.85rem;
-  margin: 0;
-  padding-left: 20px;
-}
 .spending-table {
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -695,16 +589,11 @@
 .spending-table tbody tr:last-child > * {
   border-bottom: 0;
 }
-.spending-table td small {
-  min-width: 0;
-  font-size: 0.72rem;
-  color: #596d64;
-}
 .spending-row-name {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 150px;
+  min-width: 0;
 }
 .spending-child-row .spending-row-name {
   padding-left: 30px;
@@ -754,5 +643,68 @@
   .spending-toolbar > label,
   .spending-toolbar > form {
     flex: 1 1 100%;
+  }
+}
+
+.spending-table td[data-label] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.spending-row-name span {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .spending-table table,
+  .spending-table tbody {
+    display: block;
+  }
+  .spending-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .spending-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    position: relative;
+    border-bottom: 1px solid var(--color-border);
+    padding: 8px;
+  }
+  .spending-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .spending-table tbody th {
+    grid-column: 1 / -1;
+    padding-right: 48px;
+  }
+  .spending-table tbody th,
+  .spending-table tbody td {
+    border: 0;
+    min-width: 0;
+    padding: 6px;
+  }
+  .spending-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.7rem;
+    color: #596d64;
+    margin-bottom: 4px;
+  }
+  .spending-table .spending-actions-cell {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+  .spending-child-row .spending-row-name {
+    padding-left: 12px;
+  }
+  .spending-row-actions .spending-action,
+  .spending-row-name .spending-expand {
+    min-width: 40px;
+    width: 40px;
+    min-height: 40px;
   }
 }

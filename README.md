@@ -2,7 +2,7 @@
 
 A self-hosted personal finance and net-worth application designed to replace an Excel-based finance workflow while demonstrating end-to-end product ownership and production-minded software delivery.
 
-> **Status:** active development — email/password login, authenticator 2FA, security settings, financial account management, manual cash activity/transfers, current cash net worth, manual categories, and spending budgets implemented.
+> **Status:** active development — email/password login, authenticator 2FA, security settings, financial account management, manual cash activity/transfers, current cash net worth, manual categories, and spending by category/period implemented.
 
 ## Product goals
 
@@ -43,7 +43,7 @@ The financial ledger is the source of truth. Dashboards, balances, budgets, port
 
 See [ARCHITECTURE.md](ARCHITECTURE.md), [docs/adr](docs/adr/), and the [OpenAPI contract](docs/api/openapi.json).
 
-Account management supports editing, confirmed deletion of unused accounts, and archive/restore. See the [investment cash/holdings design](docs/adr/006-investment-cash-and-holdings.md) for the planned transfer and stock-purchase model. See [account management operations](docs/operations/account-management.md) for migration and audit implications. The default [net-worth overview](docs/operations/net-worth.md) shows assets, liabilities and account contributions per native currency, including archived balances and investment cash. See [category operations](docs/operations/categories.md) for manual classification and lifecycle rules. [Spending](docs/operations/budgets.md) shows gross expense distribution, refunds and exact native-currency comparisons. Compact category rows manage one current linked monthly/yearly limit per main category. Spending compares the selected period’s net activity with its corresponding allowance; no overrides, dated limit revisions or prorated allowances remain. Imports are deferred; recurring expectations are the next slice.
+Account management supports editing, confirmed deletion of unused accounts, and archive/restore. See the [investment cash/holdings design](docs/adr/006-investment-cash-and-holdings.md) for the planned transfer and stock-purchase model. See [account management operations](docs/operations/account-management.md) for migration and audit implications. The default [net-worth overview](docs/operations/net-worth.md) shows assets, liabilities and account contributions per native currency, including archived balances and investment cash. See [category operations](docs/operations/categories.md) for manual classification and lifecycle rules. [Spending](docs/operations/spending.md) shows expenses, refunds and net spending by category for a selected month or year, in separate native currencies. Expand main categories for direct and child breakdowns and open supporting transaction activity. Categories use compact CRUD rows without limits. Budgeting, imports and recurring expectations are deferred; V012 removes remaining limit data while preserving ledger, categories, currency preferences and audit history.
 
 ## Local development
 

@@ -85,7 +85,7 @@ Initial planned resources:
 /api/v1/transactions
 /api/v1/transfers
 /api/v1/categories
-/api/v1/budgets
+/api/v1/spending
 /api/v1/expected-transactions
 /api/v1/imports
 /api/v1/investments
@@ -187,19 +187,17 @@ Archiving a parent changes effective branch availability while retaining child a
 
 Starter installation is explicit, atomic, available for an empty list and recorded once per owner. The UI adds `#/categories`; net worth remains the default route.
 
-### Linked category limits and spending distribution
+### Spending by period and category
 
-The budgets module stores one current category/currency setting in budget_settings: input basis (NONE/MONTH/YEAR), exact NUMERIC(28,8) amount and optimistic version. Monthly and yearly limits are derived, never independently persisted. Multiplication by twelve is exact; yearly division uses BigDecimal at eight decimal places, HALF_UP. Decimal-string DTOs may exceed input integer precision for derived annual amounts. UI display rounding never becomes the source for later conversion or comparison.
+The budgets module retains category management and spending reporting; no module reorganization is introduced. SpendingService aggregates owner-scoped ledger expenses and refunds directly using BigDecimal. SpendingPeriod validates calendar starts and resolves business-month/year defaults and exclusive period ends. Activity is capped at the day after the business date; future periods return no activity.
 
-BudgetSettingService enforces owner-scoped main spending categories and the selected default currency. CategoryCrudService composes category and setting mutations in one transaction under the existing owner category lock. Expected setting and preferences versions accompany the category If-Match. Archived existing allowances may change input basis/amount or become No limit, but disabled/new allowances cannot be enabled without restoration. Setting references permanently lock category structure even after clearing a limit. Changes and audit snapshots commit atomically.
+GET /api/v1/spending and /spending/activity run in single read-only REPEATABLE_READ snapshots and disable caching. Report aggregation establishes the snapshot before category labels are loaded, so concurrent corrections cannot mix amounts and labels. Currencies remain separate. Reports contain direct and inclusive parent expense/refund/net amounts, uncategorized net totals and business dates. Income, transfers, opening balances and deleted operations are excluded; archived activity remains included.
 
-EffectiveBudgetService compares selected-period non-deleted expenses minus refunds with the current linked allowance. Main-category comparisons include direct assignments and immediate children. Every past/current/future period uses the current setting; no historical resolution, override precedence, annual fallback or monthly accrual remains. Current activity is capped at the business date; future activity is zero while the full allowance remains visible. Remaining and over-budget use the unrounded eight-place allowance; percentage is HALF_UP to two places, null for zero.
+Supporting activity includes immediate children or uncategorized activity when no category is selected, retaining 50-row ledger ordering and account links. Category CRUD calls CategoryService directly with optimistic category versions. Only permanent ledger references and existing children restrict category structure/deletion.
 
-GET /api/v1/spending and /spending/activity run in a single read-only REPEATABLE_READ snapshot and disable caching. All currencies stay separate. Gross expenses and refunds are grouped by assigned category, with inclusive parent rollups; the pie uses only root inclusive expenses plus uncategorized. Coverage uses the main category and currency, so each operation counts once. Supporting activity includes immediate children or uncategorized when no category is selected, retaining 50-row ledger ordering and account links. No ledger mutations, caches, jobs or FX conversion are introduced.
+Historical Flyway V007/V008 introduced budgeting, V010 removed subcategory limits, and V011 removed period overrides and dated revisions. Pre-production V012 drops remaining budget_settings and budget_setting_category_history. Ledger/category data, user_preferences and audit events survive. All budget APIs and category limit inputs are retired without a compatibility layer.
 
-Flyway V007/V008 originally introduced period overrides and dated setting revisions; V010 removes subcategory limits. Pre-production V011 drops spending_budgets, budget_category_history and budget_setting_revisions. Current main settings and budget_setting_category_history survive, as do ledger/category data and audit events. Period-budget CRUD/copy/activity, effective-limit and monthly-breakdown routes are retired without an API compatibility layer. Category CRUD and GET/PUT /budget-settings remain; settings return monthlyLimit/yearlyLimit, and spending comparisons contain only selected-period values.
-
-The frontend edits limits within category CRUD, with one amount/unit and a derived counterpart. Unit switching preserves the canonical input until the amount is edited, avoiding rounding drift. Spending provides Manage limit links and supporting activity. #/planning remains an alias for #/spending.
+The frontend uses a compact category table with expandable parent breakdowns and labeled mobile rows. Monetary displays round exact decimal strings to two decimals. There are no charts, limits or comparisons. #/planning remains an alias for #/spending. No ledger mutations, caches, jobs or FX conversion are introduced.
 
 ### Frontend composition and quality checks
 
@@ -207,10 +205,6 @@ The React frontend follows atomic design: native control atoms, reusable field/a
 
 Prettier formats frontend sources and configuration; ESLint checks typed correctness, hook usage, accessibility and Fast Refresh compatibility. CI checks both plus tooling-rule tests before the existing build/tests. Editor format-on-save is scoped by the frontend Prettier configuration; no commit hooks are installed. See [frontend development](frontend/README.md) for commands and component placement. This refactor preserves routes, API contracts, financial behavior and the existing visual design.
 
-### Unified category limits and owner currency
+### Owner currency preference
 
-Flyway V009 adds owner-scoped user_preferences with nullable default_currency and optimistic version. CurrencyPolicy reads preferences and enforces the selected currency for enabled normal/current-future period limits; historical native-currency exceptions remain editable. No implicit currency or FX conversion is introduced. GET /users/me/preferences is a no-store repeatable-read snapshot.
-
-CategoryCrudService composes CategoryService and BudgetSettingService in one transaction using the existing owner category lock, avoiding circular service dependencies. Category inputs optionally include normalLimit with setting and preferences version references; omission preserves limits. The compact inline form has one Save action. Category reads remain independent of limit/preference loading.
-
-PreferencesService takes the same owner lock, checks preferences version and requires explicit reset confirmation when limits exist. A currency change disables all current settings, then updates preferences and audit atomically. All report periods use those current settings, so clearing them also changes past comparisons. Ledger data, setting references and audit history remain intact. Unchanged currency saves do not reset limits. Initial selection follows the same policy; no currency is inferred.
+Flyway V009 adds owner-scoped user_preferences with nullable default_currency and optimistic version. GET /users/me/preferences is a no-store repeatable-read snapshot. PUT validates ISO 4217 codes, checks the preference version and records an audit event atomically under the existing owner lock. Currency changes no longer detect or reset limits. The preference does not change transaction currencies or convert spending totals. No currency is inferred.

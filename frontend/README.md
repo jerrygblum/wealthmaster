@@ -38,7 +38,7 @@ Atoms cannot import higher layers. Molecules may compose atoms; organisms may co
 
 Financial rules remain on the backend. Display exact monetary strings through presentation helpers; only chart geometry uses approximations. Keep session expiry, pending/error states, retained failed input and optimistic versions in feature hooks. Shared controls preserve native semantics, refs and keyboard access. Use Button variants instead of duplicating control styles. Focus newly opened forms explicitly through Input's `focusOnMount` prop.
 
-Styles are split into tokens, base rules and component rules. CategoryForm composes the shared fields and saves category details plus normal limits through its page controller; Settings exposes owner currency preferences. Preserve accessible names and selectors when extracting components, and verify affected journeys on desktop and mobile.
+Styles are split into tokens, base rules and component rules. CategoryForm composes the shared fields and saves category details through its page controller; Settings exposes owner currency preferences. Preserve accessible names and selectors when extracting components, and verify affected journeys on desktop and mobile.
 
 Browser tests require the dedicated synthetic database described in the root README; never run fixtures against production data. The CI matrix runs development and production backend profiles.
 
@@ -46,7 +46,7 @@ Browser tests require the dedicated synthetic database described in the root REA
 
 During edits, use `npm run test:watch` or `npm run test:related -- <changed-source-files>`. Related-file selection follows imports; include changed shared services/hooks as well as page files. For this category/currency feature: `npm run test:related -- src/pages/categories/CategoriesPage.tsx src/pages/auth/PreferencesPanel.tsx src/pages/auth/SecuritySettings.tsx src/pages/spending/SpendingPage.tsx`. Two workers avoid local oversubscription.
 
-Before completing changes, run lint, format:check, typecheck and affected tests sequentially. For backend unit changes, use `mvn --batch-mode -Dtest=BudgetServiceTest,CurrencyPolicyTest test` in backend. Persistence/migration changes also warrant focused integration checks using a disposable database, as documented in the root README. With dependencies already cached, add Maven `--offline` to avoid registry lookup delays. Do not run heavy backend, frontend and browser suites concurrently.
+Before completing changes, run lint, format:check, typecheck and affected tests sequentially. For backend unit changes, use `mvn --batch-mode -Dtest=SpendingPeriodTest,CurrencyPolicyTest test` in backend. Persistence/migration changes also warrant focused integration checks using a disposable database, as documented in the root README. With dependencies already cached, add Maven `--offline` to avoid registry lookup delays. Do not run heavy backend, frontend and browser suites concurrently.
 
 Browser journeys are updated with the feature but run in CI by default. CI retains full backend/frontend tests, production build, tooling checks and desktop/mobile browser coverage under dev and prod profiles. Report local checks separately from CI results; a passing focused local suite does not imply CI has run. There are no skipped checks or timeout increases to accelerate the workflow.
 

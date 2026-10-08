@@ -47,12 +47,6 @@ export type CreateAccount = {
 };
 export type CategoryType = "INCOME" | "SPENDING";
 export type CategoryInput = {
-  normalLimit?: {
-    mode: BudgetMode;
-    limit: string | null;
-    expected: BudgetReference | null;
-    expectedPreferencesVersion: number;
-  };
   name: string;
   type: CategoryType;
   parentId: string | null;
@@ -105,8 +99,7 @@ export type CurrentNetWorth = {
 };
 export type SpendingAmounts = { expenses: string; refunds: string; netSpending: string };
 export type SpendingReport = {
-  defaultCurrency: string | null;
-  periodType: BudgetPeriod;
+  periodType: SpendingPeriod;
   periodStart: string;
   categories: Category[];
   groups: {
@@ -115,39 +108,12 @@ export type SpendingReport = {
     direct: SpendingAmounts;
     inclusive: SpendingAmounts;
   }[];
-  currencies: (SpendingAmounts & { currency: string; uncategorized: string; unbudgeted: string })[];
-  limits: BudgetComparison[];
+  currencies: (SpendingAmounts & { currency: string; uncategorized: string })[];
   businessDate: string;
 };
-export type BudgetReference = { id: string; version: number };
-export type BudgetMode = "NONE" | "MONTH" | "YEAR";
-export type BudgetSetting = {
-  id: string;
-  categoryId: string;
-  currency: string;
-  mode: BudgetMode;
-  limit: string | null;
-  version: number;
-  monthlyLimit: string | null;
-  yearlyLimit: string | null;
-};
-export type BudgetSettings = { businessDate: string; items: BudgetSetting[] };
-export type BudgetComparison = {
-  categoryId: string;
-  currency: string;
-  periodType: BudgetPeriod;
-  periodStart: string;
-  limit: string;
-  actual: string;
-  remaining: string;
-  percentage: string | null;
-  overBudget: boolean;
-  available: boolean;
-};
-export type BudgetPeriod = "MONTH" | "YEAR";
+export type SpendingPeriod = "MONTH" | "YEAR";
 
 export type Preferences = {
   defaultCurrency: string | null;
   version: number;
-  hasLimitsToReset: boolean;
 };

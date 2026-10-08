@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api, ApiError } from "../../services/api";
 import type { SpendingPageProps } from "../../types/componentProps";
-import type { BudgetPeriod, Operation, SpendingReport } from "../../types/models";
+import type { SpendingPeriod, Operation, SpendingReport } from "../../types/models";
 
 export function useSpending({ onExpired }: SpendingPageProps) {
-  const [period, setPeriod] = useState<BudgetPeriod>("MONTH"),
+  const [period, setPeriod] = useState<SpendingPeriod>("MONTH"),
     [start, setStart] = useState(""),
     [entry, setEntry] = useState("");
   const [data, setData] = useState<SpendingReport>();

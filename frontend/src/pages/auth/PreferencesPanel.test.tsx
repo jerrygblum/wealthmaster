@@ -11,7 +11,6 @@ beforeEach(() => {
   vi.mocked(api.preferences).mockResolvedValue({
     defaultCurrency: null,
     version: 0,
-    hasLimitsToReset: false,
   });
 });
 it("requires an explicit currency and saves the preference version", async () => {
@@ -22,46 +21,24 @@ it("requires an explicit currency and saves the preference version", async () =>
   vi.mocked(api.savePreferences).mockResolvedValue({
     defaultCurrency: "CHF",
     version: 1,
-    hasLimitsToReset: false,
   });
   fireEvent.click(screen.getByText("Save default currency"));
-  await screen.findByText("Default currency saved. Enter spending limits in Categories.");
+  await screen.findByText("Default currency saved.");
   expect(api.savePreferences).toHaveBeenCalledWith({
     defaultCurrency: "CHF",
     expectedVersion: 0,
-    confirmLimitReset: false,
   });
 });
-it("warns, supports cancellation and confirms the reset explicitly", async () => {
-  vi.mocked(api.preferences).mockResolvedValue({
-    defaultCurrency: "CHF",
-    version: 2,
-    hasLimitsToReset: true,
-  });
+it("changes currency directly without budget confirmation", async () => {
+  vi.mocked(api.preferences).mockResolvedValue({ defaultCurrency: "CHF", version: 2 });
+  vi.mocked(api.savePreferences).mockResolvedValue({ defaultCurrency: "EUR", version: 3 });
   render(<PreferencesPanel onExpired={vi.fn()} />);
   const input = await screen.findByLabelText("Default currency (ISO code)");
   fireEvent.change(input, { target: { value: "EUR" } });
   fireEvent.click(screen.getByText("Save default currency"));
-  expect(api.savePreferences).not.toHaveBeenCalled();
-  await screen.findByText(/You must enter your spending limits again/);
-  fireEvent.click(screen.getByText("Cancel currency change"));
-  expect(input).toHaveValue("CHF");
-  expect(api.savePreferences).not.toHaveBeenCalled();
-  fireEvent.change(input, { target: { value: "EUR" } });
-  fireEvent.click(screen.getByText("Save default currency"));
-  vi.mocked(api.savePreferences).mockResolvedValue({
-    defaultCurrency: "EUR",
-    version: 3,
-    hasLimitsToReset: false,
-  });
-  fireEvent.click(screen.getByText("Confirm currency change"));
-  await waitFor(() =>
-    expect(api.savePreferences).toHaveBeenCalledWith({
-      defaultCurrency: "EUR",
-      expectedVersion: 2,
-      confirmLimitReset: true,
-    }),
-  );
+  await screen.findByText("Default currency saved.");
+  expect(api.savePreferences).toHaveBeenCalledWith({ defaultCurrency: "EUR", expectedVersion: 2 });
+  expect(screen.queryByText("Confirm currency change")).toBeNull();
 });
 it("retains stale input and requires reload; handles session expiry", async () => {
   const expired = vi.fn();

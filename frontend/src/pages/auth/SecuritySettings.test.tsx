@@ -11,9 +11,7 @@ vi.mock("../../services/api", async (original) => {
   return {
     ...actual,
     api: {
-      preferences: vi
-        .fn()
-        .mockResolvedValue({ defaultCurrency: null, version: 0, hasLimitsToReset: false }),
+      preferences: vi.fn().mockResolvedValue({ defaultCurrency: null, version: 0 }),
       security: vi.fn(),
       verifyMfa: vi.fn(),
       startMfa: vi.fn(),
@@ -38,7 +36,6 @@ beforeEach(() => {
   vi.mocked(api.preferences).mockResolvedValue({
     defaultCurrency: null,
     version: 0,
-    hasLimitsToReset: false,
   });
   vi.mocked(api.security).mockResolvedValue({
     enabled: false,

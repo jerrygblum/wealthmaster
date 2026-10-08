@@ -8,7 +8,6 @@ export function usePreferences(onExpired: () => void) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [confirming, setConfirming] = useState(false);
   const [stale, setStale] = useState(false);
   const fail = useCallback(
     (e: unknown) => {
@@ -24,7 +23,6 @@ export function usePreferences(onExpired: () => void) {
     setLoading(true);
     setError("");
     setStale(false);
-    setConfirming(false);
     try {
       const result = await api.preferences();
       setData(result);
@@ -38,12 +36,8 @@ export function usePreferences(onExpired: () => void) {
   useEffect(() => {
     void load();
   }, [load]);
-  async function save(confirmed = false) {
+  async function save() {
     if (!data || stale) return;
-    if (currency !== data.defaultCurrency && data.hasLimitsToReset && !confirmed) {
-      setConfirming(true);
-      return;
-    }
     setPending(true);
     setError("");
     setNotice("");
@@ -51,14 +45,11 @@ export function usePreferences(onExpired: () => void) {
       const result = await api.savePreferences({
         defaultCurrency: currency,
         expectedVersion: data.version,
-        confirmLimitReset: confirmed,
       });
       setData(result);
-      setConfirming(false);
-      setNotice("Default currency saved. Enter spending limits in Categories.");
+      setNotice("Default currency saved.");
     } catch (e) {
       fail(e);
-      if (e instanceof ApiError && e.status === 409) setConfirming(true);
     } finally {
       setPending(false);
     }
@@ -71,8 +62,6 @@ export function usePreferences(onExpired: () => void) {
     pending,
     error,
     notice,
-    confirming,
-    setConfirming,
     stale,
     load,
     save,

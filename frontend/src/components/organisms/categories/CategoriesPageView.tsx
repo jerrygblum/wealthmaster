@@ -1,5 +1,5 @@
 import { ActionIcon } from "../../atoms/ActionIcon";
-import { Button, Link, LoadingIndicator } from "../../atoms/Controls";
+import { Button, LoadingIndicator } from "../../atoms/Controls";
 import { ActionGroup } from "../../molecules/ActionGroup";
 import { Confirmation } from "../../molecules/Confirmation";
 import { Message } from "../../molecules/Message";
@@ -7,7 +7,6 @@ import { WorkspaceHeading } from "../application/WorkspaceHeading";
 import { CategoryForm } from "./CategoryForm";
 import type { CategoryType } from "../../../types/models";
 import type { CategoriesPageViewModel } from "../../../types/viewModels";
-import { displayAmount } from "../../../utils/accountPresentation";
 import { categoryLabel } from "../../../utils/categoryPresentation";
 
 export function CategoriesPageView(model: CategoriesPageViewModel) {
@@ -36,11 +35,6 @@ export function CategoriesPageView(model: CategoriesPageViewModel) {
     installStarters,
     archiveCategory,
     user,
-    limitData,
-    preferences,
-    limitsLoading,
-    limitsError,
-    loadLimits,
   } = model;
   return (
     <>
@@ -66,7 +60,6 @@ export function CategoriesPageView(model: CategoriesPageViewModel) {
           disabled={busy}
           onClick={() => {
             void load();
-            void loadLimits();
           }}
         >
           Refresh categories
@@ -151,36 +144,15 @@ export function CategoriesPageView(model: CategoriesPageViewModel) {
           {(["INCOME", "SPENDING"] as CategoryType[]).map((type) => (
             <section key={type} aria-labelledby={`categories-${type}`}>
               <h2 id={`categories-${type}`}>{type === "INCOME" ? "Income" : "Spending"}</h2>
-              {type === "SPENDING" && (
-                <>
-                  {limitsLoading && <LoadingIndicator>Loading spending limits…</LoadingIndicator>}
-                  {limitsError && (
-                    <div role="alert" className="error">
-                      <p>{limitsError}</p>
-                      <Button disabled={pending || !!form} onClick={() => void loadLimits()}>
-                        Retry spending limits
-                      </Button>
-                    </div>
-                  )}
-                  {preferences && !preferences.defaultCurrency && (
-                    <p>
-                      Select a <Link href="#/settings">default currency in Settings</Link> before
-                      setting spending limits. Existing limits are retained until you confirm a
-                      currency selection.
-                    </p>
-                  )}
-                </>
-              )}
               {!items.some((c) => c.type === type && visible(c)) && (
                 <p>
                   No {archived ? "archived" : "active"} {type.toLowerCase()} categories.
                 </p>
               )}
               {items.some((c) => c.type === type && visible(c)) && (
-                <div className={`category-list ${type === "INCOME" ? "category-list-income" : ""}`}>
+                <div className="category-list">
                   <div className="category-list-heading" aria-hidden="true">
                     <span>Category</span>
-                    {type === "SPENDING" && <span>Spending limit</span>}
                     <span>Actions</span>
                   </div>
                   {items
@@ -209,23 +181,6 @@ export function CategoriesPageView(model: CategoriesPageViewModel) {
                             <span className="muted">Unavailable while parent is archived</span>
                           ) : null}
                         </div>
-                        {type === "SPENDING" && (
-                          <div className="category-row-limit">
-                            {c.parentId
-                              ? `Included in ${items.find((parent) => parent.id === c.parentId)?.name ?? "main category"}’s limit`
-                              : limitsLoading
-                                ? "Loading…"
-                                : limitsError
-                                  ? "Limit unavailable"
-                                  : limitData?.items
-                                      .filter((s) => s.categoryId === c.id && s.mode !== "NONE")
-                                      .map(
-                                        (s) =>
-                                          `${displayAmount(s.monthlyLimit ?? "0")} ${s.currency} / month · ${displayAmount(s.yearlyLimit ?? "0")} ${s.currency} / year`,
-                                      )
-                                      .join(" · ") || "No spending limit"}
-                          </div>
-                        )}
                         <ActionGroup className="category-row-actions">
                           <Button
                             variant="secondary"

@@ -7,7 +7,6 @@ vi.mock("../../services/api", async (original) => ({
   ...(await original<typeof import("../../services/api")>()),
   api: {
     preferences: vi.fn(),
-    budgetSettings: vi.fn(),
     categories: vi.fn(),
     saveCategory: vi.fn(),
     setCategoryActive: vi.fn(),
@@ -42,9 +41,7 @@ beforeEach(() => {
   vi.mocked(api.preferences).mockResolvedValue({
     defaultCurrency: "CHF",
     version: 1,
-    hasLimitsToReset: false,
   });
-  vi.mocked(api.budgetSettings).mockResolvedValue({ businessDate: "2026-10-05", items: [] });
   vi.mocked(api.categories).mockResolvedValue({ items: [], starterSetAvailable: true });
 });
 function renderPage(expired = vi.fn(), logout = vi.fn()) {
@@ -147,28 +144,31 @@ it("retries failed loads and routes expired sessions to sign-in", async () => {
   await waitFor(() => expect(expired).toHaveBeenCalledOnce());
 });
 
-it("keeps failed limit input inside the category form while other actions stay disabled", async () => {
+it("retains failed category input while other actions stay disabled", async () => {
   vi.mocked(api.categories).mockResolvedValue({ items: [root], starterSetAvailable: false });
-  vi.mocked(api.saveCategory).mockRejectedValue(new ApiError(409, "Synthetic limit rejected"));
+  vi.mocked(api.saveCategory).mockRejectedValue(new ApiError(409, "Synthetic category rejected"));
   renderPage();
   await screen.findByText("Synthetic Food");
   fireEvent.click(screen.getByRole("button", { name: "Edit category" }));
-  await waitFor(() => expect(screen.getByLabelText("Spending limit")).toBeEnabled());
-  fireEvent.change(screen.getByLabelText("Spending limit"), { target: { value: "MONTH" } });
-  fireEvent.change(screen.getByLabelText("Amount (CHF)"), { target: { value: "3.12345678" } });
+  fireEvent.change(screen.getByLabelText("Category name"), {
+    target: { value: "Synthetic Shopping" },
+  });
   fireEvent.click(screen.getByText("Save category"));
-  await screen.findByText("Synthetic limit rejected");
-  expect(screen.getByLabelText("Amount (CHF)")).toHaveValue("3.12345678");
+  await screen.findByText("Synthetic category rejected");
+  expect(screen.getByLabelText("Category name")).toHaveValue("Synthetic Shopping");
   expect(screen.getByText("Archived categories")).toBeDisabled();
   expect(api.saveCategory).toHaveBeenCalledWith(
-    expect.objectContaining({
-      normalLimit: {
-        mode: "MONTH",
-        limit: "3.12345678",
-        expected: null,
-        expectedPreferencesVersion: 1,
-      },
-    }),
+    { name: "Synthetic Shopping", type: "SPENDING", parentId: null },
     root,
   );
+});
+
+it("category management does not load preferences or expose limit controls", async () => {
+  vi.mocked(api.categories).mockResolvedValue({ items: [root], starterSetAvailable: false });
+  renderPage();
+  await screen.findByText("Synthetic Food");
+  expect(api.preferences).not.toHaveBeenCalled();
+  expect(screen.queryByText("Spending limit")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Create category" }));
+  expect(screen.queryByLabelText("Spending limit")).toBeNull();
 });

@@ -20,9 +20,7 @@ vi.mock("../../services/api", async (original) => {
       archiveAccount: vi.fn(),
       restoreAccount: vi.fn(),
       deleteAccount: vi.fn(),
-      preferences: vi
-        .fn()
-        .mockResolvedValue({ defaultCurrency: null, version: 0, hasLimitsToReset: false }),
+      preferences: vi.fn().mockResolvedValue({ defaultCurrency: null, version: 0 }),
       security: vi.fn(),
       verifyMfa: vi.fn(),
       startMfa: vi.fn(),
@@ -54,7 +52,6 @@ beforeEach(() => {
   vi.mocked(api.preferences).mockResolvedValue({
     defaultCurrency: null,
     version: 0,
-    hasLimitsToReset: false,
   });
   window.location.hash = "#/accounts";
   vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Please sign in."));
@@ -266,9 +263,7 @@ it.each(["#/spending", "#/planning"])("opens Spending for %s", async (hash) => {
     categories: [],
     groups: [],
     currencies: [],
-    limits: [],
     businessDate: "2026-10-05",
-    defaultCurrency: null,
   });
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Spending" })).toBeVisible();

@@ -1,10 +1,6 @@
 import type {
   Preferences,
-  BudgetMode,
-  BudgetPeriod,
-  BudgetReference,
-  BudgetSetting,
-  BudgetSettings,
+  SpendingPeriod,
   Category,
   CategoryInput,
   CategoryList,
@@ -104,25 +100,14 @@ async function ledgerMutation<T>(
 
 export const api = {
   preferences: () => request<Preferences>("/users/me/preferences"),
-  savePreferences: (input: {
-    defaultCurrency: string;
-    expectedVersion: number;
-    confirmLimitReset: boolean;
-  }) => ledgerMutation<Preferences>("/users/me/preferences", "PUT", input),
-  budgetSettings: () => request<BudgetSettings>("/budget-settings"),
-  saveBudgetSetting: (input: {
-    categoryId: string;
-    currency: string;
-    mode: BudgetMode;
-    limit: string | null;
-    expected: BudgetReference | null;
-  }) => ledgerMutation<BudgetSetting>("/budget-settings", "PUT", input),
-  spending: (periodType: BudgetPeriod, periodStart?: string) =>
+  savePreferences: (input: { defaultCurrency: string; expectedVersion: number }) =>
+    ledgerMutation<Preferences>("/users/me/preferences", "PUT", input),
+  spending: (periodType: SpendingPeriod, periodStart?: string) =>
     request<SpendingReport>(
       `/spending?periodType=${periodType}${periodStart ? `&periodStart=${periodStart}` : ""}`,
     ),
   spendingActivity: (
-    periodType: BudgetPeriod,
+    periodType: SpendingPeriod,
     periodStart: string,
     currency: string,
     categoryId: string | null,

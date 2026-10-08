@@ -37,21 +37,24 @@ const report: SpendingReport = {
     },
     { categoryId: "child", currency: "CHF", direct: amounts, inclusive: amounts },
   ],
-  currencies: [
-    { currency: "CHF", ...amounts, uncategorized: "0", unbudgeted: amounts.netSpending },
-  ],
-  limits: [],
+  currencies: [{ currency: "CHF", ...amounts, uncategorized: "0" }],
   businessDate: "2026-10-05",
-  defaultCurrency: null,
 };
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(api.spending).mockResolvedValue(report);
 });
-it("shows spending without limits with gross expense chart and rounded net table", async () => {
+it("shows compact category spending with rounded net totals and no chart", async () => {
   render(<SpendingPage onExpired={() => {}} />);
-  await screen.findByText("Expenses before refunds");
-  expect(screen.getByRole("img")).toHaveAccessibleName("Expenses before refunds — CHF");
+  await screen.findByText("Food (inclusive) (archived branch)");
+  expect(screen.queryByRole("img")).toBeNull();
+  expect(screen.getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
+    "Category",
+    "Expenses",
+    "Refunds",
+    "Net spending",
+    "Actions",
+  ]);
   expect(screen.getByText("Food (inclusive) (archived branch)")).toBeVisible();
   expect(screen.queryByText("Empty (inclusive)")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Expand Food" }));
@@ -60,12 +63,7 @@ it("shows spending without limits with gross expense chart and rounded net table
   const childRow = screen.getByText("↳ Groceries (archived branch)").closest("tr")!;
   expect(within(childRow).queryByRole("button", { name: "Edit limit" })).toBeNull();
   expect(within(childRow).queryByRole("link", { name: "Manage limit" })).toBeNull();
-  expect(within(childRow).getByText("Included in main category")).toBeVisible();
   expect(within(childRow).getByRole("button", { name: "Supporting activity" })).toBeVisible();
-  expect(screen.getAllByRole("link", { name: "Manage limit" })[0]).toHaveAttribute(
-    "href",
-    "#/categories?categoryId=food",
-  );
   fireEvent.click(screen.getByLabelText("Show all categories"));
   expect(screen.getByText("Empty (inclusive)")).toBeVisible();
 });
@@ -76,7 +74,7 @@ it("keeps refund-only rows without pie slices", async () => {
     currencies: [{ ...report.currencies[0], expenses: "0" }],
   });
   render(<SpendingPage onExpired={() => {}} />);
-  expect(await screen.findByText(/No expenses to chart/)).toBeVisible();
+  await screen.findByText("Food (inclusive) (archived branch)");
   expect(screen.queryByRole("img")).toBeNull();
   expect(screen.getByText("20.00")).toBeVisible();
 });
@@ -102,7 +100,7 @@ it("supports activity without a limit, pagination and account links", async () =
     hasMore: true,
   });
   render(<SpendingPage onExpired={() => {}} />);
-  await screen.findByText("Expenses before refunds");
+  await screen.findByText("Food (inclusive) (archived branch)");
   fireEvent.click(screen.getAllByRole("button", { name: "Supporting activity" })[0]);
   expect(await screen.findByRole("link", { name: "Open account" })).toHaveAttribute(
     "href",
@@ -121,7 +119,7 @@ it("supports activity without a limit, pagination and account links", async () =
 it("retains independent period input, retries errors and handles expired sessions", async () => {
   const expired = vi.fn();
   render(<SpendingPage onExpired={expired} />);
-  await screen.findByText("Expenses before refunds");
+  await screen.findByText("Food (inclusive) (archived branch)");
   fireEvent.change(screen.getByLabelText("Period", { exact: true }), {
     target: { value: "2027-02" },
   });
@@ -134,54 +132,26 @@ it("retains independent period input, retries errors and handles expired session
   await waitFor(() => expect(expired).toHaveBeenCalledOnce());
 });
 
-it("shows selected-period allowances and management links without override controls", async () => {
-  vi.mocked(api.spending).mockResolvedValue({
-    ...report,
-    limits: [
-      {
-        categoryId: "food",
-        currency: "CHF",
-        periodType: "MONTH",
-        periodStart: "2026-10-01",
-        limit: "100",
-        actual: "-9.87654322",
-        remaining: "109.87654322",
-        percentage: "-9.88",
-        overBudget: false,
-        available: false,
-      },
-    ],
-  });
+it("switches months and years and shows a clear empty period", async () => {
   render(<SpendingPage onExpired={() => {}} />);
-  await screen.findByText("100.00 CHF");
-  expect(screen.getByText("2026-10 · Monthly")).toBeVisible();
-  expect(screen.queryByRole("button", { name: "Edit limit" })).toBeNull();
-  expect(screen.queryByText("Spending used")).toBeNull();
-  expect(screen.getByRole("link", { name: "Manage limit" })).toHaveAttribute(
-    "href",
-    "#/categories?categoryId=food",
-  );
+  await screen.findByText("Food (inclusive) (archived branch)");
   vi.mocked(api.spending).mockResolvedValue({
     ...report,
     periodType: "YEAR",
     periodStart: "2026-01-01",
-    limits: [
-      {
-        categoryId: "food",
-        currency: "CHF",
-        periodType: "YEAR",
-        periodStart: "2026-01-01",
-        limit: "1200",
-        actual: "-9.87654322",
-        remaining: "1209.87654322",
-        percentage: "-0.82",
-        overBudget: false,
-        available: false,
-      },
-    ],
   });
   fireEvent.change(screen.getByLabelText("Period type"), { target: { value: "YEAR" } });
-  await screen.findByText("1’200.00 CHF");
-  expect(screen.getByText("2026 · Yearly")).toBeVisible();
-  expect(screen.queryByText(/Edit months/)).toBeNull();
+  await screen.findByRole("heading", { name: "2026" });
+  expect(api.spending).toHaveBeenLastCalledWith("YEAR", undefined);
+  vi.mocked(api.spending).mockResolvedValue({
+    ...report,
+    periodType: "YEAR",
+    periodStart: "2025-01-01",
+    groups: [],
+    currencies: [],
+  });
+  fireEvent.click(screen.getByText("Previous period"));
+  await screen.findByText("No expenses or refunds recorded in this period.");
+  expect(api.spending).toHaveBeenLastCalledWith("YEAR", "2025-01-01");
+  expect(screen.queryByRole("table")).toBeNull();
 });

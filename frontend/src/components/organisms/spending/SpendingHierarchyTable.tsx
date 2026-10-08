@@ -4,7 +4,7 @@ import type { SpendingReport } from "../../../types/models";
 import type { SpendingPageViewModel } from "../../../types/viewModels";
 import { nonzero, spendingBranchId, zero } from "../../../utils/spendingPresentation";
 import { ActionIcon } from "../../atoms/ActionIcon";
-import { Button, Link } from "../../atoms/Controls";
+import { Button } from "../../atoms/Controls";
 export function SpendingHierarchyTable({
   data,
   all,
@@ -24,18 +24,11 @@ export function SpendingHierarchyTable({
     const group = data.groups.find((g) => g.currency === summary.currency && g.categoryId === id);
     return (direct ? group?.direct : group?.inclusive) || zero;
   };
-  const limit = (id: string | null) =>
-    data.limits.find((b) => b.currency === summary.currency && b.categoryId === id);
   const relevant = (id: string) =>
-    all ||
-    nonzero(amount(id).expenses) ||
-    nonzero(amount(id).refunds) ||
-    !!limit(id) ||
-    data.categories.some((c) => c.parentId === id && !!limit(c.id));
+    all || nonzero(amount(id).expenses) || nonzero(amount(id).refunds);
   const branchId = (id: string | null) => spendingBranchId(summary.currency, id);
   const row = (id: string | null, label: string, direct = false) => {
-    const a = amount(id, direct),
-      b = direct ? undefined : limit(id);
+    const a = amount(id, direct);
     const category = data.categories.find((c) => c.id === id);
     const parent = !!category && !category.parentId && !direct;
     return (
@@ -73,43 +66,12 @@ export function SpendingHierarchyTable({
               </span>
             </div>
           </th>
-          <td>{displayAmount(a.expenses)}</td>
-          <td>{displayAmount(a.refunds)}</td>
-          <td>{displayAmount(a.netSpending)}</td>
-          <td>
-            {b ? (
-              <>
-                <strong>
-                  {displayAmount(b.limit)} {b.currency}
-                </strong>
-                <small>
-                  {b.periodType === "MONTH" ? b.periodStart.slice(0, 7) : b.periodStart.slice(0, 4)}
-                  {" · "}
-                  {b.periodType === "MONTH" ? "Monthly" : "Yearly"}
-                </small>
-              </>
-            ) : (
-              "—"
-            )}
+          <td data-label="Expenses">{displayAmount(a.expenses)}</td>
+          <td data-label="Refunds">{displayAmount(a.refunds)}</td>
+          <td data-label="Net spending">
+            <strong>{displayAmount(a.netSpending)}</strong>
           </td>
-          <td>{b ? displayAmount(b.remaining) : "—"}</td>
-          <td>
-            {b
-              ? b.percentage === null
-                ? "Not applicable"
-                : `${displayAmount(b.percentage)}%`
-              : "—"}
-          </td>
-          <td>
-            {b
-              ? b.overBudget
-                ? "Over budget"
-                : "Within budget"
-              : category?.parentId
-                ? "Included in main category"
-                : "No limit"}
-          </td>
-          <td>
+          <td className="spending-actions-cell">
             {!direct && (
               <div className="spending-row-actions">
                 <Button
@@ -122,18 +84,6 @@ export function SpendingHierarchyTable({
                 >
                   <ActionIcon action="activity" />
                 </Button>
-                {id && parent && (
-                  <>
-                    <Link
-                      className="secondary spending-action"
-                      aria-label="Manage limit"
-                      title={`Manage ${label} in Categories`}
-                      href={`#/categories?categoryId=${id}`}
-                    >
-                      <ActionIcon action="settings" />
-                    </Link>
-                  </>
-                )}
               </div>
             )}
           </td>
@@ -150,17 +100,7 @@ export function SpendingHierarchyTable({
         </caption>
         <thead>
           <tr>
-            {[
-              "Category",
-              "Expenses",
-              "Refunds",
-              "Net spending",
-              "Limit",
-              "Remaining allowance",
-              "Percentage used",
-              "Status",
-              "Actions",
-            ].map((s) => (
+            {["Category", "Expenses", "Refunds", "Net spending", "Actions"].map((s) => (
               <th key={s} scope="col">
                 {s}
               </th>

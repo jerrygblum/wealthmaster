@@ -13,10 +13,10 @@ import java.util.UUID;
 public class SpendingController {
     private final SpendingService service;
     public SpendingController(SpendingService service) { this.service=service; }
-    @GetMapping public ResponseEntity<SpendingService.Report> report(@AuthenticationPrincipal OwnerPrincipal owner,@RequestParam(required=false) BudgetDtos.Period periodType,@RequestParam(required=false) LocalDate periodStart) {
+    @GetMapping public ResponseEntity<SpendingService.Report> report(@AuthenticationPrincipal OwnerPrincipal owner,@RequestParam(required=false) SpendingPeriod periodType,@RequestParam(required=false) LocalDate periodStart) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.report(owner.id(),periodType,periodStart));
     }
-    @GetMapping("/activity") public ResponseEntity<LedgerDtos.ActivityPage> activity(@AuthenticationPrincipal OwnerPrincipal owner,@RequestParam(required=false) BudgetDtos.Period periodType,@RequestParam(required=false) LocalDate periodStart,@RequestParam String currency,@RequestParam(required=false) UUID categoryId,@RequestParam(defaultValue="0") int page) {
+    @GetMapping("/activity") public ResponseEntity<LedgerDtos.ActivityPage> activity(@AuthenticationPrincipal OwnerPrincipal owner,@RequestParam(required=false) SpendingPeriod periodType,@RequestParam(required=false) LocalDate periodStart,@RequestParam String currency,@RequestParam(required=false) UUID categoryId,@RequestParam(defaultValue="0") int page) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.activity(owner.id(),periodType,periodStart,currency,categoryId,page));
     }
 }

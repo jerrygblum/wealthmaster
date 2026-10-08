@@ -1,7 +1,6 @@
 import { Button, Input, LoadingIndicator } from "../../atoms/Controls";
 import { Field } from "../../molecules/Field";
 import { ActionGroup } from "../../molecules/ActionGroup";
-import { Confirmation } from "../../molecules/Confirmation";
 import type { PreferencesViewModel } from "../../../types/viewModels";
 export function PreferencesView({
   data,
@@ -11,8 +10,6 @@ export function PreferencesView({
   pending,
   error,
   notice,
-  confirming,
-  setConfirming,
   stale,
   load,
   save,
@@ -21,8 +18,8 @@ export function PreferencesView({
     <section className="panel" aria-labelledby="currency-settings">
       <h2 id="currency-settings">Default currency</h2>
       <p>
-        Spending limits use this currency. Foreign-currency spending stays separate until historical
-        exchange-rate conversion is available.
+        Save your preferred currency. Spending is reported in each transaction’s currency; no
+        exchange-rate conversion is applied.
       </p>
       {loading ? (
         <LoadingIndicator>Loading currency settings…</LoadingIndicator>
@@ -35,7 +32,7 @@ export function PreferencesView({
                 void save();
               }}
             >
-              <fieldset disabled={pending || confirming} className="form-grid">
+              <fieldset disabled={pending} className="form-grid">
                 <Field htmlFor="default-currency" label="Default currency (ISO code)">
                   <Input
                     id="default-currency"
@@ -54,30 +51,6 @@ export function PreferencesView({
                 </ActionGroup>
               </fieldset>
             </form>
-          )}
-          {confirming && (
-            <Confirmation title={<>Change default currency to {currency}?</>}>
-              <p>
-                You must enter your spending limits again in the new currency. All current category
-                limits will be cleared, including their use in past reports. Ledger and audit
-                history are retained.
-              </p>
-              <ActionGroup className="form-actions">
-                <Button disabled={pending || stale} onClick={() => void save(true)}>
-                  Confirm currency change
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={pending}
-                  onClick={() => {
-                    setConfirming(false);
-                    setCurrency(data?.defaultCurrency ?? "");
-                  }}
-                >
-                  Cancel currency change
-                </Button>
-              </ActionGroup>
-            </Confirmation>
           )}
         </>
       )}

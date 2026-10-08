@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Wealth Master API",
-    "version": "0.8.0",
-    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity and native-currency net worth. Main spending categories have one current linked monthly/yearly limit, saved with category CRUD. Spending compares selected-period net spending with its allowance, without overrides or historical limit revisions; gross expense distribution and supporting activity remain available without limits."
+    "version": "0.9.0",
+    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred."
   },
   "servers": [
     {
@@ -1839,7 +1839,7 @@
             "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
           },
           "412": {
-            "description": "Stale category, normal-limit or preferences version"
+            "description": "Stale category version"
           },
           "428": {
             "description": "If-Match required"
@@ -1866,7 +1866,7 @@
             }
           }
         },
-        "description": "Category details and optional current linked limit commit atomically. Omit normalLimit to preserve the setting. Only main spending categories accept limit changes. Expected setting/preferences versions supplement category If-Match; stale requests return 412. Currency comes from owner preferences. MONTH/YEAR defines the entered amount basis; both allowances apply to all report periods. No period overrides."
+        "description": "Category details commit atomically with audit history. Category versions detect stale edits; permanent ledger history and children restrict structure and deletion."
       }
     },
     "/categories/{id}": {
@@ -1904,7 +1904,7 @@
             "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
           },
           "412": {
-            "description": "Stale category, normal-limit or preferences version"
+            "description": "Stale category version"
           },
           "428": {
             "description": "If-Match required"
@@ -1950,7 +1950,7 @@
             }
           }
         },
-        "description": "Category details and optional current linked limit commit atomically. Omit normalLimit to preserve the setting. Only main spending categories accept limit changes. Expected setting/preferences versions supplement category If-Match; stale requests return 412. Currency comes from owner preferences. MONTH/YEAR defines the entered amount basis; both allowances apply to all report periods. No period overrides."
+        "description": "Category details commit atomically with audit history. Category versions detect stale edits; permanent ledger history and children restrict structure and deletion."
       },
       "delete": {
         "summary": "Delete an unused category without children",
@@ -2220,7 +2220,7 @@
     },
     "/spending": {
       "get": {
-        "summary": "Read spending distribution and selected-period comparisons",
+        "summary": "Spending by category for a calendar month or year",
         "security": [
           {
             "session": []
@@ -2278,12 +2278,12 @@
             "description": "Canonical first day; defaults to current business period"
           }
         ],
-        "description": "Owner-scoped no-store REPEATABLE_READ snapshot. Includes all spending categories and archived expense/refund activity; excludes deleted transactions, income, transfers and opening balances. Pie uses root inclusive gross expenses plus uncategorized once. Comparisons use current linked category limits for the selected period: monthly allowance/month activity or full yearly allowance/year activity, including past periods. Current activity is capped at the business date; future activity is zero without prorating limits. No limits are required."
+        "description": "Owner-scoped, no-store repeatable-read snapshot of ledger expenses and refunds. Currencies remain separate. Main-category rollups include direct assignments and immediate children. Current activity stops at the business date; future periods have no activity. Archived activity is included; deleted transactions, income, transfers and opening balances are excluded."
       }
     },
     "/spending/activity": {
       "get": {
-        "summary": "Read spending activity with or without a limit",
+        "summary": "Read spending activity for a category or uncategorized group",
         "security": [
           {
             "session": []
@@ -2373,105 +2373,7 @@
             }
           }
         ],
-        "description": "Owner-scoped repeatable-read snapshot; 50 operations per page in ledger order (transaction date descending, created timestamp descending, ID). Category includes direct assignments and immediate children. Omit categoryId for uncategorized. Archived activity is included. No limit is required."
-      }
-    },
-    "/budget-settings": {
-      "get": {
-        "summary": "List current linked monthly/yearly category limits",
-        "responses": {
-          "400": {
-            "description": "Invalid amount, currency, canonical period or promotion scope"
-          },
-          "401": {
-            "description": "Authenticated MFA session required"
-          },
-          "403": {
-            "description": "CSRF rejected"
-          },
-          "404": {
-            "description": "Missing or unowned category/exception"
-          },
-          "409": {
-            "description": "Unavailable category branch"
-          },
-          "412": {
-            "description": "Expected setting/exception version or absence changed; no writes committed"
-          },
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetSettings"
-                }
-              }
-            },
-            "headers": {
-              "Cache-Control": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "no-store"
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "description": "Owner-scoped current category settings. Each top-level spending category has one entered amount and MONTH/YEAR input basis, with both allowances derived. NONE disables both; zero enables both. No period overrides or dated revisions. Changes affect every reporting period. Writes require expected setting version/absence, use selected default currency, preserve setting references and audit, and run under the owner category lock. Archived existing limits may change input basis; new enabled limits require restoration."
-      },
-      "put": {
-        "summary": "Save one current category limit with its input basis and expected version",
-        "responses": {
-          "400": {
-            "description": "Invalid amount, currency, canonical period or promotion scope"
-          },
-          "401": {
-            "description": "Authenticated MFA session required"
-          },
-          "403": {
-            "description": "CSRF rejected"
-          },
-          "404": {
-            "description": "Missing or unowned category/exception"
-          },
-          "409": {
-            "description": "Unavailable category branch"
-          },
-          "412": {
-            "description": "Expected setting/exception version or absence changed; no writes committed"
-          },
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetSetting"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BudgetSettingInput"
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "description": "Owner-scoped current category settings. Each top-level spending category has one entered amount and MONTH/YEAR input basis, with both allowances derived. NONE disables both; zero enables both. No period overrides or dated revisions. Changes affect every reporting period. Writes require expected setting version/absence, use selected default currency, preserve setting references and audit, and run under the owner category lock. Archived existing limits may change input basis; new enabled limits require restoration."
+        "description": "Owner-scoped repeatable-read snapshot; 50 operations per page in ledger order (transaction date descending, created timestamp descending, ID). Category includes direct assignments and immediate children. Omit categoryId for uncategorized. Archived activity is included."
       }
     },
     "/users/me/preferences": {
@@ -2503,7 +2405,7 @@
         }
       },
       "put": {
-        "summary": "Set default currency and reset applicable limits atomically",
+        "summary": "Save default currency with optimistic version checking",
         "security": [
           {
             "session": []
@@ -2529,7 +2431,7 @@
             }
           }
         },
-        "description": "Requires expected preferences version and confirmation when current limits exist. Currency changes disable all current category limits, including their use in past reports; preserve ledger, setting references and audit. No FX conversion. Unchanged currency saves do not reset limits. Reset, preferences and audit commit atomically.",
+        "description": "Save an explicit default currency with optimistic version checking and audit history. Does not convert or change ledger data or spending totals.",
         "responses": {
           "200": {
             "description": "Success",
@@ -2549,9 +2451,6 @@
           },
           "403": {
             "description": "CSRF or MFA required"
-          },
-          "409": {
-            "description": "Confirm clearing limits and entering them again in the new currency"
           },
           "412": {
             "description": "Stale preferences version"
@@ -3354,10 +3253,6 @@
               "null"
             ],
             "format": "uuid"
-          },
-          "normalLimit": {
-            "$ref": "#/components/schemas/CategoryNormalLimit",
-            "description": "Optional current linked limit for main spending categories, saved atomically with category details; omission preserves the setting. MONTH/YEAR is the input basis; current limits apply to every reporting period. Currency comes from owner preferences."
           }
         }
       },
@@ -3413,7 +3308,7 @@
           },
           "hasActivity": {
             "type": "boolean",
-            "description": "Permanent ledger or budget references, including deleted budgets/activity and previously selected parents."
+            "description": "Permanent ledger references, including deleted activity and previously selected parents."
           },
           "hasChildren": {
             "type": "boolean"
@@ -3533,8 +3428,7 @@
           "expenses",
           "refunds",
           "netSpending",
-          "uncategorized",
-          "unbudgeted"
+          "uncategorized"
         ],
         "properties": {
           "currency": {
@@ -3550,10 +3444,8 @@
             "type": "string"
           },
           "uncategorized": {
-            "type": "string"
-          },
-          "unbudgeted": {
-            "type": "string"
+            "type": "string",
+            "description": "Exact uncategorized net spending in this currency."
           }
         }
       },
@@ -3565,9 +3457,7 @@
           "categories",
           "groups",
           "currencies",
-          "limits",
-          "businessDate",
-          "defaultCurrency"
+          "businessDate"
         ],
         "properties": {
           "periodType": {
@@ -3599,271 +3489,9 @@
               "$ref": "#/components/schemas/SpendingCurrency"
             }
           },
-          "limits": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BudgetComparison"
-            }
-          },
           "businessDate": {
             "type": "string",
             "format": "date"
-          },
-          "defaultCurrency": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Owner preference from the report snapshot; currencies remain separate without FX."
-          }
-        }
-      },
-      "BudgetReference": {
-        "type": "object",
-        "required": [
-          "id",
-          "version"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "version": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "BudgetSetting": {
-        "type": "object",
-        "required": [
-          "id",
-          "categoryId",
-          "currency",
-          "mode",
-          "limit",
-          "version",
-          "monthlyLimit",
-          "yearlyLimit"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "currency": {
-            "type": "string"
-          },
-          "mode": {
-            "type": "string",
-            "enum": [
-              "NONE",
-              "MONTH",
-              "YEAR"
-            ]
-          },
-          "limit": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "version": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "monthlyLimit": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Derived from the canonical entered amount/basis; null for NONE. Yearly division uses eight-place HALF_UP rounding. Decimal string with no aggregate integer digit limit."
-          },
-          "yearlyLimit": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Derived from the canonical entered amount/basis; null for NONE. Yearly division uses eight-place HALF_UP rounding. Decimal string with no aggregate integer digit limit."
-          }
-        }
-      },
-      "BudgetSettings": {
-        "type": "object",
-        "required": [
-          "businessDate",
-          "items"
-        ],
-        "properties": {
-          "businessDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BudgetSetting"
-            }
-          }
-        }
-      },
-      "BudgetSettingInput": {
-        "type": "object",
-        "required": [
-          "categoryId",
-          "currency",
-          "mode"
-        ],
-        "properties": {
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "currency": {
-            "type": "string"
-          },
-          "mode": {
-            "type": "string",
-            "enum": [
-              "NONE",
-              "MONTH",
-              "YEAR"
-            ]
-          },
-          "limit": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "expected": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BudgetReference"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "BudgetComparison": {
-        "type": "object",
-        "required": [
-          "categoryId",
-          "currency",
-          "periodType",
-          "periodStart",
-          "limit",
-          "actual",
-          "remaining",
-          "percentage",
-          "overBudget",
-          "available"
-        ],
-        "properties": {
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "currency": {
-            "type": "string"
-          },
-          "periodType": {
-            "type": "string",
-            "enum": [
-              "MONTH",
-              "YEAR"
-            ]
-          },
-          "periodStart": {
-            "type": "string",
-            "format": "date"
-          },
-          "limit": {
-            "type": "string",
-            "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
-          },
-          "actual": {
-            "type": "string",
-            "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
-          },
-          "remaining": {
-            "type": "string",
-            "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
-          },
-          "percentage": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "overBudget": {
-            "type": "boolean"
-          },
-          "available": {
-            "type": "boolean"
-          }
-        }
-      },
-      "CategoryNormalLimit": {
-        "type": "object",
-        "required": [
-          "mode",
-          "expectedPreferencesVersion"
-        ],
-        "properties": {
-          "mode": {
-            "type": "string",
-            "enum": [
-              "NONE",
-              "MONTH",
-              "YEAR"
-            ]
-          },
-          "limit": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Exact non-negative decimal; required for MONTH/YEAR. Zero is a limit."
-          },
-          "expected": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BudgetReference"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Current default-currency setting reference; null means expected absence."
-          },
-          "expectedPreferencesVersion": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 0
           }
         }
       },
@@ -3871,8 +3499,7 @@
         "type": "object",
         "required": [
           "defaultCurrency",
-          "version",
-          "hasLimitsToReset"
+          "version"
         ],
         "properties": {
           "defaultCurrency": {
@@ -3886,10 +3513,6 @@
             "type": "integer",
             "format": "int64",
             "minimum": 0
-          },
-          "hasLimitsToReset": {
-            "type": "boolean",
-            "description": "Enabled current category limits exist; confirmation will be required to change currency."
           }
         }
       },
@@ -3909,10 +3532,6 @@
             "type": "integer",
             "format": "int64",
             "minimum": 0
-          },
-          "confirmLimitReset": {
-            "type": "boolean",
-            "default": false
           }
         }
       }
