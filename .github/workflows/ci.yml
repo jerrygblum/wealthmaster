@@ -21,6 +21,8 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
+      - name: Require Docker for database integration tests
+        run: docker info
       - name: Test backend
         run: mvn --batch-mode test
 
@@ -35,8 +37,60 @@ jobs:
         with:
           node-version: '24'
       - name: Install
-        run: npm install
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Check formatting
+        run: npm run format:check
+      - name: Verify tooling rules
+        run: npm run test:tooling
       - name: Typecheck/build
         run: npm run build
       - name: Test
         run: npm test
+
+  browser:
+    strategy:
+      matrix:
+        profile: [dev, prod]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: wealthmaster_e2e
+          POSTGRES_USER: wealthmaster_test
+          POSTGRES_PASSWORD: synthetic-db-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wealthmaster_test -d wealthmaster_e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      E2E_PROFILE: ${{ matrix.profile }}
+      DB_URL: jdbc:postgresql://localhost:5432/wealthmaster_e2e
+      DB_USER: wealthmaster_test
+      DB_PASSWORD: synthetic-db-password
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-test-results-${{ matrix.profile }}
+          path: frontend/test-results/

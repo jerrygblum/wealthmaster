@@ -1,0 +1,39 @@
+import type { useAccountDetail } from "../hooks/accounts/useAccountDetail";
+import type { useAccountForm } from "../hooks/accounts/useAccountForm";
+import type { useAccounts } from "../hooks/accounts/useAccounts";
+import type { useApp } from "../hooks/application/useApp";
+import type { useAuthenticatorStep } from "../hooks/auth/useAuthenticatorStep";
+import type { useIdentityStep } from "../hooks/auth/useIdentityStep";
+import type { useLogin } from "../hooks/auth/useLogin";
+import type { useMfaLogin } from "../hooks/auth/useMfaLogin";
+import type { useRecoveryStep } from "../hooks/auth/useRecoveryStep";
+import type { useSecuritySettings } from "../hooks/auth/useSecuritySettings";
+import type { useCategories } from "../hooks/categories/useCategories";
+import type { useNetWorth } from "../hooks/networth/useNetWorth";
+import type { useSpending } from "../hooks/spending/useSpending";
+export type AccountDetailViewModel = ReturnType<typeof useAccountDetail>;
+export type AppViewModel = ReturnType<typeof useApp>;
+export type LoginPageViewModel = ReturnType<typeof useLogin>;
+export type AccountsPageViewModel = ReturnType<typeof useAccounts>;
+export type AccountFormViewModel = ReturnType<typeof useAccountForm>;
+export type CategoriesPageViewModel = ReturnType<typeof useCategories>;
+export type NetWorthPageViewModel = ReturnType<typeof useNetWorth>;
+export type MfaLoginViewModel = ReturnType<typeof useMfaLogin>;
+export type SecuritySettingsViewModel = ReturnType<typeof useSecuritySettings>;
+export type IdentityStepViewModel = ReturnType<typeof useIdentityStep>;
+export type AuthenticatorStepViewModel = ReturnType<typeof useAuthenticatorStep>;
+export type RecoveryStepViewModel = ReturnType<typeof useRecoveryStep>;
+export type SpendingPageViewModel = ReturnType<typeof useSpending>;
+
+import type { usePreferences } from "../hooks/auth/usePreferences";
+export type PreferencesViewModel = ReturnType<typeof usePreferences>;
+
+import type { useExpected } from "../hooks/expected/useExpected";
+export type ExpectedPageViewModel = ReturnType<typeof useExpected>;
+
+export type RegistrationFormViewModel = ReturnType<
+  typeof import("../hooks/auth/useRegistration").useRegistration
+>;
+export type RegistrationPanelViewModel = ReturnType<
+  typeof import("../hooks/auth/useRegistrationManagement").useRegistrationManagement
+>;

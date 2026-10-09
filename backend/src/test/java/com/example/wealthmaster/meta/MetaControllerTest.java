@@ -1,17 +1,28 @@
 package com.example.wealthmaster.meta;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class MetaControllerTest {
 
-    private final MetaController controller = new MetaController();
-
     @Test
-    void exposesScaffoldMetadata() {
-        var metadata = controller.meta();
-        assertThat(metadata.get("name")).isEqualTo("Wealth Master API");
-        assertThat(metadata.get("apiVersion")).isEqualTo("v1");
+    void statusReportsBackendAndDatabaseUp() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.queryForObject("SELECT 1", Integer.class))
+                .thenReturn(1);
+
+        MetaController controller = new MetaController(jdbcTemplate);
+
+        Map<String, Object> result = controller.status();
+
+        assertEquals("WealthMaster", result.get("application"));
+        assertEquals("UP", result.get("backend"));
+        assertEquals("UP", result.get("database"));
     }
 }

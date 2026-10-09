@@ -2,7 +2,7 @@
 
 A self-hosted personal finance and net-worth application designed to replace an Excel-based finance workflow while demonstrating end-to-end product ownership and production-minded software delivery.
 
-> **Status:** scaffolding / active development
+> **Status:** active development — email/password login, authenticator 2FA, security settings, financial account management, manual cash activity/transfers, current cash net worth, manual categories, and spending by category/period implemented.
 
 ## Product goals
 
@@ -23,7 +23,7 @@ A self-hosted personal finance and net-worth application designed to replace an 
 - Current and historical net-worth calculation
 - Reconciliation, audit history, data-quality checks, and exports
 
-See [PRODUCT.md](PRODUCT.md) and [docs/roadmap.md](docs/roadmap.md).
+See [PRODUCT.md](PRODUCT.md), [docs/roadmap.md](docs/roadmap.md), and [2FA setup and recovery](docs/operations/mfa.md).
 
 ## Technology
 
@@ -41,7 +41,9 @@ See [PRODUCT.md](PRODUCT.md) and [docs/roadmap.md](docs/roadmap.md).
 
 The financial ledger is the source of truth. Dashboards, balances, budgets, portfolio values, and net worth are derived from ledger and investment activity rather than being independent authoritative values.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/adr](docs/adr/).
+See [ARCHITECTURE.md](ARCHITECTURE.md), [docs/adr](docs/adr/), and the [OpenAPI contract](docs/api/openapi.json).
+
+Account management supports editing, confirmed deletion of unused accounts, and archive/restore. See the [investment cash/holdings design](docs/adr/006-investment-cash-and-holdings.md) for the planned transfer and stock-purchase model. See [account management operations](docs/operations/account-management.md) for migration and audit implications. The default [net-worth overview](docs/operations/net-worth.md) shows assets, liabilities and account contributions per native currency, including archived balances and investment cash. See [category operations](docs/operations/categories.md) for manual classification and lifecycle rules. [Spending](docs/operations/spending.md) shows expenses, refunds and net spending by category for a selected month or year, in separate native currencies. Expand main categories for direct and child breakdowns and open supporting transaction activity. Categories use compact CRUD rows without limits. Budgeting, imports and recurring expectations are deferred; V012 removes remaining limit data while preserving ledger, categories, currency preferences and audit history.
 
 ## Local development
 
@@ -56,8 +58,10 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/adr](docs/adr/).
 
 ```bash
 cp .env.example .env
-docker compose up -d postgres
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres
 ```
+
+Fill the initial owner credentials and MFA encryption configuration in `.env` and load it into the backend shell. See [local login setup](docs/operations/local-auth.md) for instructions and test setup.
 
 ### Backend
 
@@ -107,3 +111,7 @@ Do not report vulnerabilities through a public issue. See [SECURITY.md](SECURITY
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+See [frontend development and atomic design](frontend/README.md) for linting, formatting, editor setup and component conventions.
+
+For short development cycles, run frontend `npm run test:related -- <changed-source-files>` or watch mode and focused backend unit tests. Run local lint/format/type checks before completion; full browser journeys remain in CI by default. See [frontend development](frontend/README.md#fast-development-checks).

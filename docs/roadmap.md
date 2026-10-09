@@ -11,24 +11,30 @@ Goal: establish a public-ready repository and repeatable local/NAS deployment fo
 - [ ] Production Synology deployment documentation validated
 - [ ] First backup/restore drill
 
+Deployment validation and the first backup/restore drill are explicitly deferred while the first login/accounts slice is built.
+
 ## 0.1 — Identity + Core Ledger
 Goal: represent financial accounts and trustworthy manual activity.
 
-- Authentication
-- Mandatory TOTP MFA + recovery codes
-- Multi-user isolation
-- Financial accounts
-- Opening balances
-- Manual income/expense transactions
-- Transfers
-- Categories
-- Current account balances
-- Current net worth
-- Core financial unit/integration tests
+- [x] Email/password login, server sessions, initial owner setup
+- [x] Invitation-only self-service registration, disabled by default, with owner controls and seven-day email invitations
+- [x] TOTP MFA + recovery codes, required in production and optional enrollment in development
+- [x] Security settings, verified activation, authenticator replacement, recovery-code regeneration
+- [x] Multi-user isolation for account creation/listing
+- [x] Financial account creation and owner-scoped listing
+- [x] Opening balances
+- [x] Account editing, unused-account deletion, archive/restore, version checks, and audit snapshots
+- [x] Investment cash/holdings architecture documented (implementation deferred)
+- [x] Manual income/expense/refund transactions, corrections, soft deletion and audit snapshots
+- [x] Same-currency paired transfers
+- [x] Two-level income/spending categories, manual assignment, lifecycle history and optional starters
+- [x] Calculated current account cash balances
+- [x] Current cash net worth by native currency, account/type breakdown and default overview
+- [x] Core cash ledger unit/integration tests, ownership, concurrency and audit rollback
 
 Release outcome: the user can reproduce current cash/bank/card positions without Excel.
 
-## 0.2 — Migration / Importer
+## 0.2 — Migration / Importer (deferred)
 Goal: migrate historical Excel workflow without manual re-entry.
 
 - CSV import
@@ -44,15 +50,16 @@ Goal: migrate historical Excel workflow without manual re-entry.
 
 Release outcome: existing historical Excel/CSV data can be migrated confidently.
 
-## 0.3 — Planning
-Goal: understand budgets and expected cash flow.
+## 0.3 — Spending by category and period (current priority)
+Goal: understand actual spending and expected monthly activity. Imports, budgets, forecasts and FX conversion remain deferred.
 
-- Monthly/yearly category budgets
-- Expected recurring expenses/income
-- Matching actual transactions to expectations
-- Missing expected items by period
-- Budget vs actual dashboard
-- Basic cash-flow projection
+- [x] Compact monthly/yearly spending tables with expenses, refunds, net totals, inclusive category breakdowns and transaction activity
+- [x] Consistent category CRUD rows without limits; no pie chart
+- [x] Pre-production removal of all budget settings and references (V012), preserving ledger, categories, currency preferences and audit history
+- [ ] Budgeting — deferred pending a simpler future design
+- [x] Expected monthly income, expenses and transfers, confirmed suggestions, skip/undo and reviewed actual recording
+- [x] Upcoming, due, overdue and needs-review expected items
+- [ ] Basic cash-flow projection
 
 ## 0.4 — Wealth / Investments
 Goal: represent investment wealth accurately.

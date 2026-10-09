@@ -8,7 +8,7 @@ The product should answer four questions well:
 
 1. What do I own and owe right now?
 2. Where did my money go and what is still expected?
-3. Am I staying within my budgets?
+3. How much did I spend in each category and period?
 4. How is my wealth changing over time, including investments?
 
 ## Users
@@ -30,7 +30,7 @@ Before V1:
 - historical Excel/CSV transactions can be imported;
 - all relevant financial accounts can be represented;
 - transfers are correct and do not distort spending;
-- categories and budgets can be represented;
+- categories and spending by period can be represented;
 - expected recurring costs/income can be tracked;
 - investment holdings can be represented;
 - current and historical net worth can be calculated;
@@ -39,9 +39,9 @@ Before V1:
 ## Functional requirements
 
 ### Identity and security
-- Account creation and login.
-- Mandatory MFA for normal accounts.
-- TOTP initially with recovery codes.
+- Account creation and login. Provision the initial owner through environment configuration. Self-service registration is disabled by default and requires a single-use invitation for an exact approved email. Only the owner manages registration and invitations in Settings; invitations expire after seven days. Disabling registration preserves existing logins.
+- Mandatory MFA for normal accounts in production. Enrollment is optional only in the explicit development profile; enabled MFA is enforced at every login in both modes.
+- TOTP with single-use recovery codes, verified enrollment, authenticator replacement, and recovery-code regeneration through user security settings. No disable action.
 - Secure recovery/reset workflow.
 - User data isolation.
 - Account/data deletion and export.
@@ -55,12 +55,14 @@ Supported types initially:
 - Investment/brokerage
 - Other
 
-Each account has owner, name, type, institution (optional), native currency, opening balance, opening date, and active/archive status.
+Each account has owner, name, type, institution (optional), native currency, opening balance, opening date, and active/archive status. Investment opening balances represent uninvested cash only.
+
+Accounts support editing, archive/restore, and confirmed permanent deletion when unused. Financial activity locks type, currency and opening amount; name, institution and opening date remain editable. Opening date corrections preserve all transactions; balances include all nondeleted movements through today, including before account opening. A nonzero opening balance alone does not block deletion. Archived accounts preserve financial history and valuation; future transaction/trade entry requires restoration. Changes retain audit snapshots, including after permanent deletion.
 
 ### Ledger transactions
 - Create/edit/delete transactions with auditability.
-- Income and expense.
-- Date/value date where relevant.
+- Income, expense, and expense refunds (refunds reduce spending).
+- Past, present and future transaction/value dates are allowed, including dates before account opening (years 1–9999). Historical spending uses the entered transaction date. Future-dated entries are scheduled and do not affect current balances or net worth until their transaction date.
 - Amount/currency.
 - Merchant/payee, description, notes.
 - Category/subcategory.
@@ -81,20 +83,34 @@ Each account has owner, name, type, institution (optional), native currency, ope
 - Bill payment is a transfer from a bank account to the card account.
 - Statement import avoids double counting.
 
-### Categories and budgets
-- User-defined categories/subcategories.
-- Monthly and/or yearly category limits.
-- Actual, remaining, percentage used, over-budget state.
-- Optional rollover is a later capability.
+### Categories and spending
 
-### Expected/fixed transactions
-Expected costs/income are separate from actual transactions.
+User-owned income and spending categories support one subcategory level. Either level is optional on ordinary activity; refunds use spending categories and transfers have none. Users can start empty or explicitly install an editable starter set once. Categories support rename, archive/restore, and deletion only when never used and without children. Permanent ledger history locks type and parent. Archiving a main category hides its branch from new assignment without changing child active flags.
 
-Fields include name, expected account/category, expected amount or range, frequency, expected date/day, start/end date, and matching rules.
+- Spending shows one selected calendar month or year, defaulting to the current business month, with previous/next controls and period entry.
+- Compact tables show expenses, refunds and net spending by category in each native currency. Refunds reduce net spending and can make it negative. No FX conversion is applied.
+- Main-category totals include directly assigned activity and immediate children. Expand them to see the breakdown; inclusive totals are never added again to child rows. Uncategorized activity is separate.
+- Initially show categories with expenses or refunds and their ancestors; Show all categories includes zero-activity categories. Supporting activity retains ledger ordering, pagination and account links.
+- Current activity stops at the business date; future periods have no activity. Archived accounts/categories remain included. Deleted operations, income, transfers and opening balances are excluded.
+- Monetary displays use two decimals; backend calculations and API amounts retain exact decimal precision.
+- Categories have compact rows and inline CRUD actions, without spending-limit controls. The Spending page has no chart or budget comparisons.
+- Default currency remains an explicitly selected owner preference. Changing it is versioned and audited, without modifying ledger data or spending reports.
+- Budgeting is deferred. Pre-production V012 removes current limit settings and their category references; categories, ledger history, currency preferences and audit records remain intact. Budget-only use no longer locks category structure or deletion. Imports, categorization rules and bulk assignment remain deferred.
 
-Period views show found/missing expected items and allow manual correction of matches.
+### Expected monthly transactions
+Expected income, expenses and same-currency transfers are separate from actual ledger activity. The compact Expected page (`#/expected`) shows one calendar month, defaults to the business month, and loads automatically when the period changes.
+
+Recurring items have name, type, account(s), positive fixed amount, optional category/payee/notes, due day, first month and optional inclusive last month. Currency follows the account; transfers have no category. Days beyond month end clamp to its final day. Editing settings updates past months too; schedule revisions and amount overrides are intentionally absent.
+
+Each month shows upcoming, due today, overdue, completed, skipped or needs-review items. Suggestions are unlinked transactions within that calendar month with matching type, currency and accounts, ranked by exact amount, category/payee and due-date proximity. Users explicitly confirm or replace links. One transaction satisfies one occurrence; different actual amounts are allowed and show a difference. Deleted/incompatible transactions and links outside an edited schedule require review. Skip/undo affects only that month.
+
+Expectations can be recorded or explicitly linked using actual transaction dates in any month, including before account opening. The expectation stays in its selected month; spending follows the actual date. Date corrections preserve confirmed links; suggestions remain confined to the selected calendar month. Current balances include transactions before opening date and add the opening balance once.
+
+Record opens a reviewed form and atomically creates ledger activity plus its confirmed match. Future months can be recorded; unavailable references must be restored first. Confirmed future-dated entries show Scheduled and remain outstanding until their transaction date. Expected amounts alone never affect balances, Spending or net worth. Summaries remain separate by currency and type; transfers are separate from income/expenses. Ending a recurrence preserves earlier months. Confirmed deletion releases links without deleting actual activity or audit history.
 
 ### Imports
+
+Imports remain deferred while category management, spending reports and monthly expectations are available.
 Supported sequence:
 1. CSV
 2. XLSX
@@ -147,7 +163,7 @@ Track:
 Market prices may be delayed depending on provider/licensing. UI must show quote freshness.
 
 ### Multi-currency
-- User has a base currency.
+- User explicitly chooses a default currency in Settings; no currency is inferred for existing or new owners. Spending remains in native transaction currencies; the preference does not convert amounts.
 - Every financial amount preserves native currency.
 - Historical reporting uses historical FX where required.
 - Current net worth uses current/latest available FX.
@@ -157,6 +173,8 @@ Market prices may be delayed depending on provider/licensing. UI must show quote
 `net worth = total assets - total liabilities`
 
 Current view includes contribution by account/asset type and drill-down to source data.
+
+The implemented cash-ledger view is the default landing page. It shows assets, liabilities and net worth separately for each native currency, including archived accounts and investment cash only. Positive balances are assets and negative balances are liabilities, including bank overdrafts and credit-card overpayments. Accounts opening after the configured business date are listed separately and excluded until that date. Totals retain exact decimal precision and show their business date and calculation timestamp. No combined FX total or security valuation is available yet. Categories are available for manual assignment.
 
 Historical net-worth snapshots/views show change over time without retroactively rewriting history because of today's FX/prices.
 
@@ -218,3 +236,5 @@ Outcome: a user can trust and explain the current value and understand how it ch
 - Backup and documented restore process.
 - Health checks and useful structured logs.
 - Security updates/dependency maintenance considered part of product ownership.
+
+Spending uses `#/spending`; `#/planning` remains a compatibility alias. Net worth remains the landing page. Month/year selection controls the activity period. Compact category tables show exact expense/refund/net calculations rounded to two decimals for display, with expandable inclusive parents and transaction drill-down. Budgeting and charts are deferred.

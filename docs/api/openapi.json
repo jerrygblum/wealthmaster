@@ -1,0 +1,4980 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Wealth Master API",
+    "version": "0.9.0",
+    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "paths": {
+    "/auth/csrf": {
+      "get": {
+        "summary": "Obtain a fresh masked CSRF token",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "CSRF token bound to the session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Csrf"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Sign in with email and password",
+        "description": "Correct passwords return AUTHENTICATED, MFA_REQUIRED, or MFA_SETUP_REQUIRED. Restricted sessions cannot access financial accounts. Fresh CSRF tokens are required after session transitions.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf; include same-origin session cookie."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF check failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Login cooldown; Retry-After contains seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/session": {
+      "get": {
+        "summary": "Restore the current authenticated session",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Invalidate the session and clear its cookie",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf; include same-origin session cookie."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Signed out"
+          },
+          "403": {
+            "description": "CSRF check failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts": {
+      "get": {
+        "summary": "List accounts owned by the authenticated user",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accounts ordered newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Account"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an account for the authenticated user",
+        "description": "Ownership always comes from the session. Creation and its audit event are atomic.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf; include same-origin session cookie."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccount"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved financial account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF check failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/mfa/verify": {
+      "post": {
+        "summary": "Complete a pending second-factor login challenge",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf; include same-origin session cookie."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaVerify"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid proof or input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in/session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient authentication or CSRF failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Expired or conflicting operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Verification cooldown; Retry-After header contains seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/security": {
+      "get": {
+        "summary": "Read own security status; login MFA_PENDING sessions cannot access this resource",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Security status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid proof or input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in/session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient authentication or CSRF failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Expired or conflicting operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Verification cooldown; Retry-After header contains seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/mfa/enrollment/start": {
+      "post": {
+        "summary": "Start enrollment with password re-verification",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf; include same-origin session cookie."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Proof"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Setup"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid proof or input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in/session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient authentication or CSRF failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Expired or conflicting operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Verification cooldown; Retry-After header contains seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/mfa/replacement/start": {
+      "post": {
+        "summary": "Start authenticator replacement with password and recent second-factor proof",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf; include same-origin session cookie."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Proof"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Setup"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid proof or input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in/session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient authentication or CSRF failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Expired or conflicting operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Verification cooldown; Retry-After header contains seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/mfa/recovery/start": {
+      "post": {
+        "summary": "Stage new recovery codes with password and recent second-factor proof",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf; include same-origin session cookie."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Proof"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Setup"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid proof or input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in/session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient authentication or CSRF failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Expired or conflicting operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Verification cooldown; Retry-After header contains seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/mfa/enrollment/verify": {
+      "post": {
+        "summary": "Verify the pending authenticator and display recovery codes exactly once",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf; include same-origin session cookie."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid proof or input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in/session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient authentication or CSRF failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Expired or conflicting operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Verification cooldown; Retry-After header contains seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/mfa/enrollment/confirm": {
+      "post": {
+        "summary": "Confirm any pending enrollment, replacement, or recovery regeneration; revoke other sessions",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf; include same-origin session cookie."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "recoveryCodesSaved": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                },
+                "required": [
+                  "recoveryCodesSaved"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid proof or input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in/session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient authentication or CSRF failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Expired or conflicting operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Verification cooldown; Retry-After header contains seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/mfa/pending/cancel": {
+      "post": {
+        "summary": "Cancel own session-bound pending security operation",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf; include same-origin session cookie."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Pending operation cancelled"
+          },
+          "400": {
+            "description": "Invalid proof or input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in/session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient authentication or CSRF failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Expired or conflicting operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Verification cooldown; Retry-After header contains seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{id}": {
+      "put": {
+        "summary": "Edit account",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency and opening amount and prevents deletion. Opening date remains editable and recalculates balances and net worth. Archiving preserves history.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Single quoted account version from the account response, e.g. \"0\".",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "409": {
+            "description": "Financial history prevents this change"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "428": {
+            "description": "If-Match required"
+          },
+          "200": {
+            "description": "Updated account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccount"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Permanently delete unused account",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency and opening amount and prevents deletion. Opening date remains editable and recalculates balances and net worth. Archiving preserves history.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Single quoted account version from the account response, e.g. \"0\".",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "409": {
+            "description": "Financial history prevents this change"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "428": {
+            "description": "If-Match required"
+          },
+          "204": {
+            "description": "Deleted; audit snapshot retained"
+          }
+        }
+      },
+      "get": {
+        "summary": "Get owned account with calculated current balance",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or unowned account"
+          }
+        }
+      }
+    },
+    "/accounts/{id}/archive": {
+      "post": {
+        "summary": "Archive account",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency and opening amount and prevents deletion. Opening date remains editable and recalculates balances and net worth. Archiving preserves history.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Single quoted account version from the account response, e.g. \"0\".",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "409": {
+            "description": "Financial history prevents this change"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "428": {
+            "description": "If-Match required"
+          },
+          "200": {
+            "description": "Updated account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{id}/restore": {
+      "post": {
+        "summary": "Restore account",
+        "description": "Ownership derives from the session; account changes and audit snapshots are atomic. Financial history locks type, currency and opening amount and prevents deletion. Opening date remains editable and recalculates balances and net worth. Archiving preserves history.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Single quoted account version from the account response, e.g. \"0\".",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "409": {
+            "description": "Financial history prevents this change"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "428": {
+            "description": "If-Match required"
+          },
+          "200": {
+            "description": "Updated account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions": {
+      "post": {
+        "summary": "Create transactions",
+        "description": "Past and future transaction/value dates, including before account opening (years 1\u20139999). Current balances include all nondeleted transactions through the business date, including before account opening; value dates do not control balances. Active owned accounts required. Transfers require distinct accounts with matching currencies. Negative resulting balances allowed. Refunds reduce spending; transfers are excluded from income/spending. Transfer edits/deletions change both movements atomically.",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerOperation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing or unowned account"
+          },
+          "409": {
+            "description": "Archived account"
+          }
+        }
+      },
+      "get": {
+        "summary": "List ordinary entries and paired transfers",
+        "description": "Owner scoped, 50 operations per page, ordered by date descending, creation timestamp descending, then ID ascending. Archived account activity remains readable.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unowned or missing account"
+          }
+        }
+      }
+    },
+    "/transactions/{id}": {
+      "put": {
+        "summary": "Edit transactions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted operation version."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerOperation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing, unowned, deleted, or wrong operation type"
+          },
+          "409": {
+            "description": "Restore affected accounts"
+          },
+          "412": {
+            "description": "Version changed"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Soft delete transactions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted operation version."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed from balances; account references and audit snapshots retained."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing, unowned, deleted, or wrong operation type"
+          },
+          "409": {
+            "description": "Restore affected accounts"
+          },
+          "412": {
+            "description": "Version changed"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        }
+      }
+    },
+    "/transfers": {
+      "post": {
+        "summary": "Create transfers",
+        "description": "Past and future transaction/value dates, including before account opening (years 1\u20139999). Current balances include all nondeleted transactions through the business date, including before account opening; value dates do not control balances. Active owned accounts required. Transfers require distinct accounts with matching currencies. Negative resulting balances allowed. Refunds reduce spending; transfers are excluded from income/spending. Transfer edits/deletions change both movements atomically.",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerOperation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing or unowned account"
+          },
+          "409": {
+            "description": "Archived account"
+          }
+        }
+      }
+    },
+    "/transfers/{id}": {
+      "put": {
+        "summary": "Edit transfers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted operation version."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerOperation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing, unowned, deleted, or wrong operation type"
+          },
+          "409": {
+            "description": "Restore affected accounts"
+          },
+          "412": {
+            "description": "Version changed"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Soft delete transfers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted operation version."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed from balances; account references and audit snapshots retained."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Session expired"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "404": {
+            "description": "Missing, unowned, deleted, or wrong operation type"
+          },
+          "409": {
+            "description": "Restore affected accounts"
+          },
+          "412": {
+            "description": "Version changed"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        }
+      }
+    },
+    "/net-worth/current": {
+      "get": {
+        "summary": "Calculate current net worth for the authenticated owner",
+        "description": "One repeatable-read snapshot of opening balances plus all non-deleted ledger movements through the business date, including entries before account opening. Future-dated activity is excluded until its transaction date. Positive balances are assets; negative balances are liabilities. Includes archived accounts and investment cash, excludes future-opening accounts. Native currencies remain separate; no FX conversion or security valuation. Business date uses APP_BUSINESS_TIME_ZONE. Read-only; no CSRF token required.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact native-currency totals and account contributions; empty arrays when no eligible accounts exist.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentNetWorth"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA verification, enrollment or recovery proof required"
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "summary": "List owned categories and starter eligibility",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "description": "Includes archived branches. Exactly two levels; either level is assignable. Owner comes from the session."
+      },
+      "post": {
+        "summary": "Create a category or subcategory",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryInput"
+              }
+            }
+          }
+        },
+        "description": "Category details commit atomically with audit history. Category versions detect stale edits; permanent ledger history and children restrict structure and deletion."
+      }
+    },
+    "/categories/{id}": {
+      "put": {
+        "summary": "Rename or update an unused category",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted category version."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryInput"
+              }
+            }
+          }
+        },
+        "description": "Category details commit atomically with audit history. Category versions detect stale edits; permanent ledger history and children restrict structure and deletion."
+      },
+      "delete": {
+        "summary": "Delete an unused category without children",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted category version."
+          }
+        ]
+      }
+    },
+    "/categories/{id}/archive": {
+      "post": {
+        "summary": "Archive a category without changing child active flags",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted category version."
+          }
+        ],
+        "description": "Children retain their own active flags but become unavailable until the parent is restored. Retained assignments may survive unrelated transaction edits."
+      }
+    },
+    "/categories/{id}/restore": {
+      "post": {
+        "summary": "Restore a category without changing child active flags",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted category version."
+          }
+        ]
+      }
+    },
+    "/categories/starter-set": {
+      "post": {
+        "summary": "Install editable starters once into an empty category list",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or hierarchy/type mismatch"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned category/parent"
+          },
+          "409": {
+            "description": "Duplicate name, unavailable branch, or lifecycle/history conflict"
+          },
+          "412": {
+            "description": "Stale category version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          }
+        ]
+      }
+    },
+    "/spending": {
+      "get": {
+        "summary": "Spending by category for a calendar month or year",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpendingReport"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid decimal, currency, period or request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          }
+        },
+        "parameters": [
+          {
+            "name": "periodType",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "MONTH",
+                "YEAR"
+              ]
+            },
+            "description": "Defaults to MONTH"
+          },
+          {
+            "name": "periodStart",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Canonical first day; defaults to current business period"
+          }
+        ],
+        "description": "Owner-scoped, no-store repeatable-read snapshot of ledger expenses and refunds. Currencies remain separate. Main-category rollups include direct assignments and immediate children. Current activity stops at the business date; future periods have no activity. Archived activity is included; deleted transactions, income, transfers and opening balances are excluded."
+      }
+    },
+    "/spending/activity": {
+      "get": {
+        "summary": "Read spending activity for a category or uncategorized group",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityPage"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid decimal, currency, period or request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restrictions"
+          },
+          "404": {
+            "description": "Missing or unowned spending category"
+          }
+        },
+        "parameters": [
+          {
+            "name": "periodType",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "MONTH",
+                "YEAR"
+              ]
+            },
+            "description": "Defaults to MONTH"
+          },
+          {
+            "name": "periodStart",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Canonical first day; defaults to current business period"
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "description": "ISO 4217 currency"
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Owned spending category, omitted for uncategorized"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0
+            }
+          }
+        ],
+        "description": "Owner-scoped repeatable-read snapshot; 50 operations per page in ledger order (transaction date descending, created timestamp descending, ID). Category includes direct assignments and immediate children. Omit categoryId for uncategorized. Archived activity is included."
+      }
+    },
+    "/users/me/preferences": {
+      "get": {
+        "summary": "Read owner currency preferences",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Owner-scoped repeatable-read snapshot. Cache-Control: no-store. Accessible only after required MFA.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA required"
+          }
+        }
+      },
+      "put": {
+        "summary": "Save default currency with optimistic version checking",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesInput"
+              }
+            }
+          }
+        },
+        "description": "Save an explicit default currency with optimistic version checking and audit history. Does not convert or change ledger data or spending totals.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ISO currency or input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA required"
+          },
+          "412": {
+            "description": "Stale preferences version"
+          }
+        }
+      }
+    },
+    "/expected-transactions": {
+      "get": {
+        "summary": "Monthly expectations, reconciliation and separate currency/type totals",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedReport"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "First day of month; defaults to current business month."
+          }
+        ]
+      },
+      "post": {
+        "summary": "Create a recurring monthly expectation",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedDefinition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expected-transactions/{id}": {
+      "put": {
+        "summary": "Update definition for all months",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedDefinition"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted version: definition for CRUD; occurrence for reconciliation/recording."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete expectation and release links, preserving ledger and audit",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted version: definition for CRUD; occurrence for reconciliation/recording."
+          }
+        ]
+      }
+    },
+    "/expected-transactions/{id}/occurrences/{month}/candidates": {
+      "get": {
+        "summary": "Same-month suggestions ranked by amount, category, payee and date; never auto-confirmed",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityPage"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "First day of the selected month."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0
+            }
+          }
+        ]
+      }
+    },
+    "/expected-transactions/{id}/occurrences/{month}": {
+      "put": {
+        "summary": "Confirm/replace/unlink transaction or skip/undo this month",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedOccurrence"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "First day of the selected month."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted version: definition for CRUD; occurrence for reconciliation/recording."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedReconcile"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expected-transactions/{id}/occurrences/{month}/record": {
+      "post": {
+        "summary": "Record actual activity and link atomically",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedOccurrence"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "CSRF or MFA restriction"
+          },
+          "404": {
+            "description": "Missing or unowned resource"
+          },
+          "409": {
+            "description": "Unavailable references or reconciliation conflict"
+          },
+          "412": {
+            "description": "Stale definition, occurrence, or operation version"
+          },
+          "428": {
+            "description": "If-Match required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "First day of the selected month."
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked token from GET /auth/csrf."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[0-9]+\"$"
+            },
+            "description": "Quoted version: definition for CRUD; occurrence for reconciliation/recording."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedRecordInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/registration": {
+      "get": {
+        "summary": "Read registration availability",
+        "security": [],
+        "description": "Cache-Control: no-store. ",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationPolicy"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register using an email-bound, single-use invitation",
+        "security": [],
+        "description": "Cache-Control: no-store.  Registration defaults to disabled. Codes expire after seven days. Email is normalized; code is case-sensitive. Invalid, expired, revoked, used, mismatched and duplicate-account attempts use a generic rejection. Account creation and consumption are atomic. Five failures per server-resolved client address lock registration attempts for five minutes, independently of login. Signed-in and MFA-pending sessions must sign out first. Successful signup establishes the existing MFA session flow (required in production).",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationSignup"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/registration": {
+      "get": {
+        "summary": "Read registration settings and invitations",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Cache-Control: no-store. Only the installation OWNER, after required MFA. Financial data permissions remain owner-scoped.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationManagement"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "412": {
+            "description": "Stale version"
+          },
+          "428": {
+            "description": "Version required"
+          }
+        }
+      },
+      "put": {
+        "summary": "Enable or disable invitation-only registration",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Cache-Control: no-store. Only the installation OWNER, after required MFA. Financial data permissions remain owner-scoped.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "412": {
+            "description": "Stale version"
+          },
+          "428": {
+            "description": "Version required"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationSettingInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Quoted current settings or invitation version."
+          }
+        ]
+      }
+    },
+    "/registration/invitations": {
+      "post": {
+        "summary": "Issue a seven-day email invitation",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Cache-Control: no-store. Only the installation OWNER, after required MFA. Financial data permissions remain owner-scoped.",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedInvitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "412": {
+            "description": "Stale version"
+          },
+          "428": {
+            "description": "Version required"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/registration/invitations/{id}/replace": {
+      "post": {
+        "summary": "Invalidate the previous code and issue a replacement",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Cache-Control: no-store. Only the installation OWNER, after required MFA. Financial data permissions remain owner-scoped.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedInvitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "412": {
+            "description": "Stale version"
+          },
+          "428": {
+            "description": "Version required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Quoted current settings or invitation version."
+          }
+        ]
+      }
+    },
+    "/registration/invitations/{id}/revoke": {
+      "post": {
+        "summary": "Revoke an unused invitation",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "description": "Cache-Control: no-store. Only the installation OWNER, after required MFA. Financial data permissions remain owner-scoped.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied or registration rejected"
+          },
+          "409": {
+            "description": "Account or invitation state conflict"
+          },
+          "429": {
+            "description": "Too many attempts; Retry-After contains seconds."
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "412": {
+            "description": "Stale version"
+          },
+          "428": {
+            "description": "Version required"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Quoted current settings or invitation version."
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "JSESSIONID"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "retryAfterSeconds": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "AUTHENTICATED",
+              "MFA_REQUIRED",
+              "MFA_SETUP_REQUIRED"
+            ]
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "OWNER",
+                  "MEMBER"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "role"
+            ]
+          },
+          "recoveryUsed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "status",
+          "user"
+        ]
+      },
+      "Csrf": {
+        "type": "object",
+        "properties": {
+          "headerName": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "headerName",
+          "token"
+        ]
+      },
+      "CreateAccount": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CHECKING",
+              "SAVINGS",
+              "CASH",
+              "CREDIT_CARD",
+              "INVESTMENT",
+              "OTHER"
+            ]
+          },
+          "institution": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "Valid ISO 4217 monetary currency."
+          },
+          "openingAmount": {
+            "type": "string",
+            "pattern": "^-?[0-9]{1,20}(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string. Credit-card amount must be non-negative."
+          },
+          "balanceMeaning": {
+            "type": "string",
+            "enum": [
+              "BALANCE",
+              "AMOUNT_OWED",
+              "IN_CREDIT"
+            ],
+            "description": "BALANCE for non-card accounts. AMOUNT_OWED is stored negative; IN_CREDIT positive."
+          },
+          "openingDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "currency",
+          "openingAmount",
+          "balanceMeaning",
+          "openingDate"
+        ]
+      },
+      "Account": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CHECKING",
+              "SAVINGS",
+              "CASH",
+              "CREDIT_CARD",
+              "INVESTMENT",
+              "OTHER"
+            ]
+          },
+          "institution": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "Valid ISO 4217 monetary currency."
+          },
+          "openingDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "openingBalance": {
+            "type": "string",
+            "description": "Exact signed opening balance, not a current valuation."
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "hasActivity": {
+            "type": "boolean",
+            "description": "Locks financial setup and prevents deletion when history exists."
+          },
+          "currentBalance": {
+            "type": "string"
+          },
+          "balanceAsOf": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "institution",
+          "currency",
+          "openingDate",
+          "id",
+          "openingBalance",
+          "active",
+          "createdAt",
+          "version",
+          "hasActivity",
+          "currentBalance",
+          "balanceAsOf"
+        ]
+      },
+      "SecurityStatus": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "enabledAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "recoveryCodesRemaining": {
+            "type": "integer"
+          },
+          "pendingOperation": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "ENROLL",
+              "REPLACE",
+              "RECOVERY",
+              null
+            ]
+          }
+        },
+        "required": [
+          "enabled",
+          "required",
+          "recoveryCodesRemaining"
+        ]
+      },
+      "Proof": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "format": "password",
+            "maxLength": 72
+          },
+          "factor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "TOTP",
+              "RECOVERY"
+            ]
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
+      "Setup": {
+        "type": "object",
+        "properties": {
+          "setupKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "otpauthUri": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recoveryCodes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "expiresAt"
+        ]
+      },
+      "RecoveryCodes": {
+        "type": "object",
+        "properties": {
+          "recoveryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "recoveryCodes",
+          "expiresAt"
+        ]
+      },
+      "MfaVerify": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "TOTP",
+              "RECOVERY"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "kind"
+        ]
+      },
+      "TransactionInput": {
+        "type": "object",
+        "required": [
+          "accountId",
+          "kind",
+          "amount",
+          "transactionDate",
+          "description"
+        ],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "REFUND"
+            ]
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "[0-9]{1,20}(\\.[0-9]{1,8})?",
+            "description": "Strictly positive decimal; no rounding."
+          },
+          "transactionDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "valueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "payee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "categoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Optional; omission/null means Uncategorized, including full-replacement PUT. Income uses INCOME; expenses/refunds use SPENDING."
+          }
+        }
+      },
+      "TransferInput": {
+        "type": "object",
+        "required": [
+          "sourceAccountId",
+          "destinationAccountId",
+          "amount",
+          "transactionDate",
+          "description"
+        ],
+        "properties": {
+          "sourceAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "[0-9]{1,20}(\\.[0-9]{1,8})?",
+            "description": "Strictly positive decimal; no rounding."
+          },
+          "transactionDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          }
+        }
+      },
+      "LedgerOperation": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "REFUND",
+              "TRANSFER"
+            ]
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "[0-9]{1,20}(\\.[0-9]{1,8})?",
+            "description": "Strictly positive decimal; no rounding."
+          },
+          "transactionDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "valueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "payee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationAccountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "categoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "category": {
+            "$ref": "#/components/schemas/CategoryAssignment"
+          }
+        },
+        "required": [
+          "categoryId",
+          "category"
+        ]
+      },
+      "ActivityPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LedgerOperation"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        }
+      },
+      "NetWorthTypeTotal": {
+        "type": "object",
+        "required": [
+          "type",
+          "assets",
+          "liabilities",
+          "netWorth"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "CHECKING",
+              "SAVINGS",
+              "CASH",
+              "CREDIT_CARD",
+              "INVESTMENT",
+              "OTHER"
+            ]
+          },
+          "assets": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          },
+          "liabilities": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          },
+          "netWorth": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          }
+        }
+      },
+      "NetWorthCurrencyTotal": {
+        "type": "object",
+        "required": [
+          "currency",
+          "assets",
+          "liabilities",
+          "netWorth",
+          "byAccountType"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "assets": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          },
+          "liabilities": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          },
+          "netWorth": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          },
+          "byAccountType": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetWorthTypeTotal"
+            }
+          }
+        }
+      },
+      "NetWorthAccount": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "currency",
+          "active",
+          "currentBalance"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CHECKING",
+              "SAVINGS",
+              "CASH",
+              "CREDIT_CARD",
+              "INVESTMENT",
+              "OTHER"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "currentBalance": {
+            "type": "string",
+            "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
+            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+          }
+        }
+      },
+      "NetWorthFutureAccount": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "currency",
+          "active",
+          "openingDate"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CHECKING",
+              "SAVINGS",
+              "CASH",
+              "CREDIT_CARD",
+              "INVESTMENT",
+              "OTHER"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "openingDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "CurrentNetWorth": {
+        "type": "object",
+        "required": [
+          "balanceAsOf",
+          "calculatedAt",
+          "currencies",
+          "accounts",
+          "excludedFutureAccounts"
+        ],
+        "properties": {
+          "balanceAsOf": {
+            "type": "string",
+            "format": "date"
+          },
+          "calculatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "currencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetWorthCurrencyTotal"
+            }
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetWorthAccount"
+            }
+          },
+          "excludedFutureAccounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetWorthFutureAccount"
+            }
+          }
+        }
+      },
+      "CategoryInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Trimmed; unique case-insensitively within owner/type/parent, including archived categories."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "SPENDING"
+            ]
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "parentId",
+          "active",
+          "createdAt",
+          "version",
+          "hasActivity",
+          "hasChildren",
+          "available"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Trimmed; unique case-insensitively within owner/type/parent, including archived categories."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "SPENDING"
+            ]
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hasActivity": {
+            "type": "boolean",
+            "description": "Permanent ledger references, including deleted activity and previously selected parents."
+          },
+          "hasChildren": {
+            "type": "boolean"
+          },
+          "available": {
+            "type": "boolean",
+            "description": "Category and parent are active."
+          }
+        }
+      },
+      "CategoryList": {
+        "type": "object",
+        "required": [
+          "items",
+          "starterSetAvailable"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          },
+          "starterSetAvailable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CategoryAssignment": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "parentName",
+              "available"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "parentName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "available": {
+                "type": "boolean"
+              }
+            }
+          }
+        ]
+      },
+      "SpendingAmounts": {
+        "type": "object",
+        "required": [
+          "expenses",
+          "refunds",
+          "netSpending"
+        ],
+        "properties": {
+          "expenses": {
+            "type": "string",
+            "description": "Exact decimal amount; no floating point rounding"
+          },
+          "refunds": {
+            "type": "string",
+            "description": "Exact decimal amount; no floating point rounding"
+          },
+          "netSpending": {
+            "type": "string",
+            "description": "Exact decimal amount; no floating point rounding"
+          }
+        }
+      },
+      "SpendingGroup": {
+        "type": "object",
+        "required": [
+          "categoryId",
+          "currency",
+          "direct",
+          "inclusive"
+        ],
+        "properties": {
+          "categoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Null denotes uncategorized"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "direct": {
+            "$ref": "#/components/schemas/SpendingAmounts"
+          },
+          "inclusive": {
+            "$ref": "#/components/schemas/SpendingAmounts"
+          }
+        }
+      },
+      "SpendingCurrency": {
+        "type": "object",
+        "required": [
+          "currency",
+          "expenses",
+          "refunds",
+          "netSpending",
+          "uncategorized"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "expenses": {
+            "type": "string"
+          },
+          "refunds": {
+            "type": "string"
+          },
+          "netSpending": {
+            "type": "string"
+          },
+          "uncategorized": {
+            "type": "string",
+            "description": "Exact uncategorized net spending in this currency."
+          }
+        }
+      },
+      "SpendingReport": {
+        "type": "object",
+        "required": [
+          "periodType",
+          "periodStart",
+          "categories",
+          "groups",
+          "currencies",
+          "businessDate"
+        ],
+        "properties": {
+          "periodType": {
+            "type": "string",
+            "enum": [
+              "MONTH",
+              "YEAR"
+            ]
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpendingGroup"
+            }
+          },
+          "currencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpendingCurrency"
+            }
+          },
+          "businessDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "Preferences": {
+        "type": "object",
+        "required": [
+          "defaultCurrency",
+          "version"
+        ],
+        "properties": {
+          "defaultCurrency": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Explicitly selected ISO 4217 currency. Null until selected."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "PreferencesInput": {
+        "type": "object",
+        "required": [
+          "defaultCurrency",
+          "expectedVersion"
+        ],
+        "properties": {
+          "defaultCurrency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "Supported ISO 4217 code; no inferred default."
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "ExpectedInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "accountId",
+          "amount",
+          "dayOfMonth",
+          "firstMonth"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "TRANSFER"
+            ]
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationAccountId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "categoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^[0-9]{1,20}(\\.[0-9]{1,8})?$"
+          },
+          "dayOfMonth": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "firstMonth": {
+            "type": "string",
+            "format": "date"
+          },
+          "lastMonth": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "payee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          }
+        },
+        "description": "Monthly only. Months use their first calendar day; lastMonth is inclusive. Dates use years 1\u20139999. Amount must be positive. Currency follows account. Transfers require distinct same-currency accounts and no category. Edits update historical months too."
+      },
+      "ExpectedDefinition": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ExpectedInput"
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "currency",
+              "version",
+              "available"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "available": {
+                "type": "boolean"
+              }
+            }
+          }
+        ]
+      },
+      "ExpectedOccurrence": {
+        "type": "object",
+        "required": [
+          "definition",
+          "expectedDate",
+          "version",
+          "status",
+          "actual",
+          "difference",
+          "canRecord"
+        ],
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/ExpectedDefinition"
+          },
+          "expectedDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "UPCOMING",
+              "DUE",
+              "OVERDUE",
+              "SCHEDULED",
+              "COMPLETED",
+              "SKIPPED",
+              "NEEDS_REVIEW"
+            ]
+          },
+          "actual": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerOperation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "difference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "canRecord": {
+            "type": "boolean"
+          }
+        },
+        "description": "Version 0 denotes untouched reconciliation state. Differences are actual minus expected; null when no actual or currencies differ. Deleted, incompatible or out-of-schedule links need review. Future-dated confirmed links show SCHEDULED until their transaction date; these amounts remain outstanding and are excluded from completed/actual totals."
+      },
+      "ExpectedTotals": {
+        "type": "object",
+        "required": [
+          "currency",
+          "kind",
+          "expected",
+          "completed",
+          "actual",
+          "outstanding"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "TRANSFER"
+            ]
+          },
+          "expected": {
+            "type": "string"
+          },
+          "completed": {
+            "type": "string"
+          },
+          "actual": {
+            "type": "string"
+          },
+          "outstanding": {
+            "type": "string"
+          }
+        },
+        "description": "Exact decimal strings. Skipped items excluded. Completed is expected amounts for compatible confirmed links; actual is their ledger amounts. Transfers remain separate."
+      },
+      "ExpectedReport": {
+        "type": "object",
+        "required": [
+          "month",
+          "businessDate",
+          "definitions",
+          "items",
+          "totals"
+        ],
+        "properties": {
+          "month": {
+            "type": "string",
+            "format": "date"
+          },
+          "businessDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "definitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpectedDefinition"
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpectedOccurrence"
+            }
+          },
+          "totals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpectedTotals"
+            }
+          }
+        }
+      },
+      "ExpectedReconcile": {
+        "type": "object",
+        "required": [
+          "definitionVersion"
+        ],
+        "properties": {
+          "definitionVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "operationVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "skipped": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "description": "Full replacement: null operationId unlinks, skipped true skips this month. Linking requires current operationVersion and matching type, currency and accounts; actual dates may be in any month. One transaction can satisfy one occurrence."
+      },
+      "ExpectedRecordInput": {
+        "type": "object",
+        "required": [
+          "definitionVersion",
+          "amount",
+          "transactionDate",
+          "description"
+        ],
+        "properties": {
+          "definitionVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^[0-9]{1,20}(\\.[0-9]{1,8})?$"
+          },
+          "transactionDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "valueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "payee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "categoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "description": "Reviewed actual fields; accounts/type come from definition. Creates ledger activity and confirms association atomically. Date may be in any month, including before account opening, and must use years 1\u20139999. The occurrence stays in its selected month; spending uses the actual transaction date. Future months and dates are allowed; future links are scheduled until their date."
+      },
+      "RegistrationPolicy": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RegistrationSettings": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "version"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "RegistrationSettingInput": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RegistrationSignup": {
+        "type": "object",
+        "required": [
+          "email",
+          "code",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "writeOnly": true
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 72,
+            "writeOnly": true,
+            "description": "At most 72 UTF-8 bytes."
+          }
+        }
+      },
+      "InvitationInput": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          }
+        }
+      },
+      "Invitation": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "createdAt",
+          "expiresAt",
+          "status",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "EXPIRED",
+              "REVOKED",
+              "USED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "IssuedInvitation": {
+        "type": "object",
+        "required": [
+          "invitation",
+          "code"
+        ],
+        "properties": {
+          "invitation": {
+            "$ref": "#/components/schemas/Invitation"
+          },
+          "code": {
+            "type": "string",
+            "description": "Secret code returned once, never available on reads."
+          }
+        }
+      },
+      "RegistrationManagement": {
+        "type": "object",
+        "required": [
+          "settings",
+          "invitations"
+        ],
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/RegistrationSettings"
+          },
+          "invitations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Invitation"
+            }
+          }
+        }
+      }
+    }
+  }
+}
