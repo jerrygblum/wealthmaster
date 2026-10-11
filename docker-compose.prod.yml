@@ -1,0 +1,54 @@
+# Standalone deployment file; do not merge with docker-compose.yml.
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wealthmaster}
+      POSTGRES_USER: ${POSTGRES_USER:-wealthmaster}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      # PostgreSQL 18 stores its version-specific PGDATA below this directory.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    image: ${WEALTHMASTER_IMAGE_PREFIX:?Set WEALTHMASTER_IMAGE_PREFIX in .env}-backend:${WEALTHMASTER_IMAGE_TAG:?Set WEALTHMASTER_IMAGE_TAG in .env}
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-wealthmaster}
+      DB_USER: ${POSTGRES_USER:-wealthmaster}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      SPRING_PROFILES_ACTIVE: prod
+      INITIAL_OWNER_EMAIL: ${INITIAL_OWNER_EMAIL:-}
+      INITIAL_OWNER_PASSWORD: ${INITIAL_OWNER_PASSWORD:-}
+      MFA_ENCRYPTION_PASSWORD: ${MFA_ENCRYPTION_PASSWORD:?Set MFA_ENCRYPTION_PASSWORD in .env}
+      MFA_ENCRYPTION_SALT: ${MFA_ENCRYPTION_SALT:?Set MFA_ENCRYPTION_SALT in .env}
+      APP_BUSINESS_TIME_ZONE: ${APP_BUSINESS_TIME_ZONE:-Europe/Zurich}
+      SESSION_COOKIE_SECURE: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  frontend:
+    image: ${WEALTHMASTER_IMAGE_PREFIX:?Set WEALTHMASTER_IMAGE_PREFIX in .env}-frontend:${WEALTHMASTER_IMAGE_TAG:?Set WEALTHMASTER_IMAGE_TAG in .env}
+    ports:
+      # DSM reverse proxy connects locally; only HTTPS should be exposed.
+      - "127.0.0.1:8088:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
