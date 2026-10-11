@@ -88,6 +88,11 @@ Frontend: `http://localhost:5173`
 docker compose up --build
 ```
 
+For NAS production deployment using images published by GitHub Actions, see the
+[deployment runbook](docs/operations/deployment.md). Use the standalone
+`docker-compose.prod.yml` and `.env.production.example`; the local development
+environment example is not suitable for production.
+
 ## Repository guide
 
 - `AGENTS.md` — rules for coding agents and contributors
