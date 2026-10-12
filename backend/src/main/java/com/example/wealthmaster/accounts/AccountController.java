@@ -18,6 +18,15 @@ public class AccountController {
     public List<AccountResponse> list(@AuthenticationPrincipal OwnerPrincipal owner) {
         return service.list(owner.id());
     }
+    @PutMapping("/order")
+    public List<AccountResponse> reorder(@AuthenticationPrincipal OwnerPrincipal owner, @Valid @RequestBody AccountOrder input) {
+        return service.reorder(owner.id(), input);
+    }
+    @PutMapping("/{id}/appearance")
+    public AccountResponse appearance(@AuthenticationPrincipal OwnerPrincipal owner, @PathVariable UUID id,
+            @RequestHeader(value = "If-Match", required = false) String match, @Valid @RequestBody Appearance input) {
+        return service.appearance(owner.id(), id, match, input);
+    }
     @GetMapping("/{id}")
     public AccountResponse detail(@AuthenticationPrincipal OwnerPrincipal owner, @PathVariable UUID id) { return service.detail(owner.id(), id); }
     @PostMapping @ResponseStatus(HttpStatus.CREATED)

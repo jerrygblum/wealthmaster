@@ -7,6 +7,10 @@ import java.util.UUID;
 
 public final class AccountDtos {
     private AccountDtos() {}
+    public enum Accent { DEFAULT, BLUE, TEAL, PURPLE, AMBER, ROSE }
+    public record Appearance(@NotNull Accent accent) {}
+    public record OrderedAccount(@NotNull UUID id, @NotNull @Min(0) Long version) {}
+    public record AccountOrder(@NotNull java.util.List<@NotNull @jakarta.validation.Valid OrderedAccount> accounts) {}
     public enum BalanceMeaning { BALANCE, AMOUNT_OWED, IN_CREDIT }
     public record CreateAccount(
             @NotBlank @Size(max = 100) String name,
@@ -17,17 +21,17 @@ public final class AccountDtos {
             @NotNull BalanceMeaning balanceMeaning,
             @NotNull LocalDate openingDate) {}
     public record AccountResponse(UUID id, String name, AccountType type, String institution,
-            String currency, String openingBalance, LocalDate openingDate, boolean active, Instant createdAt, long version, boolean hasActivity, String currentBalance, LocalDate balanceAsOf) {
+            String currency, String openingBalance, LocalDate openingDate, boolean active, Instant createdAt, long version, boolean hasActivity, String currentBalance, LocalDate balanceAsOf, long displayOrder, Accent accent) {
         public AccountResponse withActivity(boolean activity) {
-            return new AccountResponse(id, name, type, institution, currency, openingBalance, openingDate, active, createdAt, version, activity, currentBalance, balanceAsOf);
+            return new AccountResponse(id, name, type, institution, currency, openingBalance, openingDate, active, createdAt, version, activity, currentBalance, balanceAsOf, displayOrder, accent);
         }
         public AccountResponse withBalance(String balance, LocalDate date) {
-            return new AccountResponse(id, name, type, institution, currency, openingBalance, openingDate, active, createdAt, version, hasActivity, balance, date);
+            return new AccountResponse(id, name, type, institution, currency, openingBalance, openingDate, active, createdAt, version, hasActivity, balance, date, displayOrder, accent);
         }
         public static AccountResponse from(FinancialAccount account) {
             return new AccountResponse(account.getId(), account.getName(), account.getType(),
                     account.getInstitution(), account.getCurrency(), account.getOpeningBalance().toPlainString(),
-                    account.getOpeningDate(), account.isActive(), account.getCreatedAt(), account.getVersion(), false, account.getOpeningBalance().toPlainString(), null);
+                    account.getOpeningDate(), account.isActive(), account.getCreatedAt(), account.getVersion(), false, account.getOpeningBalance().toPlainString(), null, account.getDisplayOrder(), account.getAccent());
         }
     }
 }

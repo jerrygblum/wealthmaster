@@ -191,7 +191,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Accounts ordered newest first",
+            "description": "Accounts ordered by saved display order, then newest first and ID for ties",
             "content": {
               "application/json": {
                 "schema": {
@@ -3402,6 +3402,136 @@
           }
         ]
       }
+    },
+    "/accounts/{id}/appearance": {
+      "put": {
+        "summary": "Set account color",
+        "description": "Owner-scoped, versioned presentation change, allowed for archived and used accounts. Financial setup is preserved; changes are audited atomically.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Single quoted account version from the account response, e.g. \"0\".",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "428": {
+            "description": "If-Match required"
+          },
+          "200": {
+            "description": "Updated account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountAppearance"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/order": {
+      "put": {
+        "summary": "Save account display order",
+        "description": "Submit every owned account exactly once, including archived accounts, with current versions. All rows are locked and validated before any changes; stale or incomplete lists return 412, foreign IDs return 404, duplicates return 400. Changes and audits commit atomically. New accounts appear first.",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "200": {
+            "description": "Accounts in saved order with current versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Account"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountOrder"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3617,6 +3747,14 @@
           "balanceAsOf": {
             "type": "string",
             "format": "date"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "accent": {
+            "$ref": "#/components/schemas/AccountAccent"
           }
         },
         "required": [
@@ -3632,7 +3770,9 @@
           "version",
           "hasActivity",
           "currentBalance",
-          "balanceAsOf"
+          "balanceAsOf",
+          "displayOrder",
+          "accent"
         ]
       },
       "SecurityStatus": {
@@ -4971,6 +5111,57 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Invitation"
+            }
+          }
+        }
+      },
+      "AccountAccent": {
+        "type": "string",
+        "enum": [
+          "DEFAULT",
+          "BLUE",
+          "TEAL",
+          "PURPLE",
+          "AMBER",
+          "ROSE"
+        ]
+      },
+      "AccountAppearance": {
+        "type": "object",
+        "properties": {
+          "accent": {
+            "$ref": "#/components/schemas/AccountAccent"
+          }
+        },
+        "required": [
+          "accent"
+        ]
+      },
+      "AccountOrder": {
+        "type": "object",
+        "required": [
+          "accounts"
+        ],
+        "properties": {
+          "accounts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "version"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                }
+              }
             }
           }
         }

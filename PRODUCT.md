@@ -59,6 +59,8 @@ Each account has owner, name, type, institution (optional), native currency, ope
 
 Accounts support editing, archive/restore, and confirmed permanent deletion when unused. Financial activity locks type, currency and opening amount; name, institution and opening date remain editable. Opening date corrections preserve all transactions; balances include all nondeleted movements through today, including before account opening. A nonzero opening balance alone does not block deletion. Archived accounts preserve financial history and valuation; future transaction/trade entry requires restoration. Changes retain audit snapshots, including after permanent deletion.
 
+Users can save a custom account order and choose a named card accent color on the Accounts page. These owner-scoped presentation settings persist across devices, including for archived accounts, without changing financial data. New accounts appear first.
+
 ### Ledger transactions
 - Create/edit/delete transactions with auditability.
 - Income, expense, and expense refunds (refunds reduce spending).

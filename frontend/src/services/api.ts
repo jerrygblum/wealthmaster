@@ -1,4 +1,5 @@
 import type {
+  AccountAccent,
   RegistrationSettings,
   RegistrationInput,
   RegistrationManagement,
@@ -279,6 +280,17 @@ export const api = {
       "application/json",
     ),
   cancelMfa: () => post<void>("/users/me/mfa/pending/cancel"),
+  reorderAccounts: (accounts: FinancialAccount[]) =>
+    ledgerMutation<FinancialAccount[]>("/accounts/order", "PUT", {
+      accounts: accounts.map(({ id, version }) => ({ id, version })),
+    }),
+  setAccountAccent: (account: FinancialAccount, accent: AccountAccent) =>
+    ledgerMutation<FinancialAccount>(
+      `/accounts/${account.id}/appearance`,
+      "PUT",
+      { accent },
+      account.version,
+    ),
   accounts: () => request<FinancialAccount[]>("/accounts"),
   updateAccount: (account: FinancialAccount, input: CreateAccount) =>
     mutateAccount<FinancialAccount>(account, "PUT", "", input),

@@ -6,7 +6,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-wealthmaster}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-in-production}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PostgreSQL 18 stores its version-specific PGDATA below this directory.
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wealthmaster} -d ${POSTGRES_DB:-wealthmaster}"]
       interval: 10s

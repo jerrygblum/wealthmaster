@@ -12,6 +12,8 @@ public class FinancialAccount {
     @Id private UUID id;
     @Version @Column(nullable = false) private long version;
     @Column(nullable = false) private UUID ownerId;
+    @Column(nullable = false) private long displayOrder;
+    @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20) private AccountDtos.Accent accent = AccountDtos.Accent.DEFAULT;
     @Column(nullable = false, length = 100) private String name;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20) private AccountType type;
     @Column(length = 100) private String institution;
@@ -27,6 +29,10 @@ public class FinancialAccount {
         this.institution = institution; this.currency = currency; this.openingBalance = openingBalance;
         this.openingDate = openingDate; this.active = true; this.createdAt = Instant.now();
     }
+    public long getDisplayOrder() { return displayOrder; }
+    public void setDisplayOrder(long value) { displayOrder = value; }
+    public AccountDtos.Accent getAccent() { return accent; }
+    public void setAccent(AccountDtos.Accent value) { accent = value; }
     public long getVersion() { return version; }
     public void update(String name, String institution, AccountType type, String currency, BigDecimal balance, LocalDate date) {
         this.name = name; this.institution = institution; this.type = type; this.currency = currency;

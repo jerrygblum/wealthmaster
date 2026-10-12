@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api, ApiError } from "../../services/api";
-import type { FinancialAccount } from "../../types/models";
+import type { AccountAccent, FinancialAccount } from "../../types/models";
 
 import type { AccountsPageProps } from "../../types/componentProps";
 
@@ -30,6 +30,39 @@ export function useAccounts({ user, onExpired }: AccountsPageProps) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
   const visibleAccounts = accounts.filter((account) => account.active !== archived);
+  async function personalize(account: FinancialAccount, change: AccountAccent | "up" | "down") {
+    setActionPending(true);
+    setActionError(null);
+    setStale(false);
+    setNotice(null);
+    try {
+      if (change === "up" || change === "down") {
+        const visibleIndex = visibleAccounts.findIndex((item) => item.id === account.id);
+        const neighbor = visibleAccounts[visibleIndex + (change === "up" ? -1 : 1)];
+        if (!neighbor) return;
+        const reordered = [...accounts];
+        const from = reordered.findIndex((item) => item.id === account.id);
+        const to = reordered.findIndex((item) => item.id === neighbor.id);
+        [reordered[from], reordered[to]] = [reordered[to], reordered[from]];
+        setAccounts(await api.reorderAccounts(reordered));
+        setNotice(`${account.name} moved ${change}.`);
+      } else {
+        const changed = await api.setAccountAccent(account, change);
+        setAccounts((previous) =>
+          previous.map((item) => (item.id === changed.id ? changed : item)),
+        );
+        setNotice(`${account.name} color updated.`);
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) onExpired();
+      else {
+        setActionError(errorMessage(err));
+        setStale(err instanceof ApiError && err.status === 412);
+      }
+    } finally {
+      setActionPending(false);
+    }
+  }
   async function manage(account: FinancialAccount, operation: "archive" | "restore" | "delete") {
     setActionPending(true);
     setActionError(null);
@@ -66,6 +99,7 @@ export function useAccounts({ user, onExpired }: AccountsPageProps) {
     setError(null);
     try {
       setAccounts(await api.accounts());
+      setStale(false);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) onExpired();
       else setError(errorMessage(err));
@@ -98,6 +132,7 @@ export function useAccounts({ user, onExpired }: AccountsPageProps) {
     setStale,
     visibleAccounts,
     manage,
+    personalize,
     notice,
     setNotice,
     load,

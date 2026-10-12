@@ -226,3 +226,12 @@ V014 assigns OWNER to the earliest existing provisioned user (created_at, then i
 The users module owns persistent registration settings (disabled by default) and versioned email invitations. A code contains 32 SecureRandom bytes encoded as base64url; only its SHA-256 hash is stored. Codes are bound to a normalized email, expire seven days after issue/replacement, and are consumed once. Public policy reads reveal only enabled. Creating/replacing returns a code once; list/read/audit never expose it. Revocation, expiration and consumption retain records. No email delivery, jobs or caches are added.
 
 All mutations lock the single registration settings row first, serializing signup with disabling/revoking/replacing. Signup creates a MEMBER, MFA state, invitation consumption and audit events atomically in an independent transaction; the outer existing AttemptLimiter retains failed counters when signup rolls back. Registration uses a separate client-address limiter key (five failures/five minutes), trusts only the server-resolved address, and never changes login throttling. CSRF remains enforced. After commit, the existing session flow rotates session ID/CSRF and requires MFA under the existing policy.
+
+### Account presentation
+
+V015 adds account display_order and a constrained accent palette to financial_accounts.
+AccountService sorts the owner-scoped list by display order with existing creation/ID
+ordering as the tie-breaker. Reordering locks all submitted owned rows in UUID order,
+checks their versions and full-list membership, then updates positions and audits
+atomically. Appearance updates reuse account ownership and If-Match checks. Both
+settings share the account version and never change financial setup or ledger data.

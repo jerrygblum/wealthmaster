@@ -84,9 +84,38 @@ Frontend: `http://localhost:5173`
 
 ### Run everything with Docker
 
+Only Docker + Docker Compose are required for this option; Java, Maven and Node.js
+run inside the image builds. On first setup, copy `.env.example` to `.env` if it
+does not already exist, then fill the initial owner credentials and MFA encryption
+values as described in [local login setup](docs/operations/local-auth.md).
+Use `SPRING_PROFILES_ACTIVE=dev` and `SESSION_COOKIE_SECURE=false` for local HTTP.
+Compose reads `.env` automatically.
+
 ```bash
 docker compose up --build
 ```
+
+Open http://localhost:8088. After changing source files, rerun the command to rebuild
+the images. Stop with `docker compose down`; the named database volume is retained.
+
+To add synthetic sample accounts, categories, and three months of transactions to
+the running local app, run `python3 scripts/seed-demo.py`. This optional helper
+requires Python 3.9+, the explicit `dev` profile, and the existing owner's current
+login credentials in the initial-owner variables in `.env`. It signs in through
+the API; accounts with MFA enabled require an interactive flow instead. It adds
+clearly labeled demo data without changing existing entries. Reruns skip matching
+demo account/category names and transaction descriptions; keep those labels intact
+to avoid creating duplicates. Transfers, credit-card purchases/payments, refunds,
+uncategorized spending, and separate CHF/EUR balances are included. Investment
+sample balances represent cash only.
+
+PostgreSQL 18 requires the data volume mounted at `/var/lib/postgresql`, with the
+database stored under `18/docker`; see the [official image documentation](https://hub.docker.com/_/postgres).
+If you used the previous `/var/lib/postgresql/data` mount and startup failed before
+database initialization, rerunning the command above recreates the container with
+the corrected mount. If that volume contains an existing database, back it up and
+plan a migration before restarting: changing the mount does not migrate its data.
+Do not use `docker compose down -v` to resolve the error; it deletes the database volume.
 
 For NAS production deployment using images published by GitHub Actions, see the
 [deployment runbook](docs/operations/deployment.md). Use the standalone
