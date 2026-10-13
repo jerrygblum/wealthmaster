@@ -1,3 +1,5 @@
+import type { useImports } from "../hooks/imports/useImports";
+export type ImportsPageViewModel = ReturnType<typeof useImports>;
 import type { useAccountDetail } from "../hooks/accounts/useAccountDetail";
 import type { useAccountForm } from "../hooks/accounts/useAccountForm";
 import type { useAccounts } from "../hooks/accounts/useAccounts";

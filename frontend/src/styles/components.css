@@ -1173,3 +1173,84 @@ button.compact-action-delete {
   width: auto;
   min-height: 44px;
 }
+
+.import-controls {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.import-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 12px;
+  margin-block: 16px;
+}
+.import-mapping {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-block: 12px;
+}
+.import-mapping > span {
+  flex: 1 1 240px;
+  overflow-wrap: anywhere;
+}
+.import-mapping > select,
+.import-mapping > input {
+  flex: 1 1 220px;
+  width: auto;
+  max-width: 100%;
+}
+.import-row {
+  border-bottom: 1px solid #cbd5e1;
+  padding-block: 12px;
+  overflow-wrap: anywhere;
+}
+.import-row summary {
+  cursor: pointer;
+  padding-block: 8px;
+}
+.import-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin-block: 16px;
+}
+.import-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.import-table th,
+.import-table td {
+  padding: 8px;
+  border-bottom: 1px solid #cbd5e1;
+  text-align: left;
+  vertical-align: top;
+  min-width: 120px;
+}
+.import-table select {
+  min-width: 240px;
+}
+.import-edit-table table {
+  min-width: 96rem;
+}
+.import-edit-table input,
+.import-edit-table select {
+  min-width: 9rem;
+  width: 100%;
+}
+.import-edit-table td:nth-child(8) input,
+.import-edit-table td:nth-child(9) input {
+  min-width: 15rem;
+}
+.import-excluded {
+  opacity: 0.65;
+}
+.import-approval {
+  display: block;
+  margin-block: 24px;
+  line-height: 1.6;
+}
+.import-controls .panel {
+  margin-block: 16px;
+}

@@ -35,24 +35,22 @@ Goal: represent financial accounts and trustworthy manual activity.
 
 Release outcome: the user can reproduce current cash/bank/card positions without Excel.
 
-## 0.2 — Migration / Importer (deferred)
+## 0.2 — Migration / Importer
 Goal: migrate historical Excel workflow without manual re-entry.
 
-- CSV import
-- XLSX import
-- Sheet selection
-- Column detection/mapping
-- Saved import profiles
-- Preview/validation
-- Import batches + lineage
-- Duplicate detection
-- Rollback/undo
-- Initial categorization rules
+- [x] Guided XLSX/XLSM legacy-workbook staging and sheet/column selection
+- [x] Explicit account/Visa mappings and reviewable two-level category proposals
+- [x] Row decisions, two-row transfer pairing and monthly reconstructed card settlements
+- [x] Editable ledger preview, closing-balance reconciliation and duplicate review
+- [x] Deletable/re-uploadable drafts with resumable committed receipts
+- [x] Import batches, immutable source lineage, atomic commit and guarded undo
+- [ ] Reusable CSV/XLSX bank-statement imports and saved profiles
+- [ ] Initial categorization rules
 
 Release outcome: existing historical Excel/CSV data can be migrated confidently.
 
 ## 0.3 — Spending by category and period (current priority)
-Goal: understand actual spending and expected monthly activity. Imports, budgets, forecasts and FX conversion remain deferred.
+Goal: understand actual spending and expected monthly activity. Reusable bank-statement imports, budgets, forecasts and FX conversion remain deferred.
 
 - [x] Compact monthly/yearly spending tables with expenses, refunds, net totals, inclusive category breakdowns and transaction activity
 - [x] Consistent category CRUD rows without limits; no pie chart

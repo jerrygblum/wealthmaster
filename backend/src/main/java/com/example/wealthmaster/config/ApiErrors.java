@@ -31,6 +31,8 @@ public class ApiErrors {
         error.getBindingResult().getFieldErrors().forEach(field -> fields.putIfAbsent(field.getField(), field.getDefaultMessage()));
         return Map.of("message", "Check the entered details.", "fields", fields);
     }
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class) @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    public Map<String,String> oversizedUpload() { return Map.of("message", "Workbook must be at most 10 MiB."); }
     @ExceptionHandler(IllegalArgumentException.class) @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, String> invalid(IllegalArgumentException error) {
         return Map.of("message", error.getMessage());

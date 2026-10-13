@@ -235,3 +235,40 @@ ordering as the tie-breaker. Reordering locks all submitted owned rows in UUID o
 checks their versions and full-list membership, then updates positions and audits
 atomically. Appearance updates reuse account ownership and If-Match checks. Both
 settings share the account version and never change financial setup or ledger data.
+
+### Guided legacy-workbook migration
+
+V016 adds owner-scoped import batches, immutable source/workbook staging and links
+from approved proposals to created or explicitly reused ledger operations. The
+workbook reader accepts bounded XLSX/XLSM ZIP content, rejects unsafe XML, never
+executes macros or external links, and preserves cell values, formula text and
+cached formula results. Formula evaluation is deliberately absent.
+
+The imports module normalizes the workbook into a versioned review plan. Every
+source row receives an included or explained-exclusion decision. Existing account
+and category mappings carry optimistic versions; proposed creations remain JSON
+draft data until the final commit. The preview validates dates, exact decimal
+amounts, currencies, account/category availability, reciprocal two-row transfer
+pairs, duplicate choices and independently supplied closing balances. The client
+renders the row decisions as an editable ledger-shaped table grouped by workbook
+account. Category suggestions map exact normalized existing names and otherwise
+propose source labels below reviewable Legacy spending/income roots.
+
+Confirmed legacy card purchases/refunds are ledger activity on the selected card.
+Their recorded bank movements become explicitly approved settlement transfers,
+grouped by calendar month, paying account, card and currency and dated on the
+latest booked row in the group. This preserves bank
+movement and spending while recording that purchase dates and historical card debt
+are not recoverable from the source.
+
+Commit locks the import owner/batch, linked operations, accounts and category state,
+then creates approved resources and invokes LedgerService for every new operation
+in one transaction. The stored preview token makes approval specific to one plan.
+Retries return the same receipt. Reversal locks expectation links and imported
+operations, rejects edited/deleted/dependent activity and soft-deletes only the
+operations created by the batch. Linked existing operations, created resources,
+source lineage and audit history survive reversal. Draft deletion removes the
+batch and source hash so an identical file can be staged again; previously purged
+drafts are hidden and replaced on re-upload. Source-only purge remains available
+for reversed batches. V017 removes empty draft identities left by the earlier
+source-purge behavior while retaining their audit events.

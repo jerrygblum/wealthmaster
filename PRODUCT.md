@@ -112,12 +112,15 @@ Record opens a reviewed form and atomically creates ledger activity plus its con
 
 ### Imports
 
-Imports remain deferred while category management, spending reports and monthly expectations are available.
+The implemented migration flow handles the owner's legacy XLSX/XLSM workbook through a guided, manually reviewed process. It stages source rows, maps distinct workbook accounts and Visa labels, pairs two-row transfers, proposes a reviewable two-level category tree, reconstructs monthly settled card activity, and provides an editable ledger-shaped preview with balances and duplicates. It commits atomically with lineage and guarded reversal. Account and category proposals remain staged until the final plan explicitly lists and approves their creation. Deleting a draft removes it from saved migrations and permits the same source file to be staged again. Original workbooks, rows, formulas and cached values remain private and owner-scoped.
+
+Reusable bank-statement imports remain deferred. The implemented legacy adapter does not establish a generic statement format or automatic categorization.
 Supported sequence:
-1. CSV
-2. XLSX
-3. PDF statements later
-4. API integrations much later
+1. Guided legacy XLSX/XLSM migration (implemented)
+2. CSV bank statements later
+3. XLSX bank statements later
+4. PDF statements later
+5. API integrations much later
 
 Import flow:
 `upload -> sheet/source selection -> column detection/mapping -> normalization -> validation -> duplicate detection -> categorization -> preview -> review -> commit`

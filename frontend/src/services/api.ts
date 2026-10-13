@@ -1,4 +1,13 @@
 import type {
+  ImportBatch,
+  ImportSummary,
+  ImportPlan,
+  ImportSelection,
+  ImportPreview,
+  ImportReceipt,
+  ImportUndo,
+} from "../types/imports";
+import type {
   AccountAccent,
   RegistrationSettings,
   RegistrationInput,
@@ -110,6 +119,43 @@ async function ledgerMutation<T>(
 }
 
 export const api = {
+  imports: () => request<ImportSummary[]>("/imports"),
+  importBatch: (id: string) => request<ImportBatch>(`/imports/${id}`),
+  deleteImportDraft: (batch: ImportBatch) =>
+    ledgerMutation<void>(`/imports/${batch.id}?version=${batch.version}`, "DELETE"),
+  uploadWorkbook: (file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return post<ImportBatch>("/imports", body);
+  },
+  configureImport: (batch: ImportBatch, selection: ImportSelection) =>
+    ledgerMutation<ImportBatch>(`/imports/${batch.id}/selection`, "PUT", {
+      version: batch.version,
+      selection,
+    }),
+  saveImport: (batch: ImportBatch, plan: ImportPlan) =>
+    ledgerMutation<ImportBatch>(`/imports/${batch.id}/plan`, "PUT", {
+      version: batch.version,
+      plan,
+    }),
+  previewImport: (id: string) => request<ImportPreview>(`/imports/${id}/preview`),
+  commitImport: (batch: ImportBatch, token: string) =>
+    ledgerMutation<ImportReceipt>(`/imports/${batch.id}/commit`, "POST", {
+      version: batch.version,
+      token,
+      approveCreations: true,
+      approveSettlements: true,
+      approveExclusions: true,
+      acknowledgeDates: true,
+      acknowledgeCurrencies: true,
+      acknowledgeBaselines: true,
+      acknowledgeUnverified: true,
+    }),
+  previewImportUndo: (id: string) => request<ImportUndo>(`/imports/${id}/undo`),
+  undoImport: (batch: ImportBatch) =>
+    ledgerMutation<ImportBatch>(`/imports/${batch.id}/undo`, "POST", { version: batch.version }),
+  purgeImportSource: (batch: ImportBatch) =>
+    ledgerMutation<void>(`/imports/${batch.id}/source?version=${batch.version}`, "DELETE"),
   expected: (month?: string) =>
     request<ExpectedReport>(`/expected-transactions${month ? `?month=${month}` : ""}`),
   saveExpected: (input: ExpectedInput, definition?: ExpectedDefinition) =>
