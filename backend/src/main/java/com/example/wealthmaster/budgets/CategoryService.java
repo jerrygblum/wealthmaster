@@ -93,7 +93,22 @@ public class CategoryService {
         lock(owner);
         if (!list(owner).starterSetAvailable()) throw new CategoryFailure(409, "The starter set is available only once, for an empty category list.");
         insert(owner, new Input("Salary", Type.INCOME, null)); insert(owner, new Input("Other income", Type.INCOME, null));
-        for (var branch : List.of(List.of("Housing", "Rent", "Utilities"), List.of("Food", "Groceries", "Dining out"), List.of("Transport", "Public transport", "Fuel"), List.of("Health"), List.of("Leisure"), List.of("Other spending"))) {
+        for (var branch : List.of(
+            List.of("Housing & Property", "Mortgage interest", "House maintenance & repairs", "Renovations & improvements", "Building insurance", "Household contents insurance", "Furniture & home decoration"),
+            List.of("Utilities & Communications", "Electricity", "Heating", "Water & wastewater", "Internet & TV", "Mobile phones", "Streaming & digital subscriptions"),
+            List.of("Food & Household", "Groceries & food", "Food at work", "Restaurants", "Pet expenses"),
+            List.of("Cars", "Fuel & charging", "Car insurance", "Vehicle taxes", "Maintenance & servicing", "Parking & garages", "Motorway vignette & tolls"),
+            List.of("Motorbikes", "Fuel", "Motorbike insurance", "Vehicle taxes", "Maintenance & repairs", "Protective clothing & helmets"),
+            List.of("Public Transport & Mobility", "SBB / public transport tickets", "Half Fare / GA / travelcards", "Bicycles & e-bikes"),
+            List.of("Health & Medical", "Health insurance", "Dental care & orthodontics", "Glasses & contact lenses", "Medication & pharmacy"),
+            List.of("Children & Education", "Childcare / Kita / Hort", "Children's clothing & shoes", "Sports clubs & activities", "Music lessons & hobbies", "Toys, books & games"),
+            List.of("Insurance & Protection", "Personal liability insurance", "Legal protection insurance"),
+            List.of("Taxes & Government", "Federal income tax", "Cantonal income tax", "Municipal income tax", "Other government fees"),
+            List.of("Lifestyle & Personal", "Adult clothing & shoes", "Hairdresser & beauty", "Fitness & sports", "Personal hobbies", "Electronics & gadgets", "Adult books & entertainment"),
+            List.of("Holidays & Travel", "Accommodation", "Flights & transport", "Rental cars", "Holiday food & restaurants", "Activities & excursions"),
+            List.of("Gifts & Social", "Birthday gifts", "Christmas & holiday gifts"),
+            List.of("Banking & Finance", "Bank account fees", "Credit card fees & interest")
+        )) {
             var parent = insert(owner, new Input(branch.getFirst(), Type.SPENDING, null));
             for (var child : branch.subList(1, branch.size())) insert(owner, new Input(child, Type.SPENDING, parent.id()));
         }

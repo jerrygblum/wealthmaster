@@ -272,3 +272,15 @@ batch and source hash so an identical file can be staged again; previously purge
 drafts are hidden and replaced on re-upload. Source-only purge remains available
 for reversed batches. V017 removes empty draft identities left by the earlier
 source-purge behavior while retaining their audit events.
+
+### Original category mapping
+
+The imports module reads preserved original-category markers from owner-scoped live
+ledger descriptions and groups them by original label and income/spending type.
+`/api/v1/imports/original-categories` exposes review data and accepts an explicit
+ID/version snapshot for atomic mapping. LedgerService owns category-only writes,
+locks operations in UUID order before category state, validates category ownership,
+type, availability and optimistic versions, and retains category history and audit
+snapshots. No ledger movement is rewritten; archived-account history can be
+categorized. Transfers are excluded. New rows outside the reviewed snapshot remain
+for subsequent review. Existing tables suffice; no Flyway migration is needed.

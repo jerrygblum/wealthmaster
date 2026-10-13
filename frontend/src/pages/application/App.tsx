@@ -1,3 +1,4 @@
+import { OriginalCategoriesPage } from "../imports/OriginalCategoriesPage";
 import { ActionIcon } from "../../components/atoms/ActionIcon";
 import { Button, LoadingIndicator } from "../../components/atoms/Controls";
 import { ApplicationLayout } from "../../components/templates/ApplicationLayout";
@@ -77,6 +78,8 @@ export default function App() {
           onSession={acceptSession}
           onExpired={expire}
         />
+      ) : session?.status === "AUTHENTICATED" && page === "category-mapping" ? (
+        <OriginalCategoriesPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "imports" ? (
         <ImportsPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "expected" ? (

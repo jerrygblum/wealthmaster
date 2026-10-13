@@ -107,3 +107,5 @@ Goal: confidently replace the spreadsheet long-term.
 - Synthetic demo account/data
 - Public portfolio documentation/screenshots
 - Known limitations documented
+
+- [x] Original-category mapping workspace: grouped transaction review and atomic category-only assignment to existing categories.
