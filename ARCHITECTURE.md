@@ -226,3 +226,49 @@ V014 assigns OWNER to the earliest existing provisioned user (created_at, then i
 The users module owns persistent registration settings (disabled by default) and versioned email invitations. A code contains 32 SecureRandom bytes encoded as base64url; only its SHA-256 hash is stored. Codes are bound to a normalized email, expire seven days after issue/replacement, and are consumed once. Public policy reads reveal only enabled. Creating/replacing returns a code once; list/read/audit never expose it. Revocation, expiration and consumption retain records. No email delivery, jobs or caches are added.
 
 All mutations lock the single registration settings row first, serializing signup with disabling/revoking/replacing. Signup creates a MEMBER, MFA state, invitation consumption and audit events atomically in an independent transaction; the outer existing AttemptLimiter retains failed counters when signup rolls back. Registration uses a separate client-address limiter key (five failures/five minutes), trusts only the server-resolved address, and never changes login throttling. CSRF remains enforced. After commit, the existing session flow rotates session ID/CSRF and requires MFA under the existing policy.
+
+### Account presentation
+
+V015 adds account display_order and a constrained accent palette to financial_accounts.
+AccountService sorts the owner-scoped list by display order with existing creation/ID
+ordering as the tie-breaker. Reordering locks all submitted owned rows in UUID order,
+checks their versions and full-list membership, then updates positions and audits
+atomically. Appearance updates reuse account ownership and If-Match checks. Both
+settings share the account version and never change financial setup or ledger data.
+
+### Guided legacy-workbook migration
+
+V016 adds owner-scoped import batches, immutable source/workbook staging and links
+from approved proposals to created or explicitly reused ledger operations. The
+workbook reader accepts bounded XLSX/XLSM ZIP content, rejects unsafe XML, never
+executes macros or external links, and preserves cell values, formula text and
+cached formula results. Formula evaluation is deliberately absent.
+
+The imports module normalizes the workbook into a versioned review plan. Every
+source row receives an included or explained-exclusion decision. Existing account
+and category mappings carry optimistic versions; proposed creations remain JSON
+draft data until the final commit. The preview validates dates, exact decimal
+amounts, currencies, account/category availability, reciprocal two-row transfer
+pairs, duplicate choices and independently supplied closing balances. The client
+renders the row decisions as an editable ledger-shaped table grouped by workbook
+account. Category suggestions map exact normalized existing names and otherwise
+propose source labels below reviewable Legacy spending/income roots.
+
+Confirmed legacy card purchases/refunds are ledger activity on the selected card.
+Their recorded bank movements become explicitly approved settlement transfers,
+grouped by calendar month, paying account, card and currency and dated on the
+latest booked row in the group. This preserves bank
+movement and spending while recording that purchase dates and historical card debt
+are not recoverable from the source.
+
+Commit locks the import owner/batch, linked operations, accounts and category state,
+then creates approved resources and invokes LedgerService for every new operation
+in one transaction. The stored preview token makes approval specific to one plan.
+Retries return the same receipt. Reversal locks expectation links and imported
+operations, rejects edited/deleted/dependent activity and soft-deletes only the
+operations created by the batch. Linked existing operations, created resources,
+source lineage and audit history survive reversal. Draft deletion removes the
+batch and source hash so an identical file can be staged again; previously purged
+drafts are hidden and replaced on re-upload. Source-only purge remains available
+for reversed batches. V017 removes empty draft identities left by the earlier
+source-purge behavior while retaining their audit events.

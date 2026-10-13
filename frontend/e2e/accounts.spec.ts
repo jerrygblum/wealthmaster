@@ -85,3 +85,34 @@ test("create, edit, archive, restore, delete an account and log out", async ({
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   expect((await page.request.get("/api/v1/accounts")).status()).toBe(401);
 });
+
+test("account order and colors survive reloads", async ({ page }) => {
+  const email = await syntheticUser();
+  if ((await passwordLogin(page, email)) === "MFA_SETUP_REQUIRED") await enroll(page);
+  await openAccounts(page);
+  for (const name of ["Synthetic daily", "Synthetic savings"]) {
+    await page.getByRole("button", { name: "Create account", exact: true }).click();
+    await page.getByLabel("Account name").fill(name);
+    await page.getByLabel("Currency", { exact: true }).fill("CHF");
+    await page.getByLabel("Opening balance", { exact: true }).fill("100");
+    await page.getByLabel("Opening date").fill("2026-10-04");
+    await page.getByRole("button", { name: "Save account", exact: true }).click();
+    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  }
+  await expect(page.getByRole("article").first()).toContainText("Synthetic savings");
+  const move = page.getByRole("button", { name: "Move Synthetic daily up" });
+  await move.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("article").first()).toContainText("Synthetic daily");
+  await page.getByRole("combobox", { name: "Color for Synthetic daily" }).selectOption("PURPLE");
+  await expect(page.getByRole("article").first()).toHaveAttribute("data-accent", "PURPLE");
+  await page.reload();
+  await expect(page.getByRole("article").first()).toContainText("Synthetic daily");
+  await expect(page.getByRole("article").first()).toHaveAttribute("data-accent", "PURPLE");
+  await expect(page.getByRole("combobox", { name: "Color for Synthetic daily" })).toHaveValue(
+    "PURPLE",
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});

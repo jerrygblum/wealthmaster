@@ -183,4 +183,54 @@ class AccountsIntegrationTest {
             assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM audit_events", Integer.class));
         } finally { jdbc.execute("ALTER TABLE audit_events DROP CONSTRAINT synthetic_reject_account_changes"); }
     }
+    @Test void presentationPersistsWithoutChangingFinancialDataAndChecksVersions() throws Exception {
+        var account = fixture(); var owner = login("owner@example.test");
+        jdbc.update("INSERT INTO ledger_operations(id,owner_id,kind,account_id,amount,currency,transaction_date,description) VALUES(gen_random_uuid(),?,'EXPENSE',?,1,'CHF','2026-10-04','Synthetic')", account.getOwnerId(), account.getId());
+        var path = "/api/v1/accounts/" + account.getId() + "/appearance";
+        mvc.perform(put(path).session(owner).header("X-CSRF-TOKEN", csrf(owner)).header("If-Match", "\"0\"")
+                .contentType("application/json").content("{\"accent\":\"TEAL\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.accent").value("TEAL"))
+                .andExpect(jsonPath("$.version").value(1)).andExpect(jsonPath("$.currentBalance").value("10.12345678"));
+        mvc.perform(get("/api/v1/accounts").session(owner)).andExpect(jsonPath("$[0].accent").value("TEAL"));
+        mvc.perform(put(path).session(owner).header("X-CSRF-TOKEN", csrf(owner)).header("If-Match", "\"0\"")
+                .contentType("application/json").content("{\"accent\":\"ROSE\"}")).andExpect(status().isPreconditionFailed());
+        mvc.perform(put(path).session(owner).header("X-CSRF-TOKEN", csrf(owner)).header("If-Match", "\"1\"")
+                .contentType("application/json").content("{\"accent\":\"INVALID\"}")).andExpect(status().isBadRequest());
+        mvc.perform(put(path).session(owner).header("If-Match", "\"1\"")
+                .contentType("application/json").content("{\"accent\":\"ROSE\"}")).andExpect(status().isForbidden());
+        assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE event_type='ACCOUNT_APPEARANCE_UPDATED'", Integer.class));
+    }
+    @Test void orderIsAtomicVersionedAndIncludesArchivedAccounts() throws Exception {
+        var first = fixture(); var second = fixture(); var owner = login("owner@example.test");
+        jdbc.update("UPDATE financial_accounts SET active=false WHERE id=?", second.getId());
+        var input = "{\"accounts\":[{\"id\":\"%s\",\"version\":0},{\"id\":\"%s\",\"version\":0}]}".formatted(first.getId(), second.getId());
+        mvc.perform(put("/api/v1/accounts/order").session(owner).header("X-CSRF-TOKEN", csrf(owner))
+                .contentType("application/json").content(input)).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(first.getId().toString()))
+                .andExpect(jsonPath("$[1].id").value(second.getId().toString()))
+                .andExpect(jsonPath("$[1].active").value(false));
+        mvc.perform(get("/api/v1/accounts").session(owner)).andExpect(jsonPath("$[0].id").value(first.getId().toString()));
+        mvc.perform(put("/api/v1/accounts/order").session(owner).header("X-CSRF-TOKEN", csrf(owner))
+                .contentType("application/json").content(input)).andExpect(status().isPreconditionFailed());
+        mvc.perform(put("/api/v1/accounts/order").session(owner).header("X-CSRF-TOKEN", csrf(owner))
+                .contentType("application/json").content("{\"accounts\":[]}")).andExpect(status().isPreconditionFailed());
+        mvc.perform(put("/api/v1/accounts/order").session(owner).header("X-CSRF-TOKEN", csrf(owner))
+                .contentType("application/json").content(input.replace(second.getId().toString(),first.getId().toString())))
+                .andExpect(status().isBadRequest());
+        assertEquals(2, jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE event_type='ACCOUNT_REORDERED'", Integer.class));
+    }
+    @Test void presentationAndOrderingCannotMutateAnotherOwnersAccounts() throws Exception {
+        var account = fixture();
+        users.findByEmail("second@example.test").orElseGet(() -> users.save(new AppUser("second@example.test", encoder.encode("synthetic-password"))));
+        var other = login("second@example.test");
+        mvc.perform(put("/api/v1/accounts/" + account.getId() + "/appearance").session(other)
+                .header("X-CSRF-TOKEN", csrf(other)).header("If-Match", "\"0\"")
+                .contentType("application/json").content("{\"accent\":\"BLUE\"}")).andExpect(status().isNotFound());
+        mvc.perform(put("/api/v1/accounts/order").session(other).header("X-CSRF-TOKEN", csrf(other))
+                .contentType("application/json").content("{\"accounts\":[{\"id\":\"%s\",\"version\":0}]}".formatted(account.getId())))
+                .andExpect(status().isNotFound());
+        assertEquals(0, accounts.findById(account.getId()).orElseThrow().getVersion());
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM audit_events", Integer.class));
+    }
+
 }

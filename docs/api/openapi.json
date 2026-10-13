@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Wealth Master API",
-    "version": "0.9.0",
-    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording."
+    "version": "0.10.1",
+    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording. Guided legacy-workbook migration stages private XLSX/XLSM data, requires explicit mappings and approvals, previews duplicates/balances, commits atomically and supports guarded reversal."
   },
   "servers": [
     {
@@ -191,7 +191,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Accounts ordered newest first",
+            "description": "Accounts ordered by saved display order, then newest first and ID for ties",
             "content": {
               "application/json": {
                 "schema": {
@@ -3402,9 +3402,566 @@
           }
         ]
       }
+    },
+    "/accounts/{id}/appearance": {
+      "put": {
+        "summary": "Set account color",
+        "description": "Owner-scoped, versioned presentation change, allowed for archived and used accounts. Financial setup is preserved; changes are audited atomically.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Single quoted account version from the account response, e.g. \"0\".",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "428": {
+            "description": "If-Match required"
+          },
+          "200": {
+            "description": "Updated account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountAppearance"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/order": {
+      "put": {
+        "summary": "Save account display order",
+        "description": "Submit every owned account exactly once, including archived accounts, with current versions. All rows are locked and validated before any changes; stale or incomplete lists return 412, foreign IDs return 404, duplicates return 400. Changes and audits commit atomically. New accounts appear first.",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "200": {
+            "description": "Accounts in saved order with current versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Account"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountOrder"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports": {
+      "get": {
+        "summary": "List the authenticated user's legacy-workbook migration batches",
+        "responses": {
+          "200": {
+            "description": "Owner-scoped batch summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportSummary"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required"
+          }
+        }
+      },
+      "post": {
+        "summary": "Stage an XLSX/XLSM legacy workbook",
+        "description": "Stores owner-scoped private source data, reads bounded OOXML without executing macros or external links, and returns an existing batch for a repeated source hash.",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "XLSX/XLSM workbook up to 10 MiB and 5,000 rows."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Staged batch; no financial resources have been created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unreadable, unsafe or oversized expanded workbook"
+          },
+          "413": {
+            "description": "Upload exceeds 10 MiB"
+          }
+        }
+      }
+    },
+    "/imports/{id}": {
+      "get": {
+        "summary": "Read an owner-scoped migration draft or receipt",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ImportId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Batch with staged workbook metadata and versioned review plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatch"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Batch missing or owned by another user"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an uncommitted migration draft",
+        "description": "Permanently removes the private workbook, parsed cells, decisions and source hash so the same file can be uploaded again. Audit history is retained.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ImportId"
+          },
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Draft deleted"
+          },
+          "409": {
+            "description": "Batch is committed or reversed"
+          },
+          "412": {
+            "description": "Draft revision is stale"
+          }
+        }
+      }
+    },
+    "/imports/{id}/selection": {
+      "put": {
+        "summary": "Choose a sheet and source columns",
+        "description": "Creates fresh row decisions from immutable staged cells. Reconfiguring replaces the current mappings and decisions.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ImportId"
+          },
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportConfigure"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatch"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Stale batch version"
+          }
+        }
+      }
+    },
+    "/imports/{id}/plan": {
+      "put": {
+        "summary": "Save mappings, creation proposals, row decisions and duplicate choices",
+        "description": "Proposed accounts/categories remain draft data. This endpoint never creates financial resources.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ImportId"
+          },
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportSave"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned draft saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatch"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Stale batch or mapped resource version"
+          }
+        }
+      }
+    },
+    "/imports/{id}/preview": {
+      "get": {
+        "summary": "Build the accounting, duplicate and balance preview",
+        "description": "Returns blocking errors, warnings, exact proposed operations, duplicate candidates, projected balances and a token bound to the reviewed plan.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ImportId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review preview; errors must be empty before commit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports/{id}/commit": {
+      "post": {
+        "summary": "Atomically commit an explicitly approved migration plan",
+        "description": "Revalidates versions, ownership, duplicates and the preview token; creates only the listed resources and ledger operations. Identical retries return the same receipt.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ImportId"
+          },
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportApproval"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Committed batch receipt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReceipt"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Preview contains unresolved errors or batch is not a draft"
+          },
+          "412": {
+            "description": "Plan, preview token or mapped resource version changed"
+          }
+        }
+      }
+    },
+    "/imports/{id}/undo": {
+      "get": {
+        "summary": "Preview guarded reversal of batch-created operations",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ImportId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Undo dependencies and affected operation count",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportUndoPreview"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Reverse unchanged operations created by a committed batch",
+        "description": "Soft-deletes only batch-created operations. Linked existing operations, accounts, categories, lineage and audit history remain.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ImportId"
+          },
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "version"
+                ],
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reversed batch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatch"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Imported activity changed or has a dependent expectation/import"
+          }
+        }
+      }
+    },
+    "/imports/{id}/source": {
+      "get": {
+        "summary": "Download the authenticated owner's original private workbook",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ImportId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Original workbook bytes",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Source missing, purged or owned by another user"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Permanently purge private source and draft decisions",
+        "description": "Allowed for drafts and reversed batches only. Batch identity, receipt and audit events remain.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ImportId"
+          },
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Private source and review plan purged"
+          },
+          "409": {
+            "description": "Committed source lineage must be retained until reversal"
+          }
+        }
+      }
     }
   },
   "components": {
+    "parameters": {
+      "ImportId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "CsrfHeader": {
+        "name": "X-CSRF-TOKEN",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
     "securitySchemes": {
       "session": {
         "type": "apiKey",
@@ -3617,6 +4174,14 @@
           "balanceAsOf": {
             "type": "string",
             "format": "date"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "accent": {
+            "$ref": "#/components/schemas/AccountAccent"
           }
         },
         "required": [
@@ -3632,7 +4197,9 @@
           "version",
           "hasActivity",
           "currentBalance",
-          "balanceAsOf"
+          "balanceAsOf",
+          "displayOrder",
+          "accent"
         ]
       },
       "SecurityStatus": {
@@ -4972,6 +5539,445 @@
             "items": {
               "$ref": "#/components/schemas/Invitation"
             }
+          }
+        }
+      },
+      "AccountAccent": {
+        "type": "string",
+        "enum": [
+          "DEFAULT",
+          "BLUE",
+          "TEAL",
+          "PURPLE",
+          "AMBER",
+          "ROSE"
+        ]
+      },
+      "AccountAppearance": {
+        "type": "object",
+        "properties": {
+          "accent": {
+            "$ref": "#/components/schemas/AccountAccent"
+          }
+        },
+        "required": [
+          "accent"
+        ]
+      },
+      "AccountOrder": {
+        "type": "object",
+        "required": [
+          "accounts"
+        ],
+        "properties": {
+          "accounts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "version"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      },
+      "ImportSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "version",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportStatus"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ImportStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "COMMITTED",
+          "REVERSED"
+        ]
+      },
+      "ImportBatch": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ImportSummary"
+          },
+          {
+            "type": "object",
+            "required": [
+              "workbook",
+              "plan",
+              "receipt"
+            ],
+            "properties": {
+              "workbook": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "Parsed sheet/row/cell values, formulas and cached results; null after source purge.",
+                "additionalProperties": true
+              },
+              "plan": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ImportPlan"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "receipt": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ImportReceipt"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "ImportSelection": {
+        "type": "object",
+        "required": [
+          "sheet",
+          "headerRow",
+          "columns"
+        ],
+        "properties": {
+          "sheet": {
+            "type": "string"
+          },
+          "headerRow": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "columns": {
+            "type": "object",
+            "description": "Distinct A–ZZZ column references for date, kind, account, description, amount, balance, category, card and cardText.",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[A-Z]{1,3}$"
+            }
+          }
+        }
+      },
+      "ImportConfigure": {
+        "type": "object",
+        "required": [
+          "version",
+          "selection"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "selection": {
+            "$ref": "#/components/schemas/ImportSelection"
+          }
+        }
+      },
+      "ImportPlan": {
+        "type": "object",
+        "description": "Versioned account/card/category targets, row decisions and duplicate choices. Creation inputs remain proposals until commit.",
+        "required": [
+          "selection",
+          "start",
+          "end",
+          "accounts",
+          "categories",
+          "rows",
+          "duplicates"
+        ],
+        "properties": {
+          "selection": {
+            "$ref": "#/components/schemas/ImportSelection"
+          },
+          "start": {
+            "type": "string",
+            "format": "date"
+          },
+          "end": {
+            "type": "string",
+            "format": "date"
+          },
+          "accounts": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "categories": {
+            "type": "array",
+            "maxItems": 300,
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "rows": {
+            "type": "array",
+            "maxItems": 5000,
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "duplicates": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "ImportSave": {
+        "type": "object",
+        "required": [
+          "version",
+          "plan"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "plan": {
+            "$ref": "#/components/schemas/ImportPlan"
+          }
+        }
+      },
+      "ImportPreview": {
+        "type": "object",
+        "required": [
+          "version",
+          "token",
+          "errors",
+          "warnings",
+          "operations",
+          "duplicates",
+          "balances",
+          "totals",
+          "excluded"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "token": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "SHA-256 token binding approval to this exact plan and preview context."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "duplicates": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "balances": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "totals": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "excluded": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "ImportApproval": {
+        "type": "object",
+        "required": [
+          "version",
+          "token",
+          "approveCreations",
+          "approveSettlements",
+          "approveExclusions",
+          "acknowledgeDates",
+          "acknowledgeCurrencies",
+          "acknowledgeBaselines",
+          "acknowledgeUnverified"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "token": {
+            "type": "string"
+          },
+          "approveCreations": {
+            "type": "boolean",
+            "const": true
+          },
+          "approveSettlements": {
+            "type": "boolean",
+            "const": true
+          },
+          "approveExclusions": {
+            "type": "boolean",
+            "const": true
+          },
+          "acknowledgeDates": {
+            "type": "boolean",
+            "const": true
+          },
+          "acknowledgeCurrencies": {
+            "type": "boolean",
+            "const": true
+          },
+          "acknowledgeBaselines": {
+            "type": "boolean",
+            "const": true
+          },
+          "acknowledgeUnverified": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      },
+      "ImportReceipt": {
+        "type": "object",
+        "required": [
+          "batchId",
+          "createdOperations",
+          "linkedOperations",
+          "createdAccounts",
+          "createdCategories",
+          "committedAt"
+        ],
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdOperations": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "linkedOperations": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "createdAccounts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "createdCategories": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "committedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ImportUndoPreview": {
+        "type": "object",
+        "required": [
+          "version",
+          "errors",
+          "operations"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "operations": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }

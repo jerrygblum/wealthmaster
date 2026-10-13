@@ -20,7 +20,7 @@ public class AccountService {
     }
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public List<AccountResponse> list(UUID ownerId) {
-        return accounts.findByOwnerIdOrderByCreatedAtDescIdAsc(ownerId).stream().map(this::response).toList();
+        return accounts.findByOwnerIdOrderByCreatedAtDescIdAsc(ownerId).stream().sorted(java.util.Comparator.comparingLong(FinancialAccount::getDisplayOrder)).map(this::response).toList();
     }
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public AccountResponse detail(UUID owner, UUID id) {
@@ -28,6 +28,43 @@ public class AccountService {
     }
     private AccountResponse response(FinancialAccount account) {
         return AccountResponse.from(account).withActivity(usage.hasActivity(account.getId())).withBalance(account.getOpeningBalance().add(ledger.movements(account.getId())).toPlainString(), ledger.today());
+    }
+    @Transactional
+    public AccountResponse appearance(UUID owner, UUID id, String match, Appearance input) {
+        var account = owned(owner, id, match);
+        var before = response(account);
+        account.setAccent(input.accent());
+        accounts.flush();
+        var after = response(account);
+        if (!before.equals(after)) audit.accountChanged(owner, id, "ACCOUNT_APPEARANCE_UPDATED", before, after);
+        return after;
+    }
+    @Transactional
+    public List<AccountResponse> reorder(UUID owner, AccountOrder input) {
+        var entries = new java.util.HashMap<UUID, OrderedAccount>();
+        for (var entry : input.accounts()) {
+            if (entries.put(entry.id(), entry) != null) throw new IllegalArgumentException("Each account must appear once.");
+        }
+        // Match existing ledger lock ordering and validate everything before changing any row.
+        var locked = new java.util.HashMap<UUID, FinancialAccount>();
+        for (var id : new java.util.TreeSet<>(entries.keySet())) {
+            var entry = entries.get(id);
+            locked.put(id, owned(owner, id, "\"" + entry.version() + "\""));
+        }
+        var current = accounts.findByOwnerIdOrderByCreatedAtDescIdAsc(owner);
+        if (current.size() != locked.size() || current.stream().anyMatch(a -> !locked.containsKey(a.getId())))
+            throw new AccountFailure(412, "The account list changed. Reload accounts and try again.");
+        var before = new java.util.HashMap<UUID, AccountResponse>();
+        for (var account : current) before.put(account.getId(), response(account));
+        long position = 1;
+        for (var entry : input.accounts()) locked.get(entry.id()).setDisplayOrder(position++);
+        accounts.flush();
+        for (var account : current) {
+            var after = response(account);
+            if (!before.get(account.getId()).equals(after))
+                audit.accountChanged(owner, account.getId(), "ACCOUNT_REORDERED", before.get(account.getId()), after);
+        }
+        return list(owner);
     }
     @Transactional
     public AccountResponse create(UUID ownerId, CreateAccount input) {

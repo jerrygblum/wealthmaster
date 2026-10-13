@@ -59,6 +59,8 @@ Each account has owner, name, type, institution (optional), native currency, ope
 
 Accounts support editing, archive/restore, and confirmed permanent deletion when unused. Financial activity locks type, currency and opening amount; name, institution and opening date remain editable. Opening date corrections preserve all transactions; balances include all nondeleted movements through today, including before account opening. A nonzero opening balance alone does not block deletion. Archived accounts preserve financial history and valuation; future transaction/trade entry requires restoration. Changes retain audit snapshots, including after permanent deletion.
 
+Users can save a custom account order and choose a named card accent color on the Accounts page. These owner-scoped presentation settings persist across devices, including for archived accounts, without changing financial data. New accounts appear first.
+
 ### Ledger transactions
 - Create/edit/delete transactions with auditability.
 - Income, expense, and expense refunds (refunds reduce spending).
@@ -110,12 +112,15 @@ Record opens a reviewed form and atomically creates ledger activity plus its con
 
 ### Imports
 
-Imports remain deferred while category management, spending reports and monthly expectations are available.
+The implemented migration flow handles the owner's legacy XLSX/XLSM workbook through a guided, manually reviewed process. It stages source rows, maps distinct workbook accounts and Visa labels, pairs two-row transfers, proposes a reviewable two-level category tree, reconstructs monthly settled card activity, and provides an editable ledger-shaped preview with balances and duplicates. It commits atomically with lineage and guarded reversal. Account and category proposals remain staged until the final plan explicitly lists and approves their creation. Deleting a draft removes it from saved migrations and permits the same source file to be staged again. Original workbooks, rows, formulas and cached values remain private and owner-scoped.
+
+Reusable bank-statement imports remain deferred. The implemented legacy adapter does not establish a generic statement format or automatic categorization.
 Supported sequence:
-1. CSV
-2. XLSX
-3. PDF statements later
-4. API integrations much later
+1. Guided legacy XLSX/XLSM migration (implemented)
+2. CSV bank statements later
+3. XLSX bank statements later
+4. PDF statements later
+5. API integrations much later
 
 Import flow:
 `upload -> sheet/source selection -> column detection/mapping -> normalization -> validation -> duplicate detection -> categorization -> preview -> review -> commit`

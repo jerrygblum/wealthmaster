@@ -1,5 +1,5 @@
 import { ActionIcon } from "../../atoms/ActionIcon";
-import { Button, LoadingIndicator } from "../../atoms/Controls";
+import { Button, LoadingIndicator, Select } from "../../atoms/Controls";
 import { ActionGroup } from "../../molecules/ActionGroup";
 import { Confirmation } from "../../molecules/Confirmation";
 import { Message } from "../../molecules/Message";
@@ -7,6 +7,7 @@ import { WorkspaceHeading } from "../application/WorkspaceHeading";
 
 import { accountTypes, displayAmount } from "../../../utils/accountPresentation";
 
+import type { AccountAccent } from "../../../types/models";
 import type { ComponentType } from "react";
 import type { AccountFormProps } from "../../../types/componentProps";
 import type { AccountsPageViewModel } from "../../../types/viewModels";
@@ -32,6 +33,7 @@ export function AccountsPageView({
   setStale,
   visibleAccounts,
   manage,
+  personalize,
   notice,
   setNotice,
   load,
@@ -183,11 +185,15 @@ export function AccountsPageView({
         </section>
       ) : (
         <div className="account-grid">
-          {visibleAccounts.map((account) => {
+          {visibleAccounts.map((account, index) => {
             const balance = account.currentBalance ?? account.openingBalance;
             const owed = account.type === "CREDIT_CARD" && balance.startsWith("-");
             return (
-              <article className="panel account-card" key={account.id}>
+              <article
+                className="panel account-card"
+                data-accent={account.accent ?? "DEFAULT"}
+                key={account.id}
+              >
                 <div className="account-card-heading">
                   <div className="account-card-title">
                     <p className="eyebrow">{accountTypes[account.type]}</p>
@@ -248,6 +254,50 @@ export function AccountsPageView({
                       <ActionIcon action="delete" />
                     </Button>
                   </ActionGroup>
+                </div>
+                <div className="account-personalization">
+                  <div role="group" aria-label={`Order ${account.name}`}>
+                    <Button
+                      variant="secondary"
+                      aria-label={`Move ${account.name} up`}
+                      disabled={index === 0 || showForm || actionPending || !!deleting || stale}
+                      onClick={() => void personalize(account, "up")}
+                    >
+                      ↑
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      aria-label={`Move ${account.name} down`}
+                      disabled={
+                        index === visibleAccounts.length - 1 ||
+                        showForm ||
+                        actionPending ||
+                        !!deleting ||
+                        stale
+                      }
+                      onClick={() => void personalize(account, "down")}
+                    >
+                      ↓
+                    </Button>
+                  </div>
+                  <label>
+                    Color
+                    <Select
+                      aria-label={`Color for ${account.name}`}
+                      value={account.accent ?? "DEFAULT"}
+                      disabled={showForm || actionPending || !!deleting || stale}
+                      onChange={(event) =>
+                        void personalize(account, event.target.value as AccountAccent)
+                      }
+                    >
+                      <option value="DEFAULT">Default</option>
+                      <option value="BLUE">Blue</option>
+                      <option value="TEAL">Teal</option>
+                      <option value="PURPLE">Purple</option>
+                      <option value="AMBER">Amber</option>
+                      <option value="ROSE">Rose</option>
+                    </Select>
+                  </label>
                 </div>
                 {account.institution && <p className="muted">{account.institution}</p>}
                 <p className="balance">

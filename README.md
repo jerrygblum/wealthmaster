@@ -2,7 +2,7 @@
 
 A self-hosted personal finance and net-worth application designed to replace an Excel-based finance workflow while demonstrating end-to-end product ownership and production-minded software delivery.
 
-> **Status:** active development — email/password login, authenticator 2FA, security settings, financial account management, manual cash activity/transfers, current cash net worth, manual categories, and spending by category/period implemented.
+> **Status:** active development — email/password login, authenticator 2FA, security settings, financial account management, manual cash activity/transfers, current cash net worth, manual categories, spending by category/period, and a guided legacy-workbook migration implemented.
 
 ## Product goals
 
@@ -16,7 +16,10 @@ A self-hosted personal finance and net-worth application designed to replace an 
 - Multi-user accounts with mandatory MFA
 - Multiple bank, cash, credit-card, and investment accounts
 - Income, expenses, transfers, transaction splits, and categories
-- CSV/XLSX transaction imports with mapping, preview, duplicate detection, and rollback
+- Guided XLSX/XLSM legacy-workbook migration with Visa/account mapping, reviewable
+  two-level category proposals, an editable ledger preview, monthly card settlements,
+  duplicate review, balance preview and guarded rollback
+- Reusable CSV/XLSX bank-statement imports later
 - PDF statement imports later through the same generic import pipeline
 - Monthly/yearly budgets and expected recurring costs/income
 - Stock/ETF trades, holdings, lots, prices, FX conversion, gains/losses
@@ -43,7 +46,7 @@ The financial ledger is the source of truth. Dashboards, balances, budgets, port
 
 See [ARCHITECTURE.md](ARCHITECTURE.md), [docs/adr](docs/adr/), and the [OpenAPI contract](docs/api/openapi.json).
 
-Account management supports editing, confirmed deletion of unused accounts, and archive/restore. See the [investment cash/holdings design](docs/adr/006-investment-cash-and-holdings.md) for the planned transfer and stock-purchase model. See [account management operations](docs/operations/account-management.md) for migration and audit implications. The default [net-worth overview](docs/operations/net-worth.md) shows assets, liabilities and account contributions per native currency, including archived balances and investment cash. See [category operations](docs/operations/categories.md) for manual classification and lifecycle rules. [Spending](docs/operations/spending.md) shows expenses, refunds and net spending by category for a selected month or year, in separate native currencies. Expand main categories for direct and child breakdowns and open supporting transaction activity. Categories use compact CRUD rows without limits. Budgeting, imports and recurring expectations are deferred; V012 removes remaining limit data while preserving ledger, categories, currency preferences and audit history.
+Account management supports editing, confirmed deletion of unused accounts, and archive/restore. See the [investment cash/holdings design](docs/adr/006-investment-cash-and-holdings.md) for the planned transfer and stock-purchase model. See [account management operations](docs/operations/account-management.md) for migration and audit implications. The default [net-worth overview](docs/operations/net-worth.md) shows assets, liabilities and account contributions per native currency, including archived balances and investment cash. See [category operations](docs/operations/categories.md) for manual classification and lifecycle rules. [Spending](docs/operations/spending.md) shows expenses, refunds and net spending by category for a selected month or year, in separate native currencies. Expand main categories for direct and child breakdowns and open supporting transaction activity. Categories use compact CRUD rows without limits. Budgeting and reusable bank-statement imports remain deferred; V012 removes remaining limit data while preserving ledger, categories, currency preferences and audit history.
 
 ## Local development
 
@@ -84,9 +87,38 @@ Frontend: `http://localhost:5173`
 
 ### Run everything with Docker
 
+Only Docker + Docker Compose are required for this option; Java, Maven and Node.js
+run inside the image builds. On first setup, copy `.env.example` to `.env` if it
+does not already exist, then fill the initial owner credentials and MFA encryption
+values as described in [local login setup](docs/operations/local-auth.md).
+Use `SPRING_PROFILES_ACTIVE=dev` and `SESSION_COOKIE_SECURE=false` for local HTTP.
+Compose reads `.env` automatically.
+
 ```bash
 docker compose up --build
 ```
+
+Open http://localhost:8088. After changing source files, rerun the command to rebuild
+the images. Stop with `docker compose down`; the named database volume is retained.
+
+To add synthetic sample accounts, categories, and three months of transactions to
+the running local app, run `python3 scripts/seed-demo.py`. This optional helper
+requires Python 3.9+, the explicit `dev` profile, and the existing owner's current
+login credentials in the initial-owner variables in `.env`. It signs in through
+the API; accounts with MFA enabled require an interactive flow instead. It adds
+clearly labeled demo data without changing existing entries. Reruns skip matching
+demo account/category names and transaction descriptions; keep those labels intact
+to avoid creating duplicates. Transfers, credit-card purchases/payments, refunds,
+uncategorized spending, and separate CHF/EUR balances are included. Investment
+sample balances represent cash only.
+
+PostgreSQL 18 requires the data volume mounted at `/var/lib/postgresql`, with the
+database stored under `18/docker`; see the [official image documentation](https://hub.docker.com/_/postgres).
+If you used the previous `/var/lib/postgresql/data` mount and startup failed before
+database initialization, rerunning the command above recreates the container with
+the corrected mount. If that volume contains an existing database, back it up and
+plan a migration before restarting: changing the mount does not migrate its data.
+Do not use `docker compose down -v` to resolve the error; it deletes the database volume.
 
 For NAS production deployment using images published by GitHub Actions, see the
 [deployment runbook](docs/operations/deployment.md). Use the standalone

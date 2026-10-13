@@ -13,6 +13,8 @@ import { NetWorthPage } from "../networth/NetWorthPage";
 import { ExpectedPage } from "../expected/ExpectedPage";
 import { SpendingPage } from "../spending/SpendingPage";
 
+import { ImportsPage } from "../imports/ImportsPage";
+
 export default function App() {
   const model = useApp();
   const {
@@ -75,6 +77,8 @@ export default function App() {
           onSession={acceptSession}
           onExpired={expire}
         />
+      ) : session?.status === "AUTHENTICATED" && page === "imports" ? (
+        <ImportsPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "expected" ? (
         <ExpectedPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "spending" ? (

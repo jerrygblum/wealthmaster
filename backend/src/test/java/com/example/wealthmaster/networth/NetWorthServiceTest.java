@@ -17,7 +17,7 @@ class NetWorthServiceTest {
     final NetWorthService service = new NetWorthService(accounts, time);
     AccountResponse account(String name, AccountType type, String currency, String balance, boolean active, LocalDate date) {
         return new AccountResponse(UUID.randomUUID(), name, type, null, currency, balance, date, active, instant,
-                0, false, balance, time.today());
+                0, false, balance, time.today(), 0, AccountDtos.Accent.DEFAULT);
     }
     @Test void separatesCurrenciesAndClassifiesBySignedPositionWithExactLargeTotals() {
         when(accounts.list(owner)).thenReturn(List.of(
