@@ -31,7 +31,7 @@ export function useOriginalCategories(onExpired: () => void) {
         api.categories(),
       ]);
       if (version !== requests.current.version) return;
-      setGroups(groups);
+      setGroups(groups.filter((group) => group.uncategorizedCount > 0));
       setCategories(categories.items);
       setTargetId("");
       setConfirming(false);

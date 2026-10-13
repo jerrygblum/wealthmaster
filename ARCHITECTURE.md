@@ -57,7 +57,7 @@ Buying/selling an asset changes portfolio composition; it is not ordinary spendi
 
 ### Account lifecycle
 
-An account can be edited or permanently deleted while it has no financial activity. An opening balance alone is not activity. Once activity exists, type, currency and opening balance are locked; name, institution and opening date remain editable. Opening date corrections preserve ledger dates and spending. Balances include all recorded nondeleted movements through today, including before opening. Archive/restore is reversible. Archived accounts retain their balances and valuation contributions; future writers must reject new activity until restoration.
+An account can be edited or permanently deleted while it has no financial activity. An opening balance alone is not activity. Once activity exists, type, currency and opening balance are locked; name, institution and opening date remain editable. Opening date corrections preserve ledger dates and spending. Balances include all recorded nondeleted movements through today, including before opening. Archive/restore is reversible. Archived accounts retain their balances and history but are excluded from current net worth (ADR 007); future writers must reject new activity until restoration.
 
 Mutations require the version returned in the account response, quoted in `If-Match`. Owner-scoped row locks serialize checks and writes; JPA versioning detects stale requests. Account changes and audit snapshots commit together. Audit resource IDs intentionally survive account deletion without a foreign key to the account.
 
@@ -171,7 +171,7 @@ Dates use `LocalDate`; today uses `APP_BUSINESS_TIME_ZONE` (default `Europe/Zuri
 
 `networth` exposes owner-scoped `GET /api/v1/net-worth/current`. Its read-only repeatable-read transaction calls `AccountService` so opening balances and ledger movements share one PostgreSQL snapshot, including during concurrent transfers or account edits. No cached balances, persisted report rows, audit writes or schema changes are needed.
 
-Positive signed balances contribute to assets; absolute negative balances contribute to liabilities. Totals and account-type breakdowns use `BigDecimal` and decimal-string DTOs, without imposing input digit limits on aggregates. Archived accounts remain included; accounts opening after the business date appear separately. Investment valuation currently covers cash only. Currencies are never combined without FX data.
+Positive signed balances contribute to assets; absolute negative balances contribute to liabilities. Totals and account-type breakdowns use `BigDecimal` and decimal-string DTOs, without imposing input digit limits on aggregates. Archived accounts are excluded from totals and account contributions; active accounts opening after the business date appear separately (ADR 007). Investment valuation currently covers cash only. Currencies are never combined without FX data.
 
 Shared injectable `BusinessTime` derives business dates from the application `Clock` and `APP_BUSINESS_TIME_ZONE` (default `Europe/Zurich`); calculation timestamps remain UTC instants. The API disables HTTP caching. The frontend defaults to `#/net-worth`, reloads the report on entry, and links each contribution to its account activity.
 

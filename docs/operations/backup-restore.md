@@ -18,3 +18,9 @@ Record:
 - commands/process used;
 - validation performed;
 - issues found.
+
+Manual updates can use `scripts/deploy-nas.sh` as described in the deployment
+runbook. It pauses application writes and saves a private custom-format pg_dump,
+matching `.env`, Compose file and image references before updating. Archive
+readability is checked; periodic full restores into an isolated environment remain
+necessary. Backups are kept in the deployment folder's `backups/` directory.

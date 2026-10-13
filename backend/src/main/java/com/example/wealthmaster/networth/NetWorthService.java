@@ -18,7 +18,7 @@ public class NetWorthService {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public CurrentNetWorth current(UUID owner) {
         // AccountService joins this transaction: all balances share the same database snapshot.
-        var balances = accounts.list(owner).stream().sorted(Comparator.comparing(AccountResponse::currency)
+        var balances = accounts.list(owner).stream().filter(AccountResponse::active).sorted(Comparator.comparing(AccountResponse::currency)
                 .thenComparing(AccountResponse::name, String.CASE_INSENSITIVE_ORDER).thenComparing(AccountResponse::id)).toList();
         var calculatedAt = time.now();
         var date = time.dateAt(calculatedAt);

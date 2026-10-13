@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Wealth Master API",
-    "version": "0.11.0",
+    "version": "0.11.1",
     "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording. Guided legacy-workbook migration stages private XLSX/XLSM data, requires explicit mappings and approvals, previews duplicates/balances, commits atomically and supports guarded reversal."
   },
   "servers": [
@@ -1728,7 +1728,7 @@
     "/net-worth/current": {
       "get": {
         "summary": "Calculate current net worth for the authenticated owner",
-        "description": "One repeatable-read snapshot of opening balances plus all non-deleted ledger movements through the business date, including entries before account opening. Future-dated activity is excluded until its transaction date. Positive balances are assets; negative balances are liabilities. Includes archived accounts and investment cash, excludes future-opening accounts. Native currencies remain separate; no FX conversion or security valuation. Business date uses APP_BUSINESS_TIME_ZONE. Read-only; no CSRF token required.",
+        "description": "One repeatable-read snapshot of opening balances plus all non-deleted ledger movements through the business date, including entries before account opening. Future-dated activity is excluded until its transaction date. Positive balances are assets; negative balances are liabilities. Includes active accounts and investment cash only; archived accounts are excluded from totals, breakdowns, contributions and future-account listings. Active future-opening accounts are listed separately and excluded from totals. Native currencies remain separate; no FX conversion or security valuation. Business date uses APP_BUSINESS_TIME_ZONE. Read-only; no CSRF token required.",
         "security": [
           {
             "session": []

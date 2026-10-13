@@ -29,22 +29,22 @@ class NetWorthServiceTest {
             account("Broker cash", AccountType.INVESTMENT, "EUR", "0.12345678", true, time.today()),
             account("Zero", AccountType.OTHER, "EUR", "0", true, time.today())));
         var report = service.current(owner);
-        assertEquals(7, report.accounts().size()); assertEquals(2, report.currencies().size());
+        assertEquals(6, report.accounts().size()); assertEquals(2, report.currencies().size());
         var chf = report.currencies().getFirst();
-        assertEquals("CHF", chf.currency()); assertEquals("200000000000000000018.24691356", chf.assets());
-        assertEquals("150.00000001", chf.liabilities()); assertEquals("199999999999999999868.24691355", chf.netWorth());
+        assertEquals("CHF", chf.currency()); assertEquals("100000000000000000019.12345678", chf.assets());
+        assertEquals("150.00000001", chf.liabilities()); assertEquals("99999999999999999869.12345677", chf.netWorth());
         var cards = chf.byAccountType().stream().filter(t -> t.type() == AccountType.CREDIT_CARD).findFirst().orElseThrow();
         assertEquals("20", cards.assets()); assertEquals("100", cards.liabilities()); assertEquals("-80", cards.netWorth());
         assertEquals("0.12345678", report.currencies().getLast().netWorth());
         verify(accounts).list(owner);
     }
     @Test void excludesFutureAccountsAndIncludesOpeningDayUsingBusinessTimezone() {
-        var future = account("Future", AccountType.SAVINGS, "USD", "500", false, time.today().plusDays(1));
+        var future = account("Future", AccountType.SAVINGS, "USD", "500", true, time.today().plusDays(1));
         when(accounts.list(owner)).thenReturn(List.of(future, account("Opens today", AccountType.CASH, "CHF", "-1", true, time.today())));
         var report = service.current(owner);
         assertEquals(LocalDate.of(2026, 10, 5), report.balanceAsOf()); assertEquals(instant, report.calculatedAt());
         assertEquals("-1", report.currencies().getFirst().netWorth()); assertEquals(1, report.accounts().size());
-        assertEquals(future.id(), report.excludedFutureAccounts().getFirst().id()); assertFalse(report.excludedFutureAccounts().getFirst().active());
+        assertEquals(future.id(), report.excludedFutureAccounts().getFirst().id()); assertTrue(report.excludedFutureAccounts().getFirst().active());
         assertEquals(LocalDate.of(2026, 10, 4), new BusinessTime(Clock.fixed(instant, ZoneOffset.UTC), "UTC").today());
     }
     @Test void emptyAndFutureOnlyReportsDoNotInventCurrencyTotals() {
@@ -52,4 +52,13 @@ class NetWorthServiceTest {
         when(accounts.list(owner)).thenReturn(List.of(account("Future", AccountType.CASH, "CHF", "10", true, time.today().plusDays(1))));
         var report = service.current(owner); assertTrue(report.currencies().isEmpty()); assertTrue(report.accounts().isEmpty()); assertEquals(1, report.excludedFutureAccounts().size());
     }
+    @Test void archivedAssetsDebtsAndFutureAccountsContributeNothing() {
+        when(accounts.list(owner)).thenReturn(List.of(
+            account("Archived asset",AccountType.CASH,"CHF","100",false,time.today()),
+            account("Archived debt",AccountType.CREDIT_CARD,"EUR","-25",false,time.today()),
+            account("Archived future",AccountType.CASH,"USD","10",false,time.today().plusDays(1))));
+        var report=service.current(owner);
+        assertTrue(report.accounts().isEmpty());assertTrue(report.currencies().isEmpty());assertTrue(report.excludedFutureAccounts().isEmpty());
+    }
+
 }

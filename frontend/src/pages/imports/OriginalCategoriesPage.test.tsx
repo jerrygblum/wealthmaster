@@ -125,8 +125,22 @@ it("shows stale errors and requires refresh before retrying", async () => {
 it("handles empty and failed loads without offering a mapping", async () => {
   vi.mocked(api.originalCategoryGroups).mockResolvedValue([]);
   render(<OriginalCategoriesPage onExpired={vi.fn()} />);
-  expect(await screen.findByText("No original categories found")).toBeVisible();
+  expect(await screen.findByText("No original categories left to map")).toBeVisible();
   vi.mocked(api.originalCategoryGroups).mockRejectedValue(new ApiError(0, "Offline"));
   fireEvent.click(screen.getByRole("button", { name: "Refresh groups" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Offline");
+});
+
+it("hides completed groups, including after applying the last mapping", async () => {
+  const completed = { ...group, originalCategory: "Completed", uncategorizedCount: 0 };
+  vi.mocked(api.originalCategoryGroups)
+    .mockResolvedValueOnce([completed, group])
+    .mockResolvedValue([completed]);
+  render(<OriginalCategoriesPage onExpired={vi.fn()} />);
+  await review();
+  expect(screen.queryByRole("button", { name: "Review Completed (Spending)" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Map 2 transactions" }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirm mapping" }));
+  expect(await screen.findByText("No original categories left to map")).toBeVisible();
+  expect(screen.queryByRole("region", { name: "Review original category" })).toBeNull();
 });

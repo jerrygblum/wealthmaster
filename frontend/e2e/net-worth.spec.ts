@@ -14,7 +14,7 @@ test("net worth is the default, separates currencies, and follows account activi
   if ((await passwordLogin(page, email)) === "MFA_SETUP_REQUIRED") await enroll(page);
   await expect(page.getByRole("heading", { name: "Net worth", exact: true })).toBeVisible();
   await expectCompactWorkspace(page);
-  await expect(page.getByText("Start with your first account")).toBeVisible();
+  await expect(page.getByText("No active accounts yet")).toBeVisible();
   await openAccounts(page);
   for (const fixture of [
     {
@@ -71,11 +71,9 @@ test("net worth is the default, separates currencies, and follows account activi
   await page.getByRole("link", { name: "Net worth", exact: true }).click();
   const chf = page.getByRole("region", { name: "CHF net worth", exact: true });
   await expect(chf.locator(".net-worth-total")).toHaveText("CHF 900.12");
-  await expect(
-    page.getByRole("region", { name: "EUR net worth", exact: true }).locator(".net-worth-total"),
-  ).toHaveText("EUR 20.00");
+  await expect(page.getByRole("region", { name: "EUR net worth", exact: true })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "USD net worth", exact: true })).toHaveCount(0);
-  await expect(page.getByText("Archived · included in totals")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Synthetic broker", exact: true })).toHaveCount(0);
   await expect(page.getByText(/Excluded from current totals/)).toBeVisible();
   await chf.getByText("Breakdown by account type").click();
   await expect(chf.getByText("Credit card", { exact: true })).toBeVisible();

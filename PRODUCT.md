@@ -57,7 +57,7 @@ Supported types initially:
 
 Each account has owner, name, type, institution (optional), native currency, opening balance, opening date, and active/archive status. Investment opening balances represent uninvested cash only.
 
-Accounts support editing, archive/restore, and confirmed permanent deletion when unused. Financial activity locks type, currency and opening amount; name, institution and opening date remain editable. Opening date corrections preserve all transactions; balances include all nondeleted movements through today, including before account opening. A nonzero opening balance alone does not block deletion. Archived accounts preserve financial history and valuation; future transaction/trade entry requires restoration. Changes retain audit snapshots, including after permanent deletion.
+Accounts support editing, archive/restore, and confirmed permanent deletion when unused. Financial activity locks type, currency and opening amount; name, institution and opening date remain editable. Opening date corrections preserve all transactions; balances include all nondeleted movements through today, including before account opening. A nonzero opening balance alone does not block deletion. Archived accounts preserve financial history and balances but do not contribute to current net worth; future transaction/trade entry requires restoration. Changes retain audit snapshots, including after permanent deletion.
 
 Users can save a custom account order and choose a named card accent color on the Accounts page. These owner-scoped presentation settings persist across devices, including for archived accounts, without changing financial data. New accounts appear first.
 
@@ -179,7 +179,7 @@ Market prices may be delayed depending on provider/licensing. UI must show quote
 
 Current view includes contribution by account/asset type and drill-down to source data.
 
-The implemented cash-ledger view is the default landing page. It shows assets, liabilities and net worth separately for each native currency, including archived accounts and investment cash only. Positive balances are assets and negative balances are liabilities, including bank overdrafts and credit-card overpayments. Accounts opening after the configured business date are listed separately and excluded until that date. Totals retain exact decimal precision and show their business date and calculation timestamp. No combined FX total or security valuation is available yet. Categories are available for manual assignment.
+The implemented cash-ledger view is the default landing page. It shows assets, liabilities and net worth separately for each native currency, including active accounts and investment cash only. Archived accounts are excluded; restoring them reinstates their contributions. Positive balances are assets and negative balances are liabilities, including bank overdrafts and credit-card overpayments. Accounts opening after the configured business date are listed separately and excluded until that date. Totals retain exact decimal precision and show their business date and calculation timestamp. No combined FX total or security valuation is available yet. Categories are available for manual assignment.
 
 Historical net-worth snapshots/views show change over time without retroactively rewriting history because of today's FX/prices.
 

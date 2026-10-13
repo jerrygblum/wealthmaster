@@ -22,9 +22,9 @@ export function NetWorthPageView({ report, loading, error, load, user }: NetWort
         </Button>
       </div>
       <p className="help">
-        Based on recorded account balances, including archived accounts. Investment accounts
-        contribute uninvested cash. Each currency has its own total; totals do not include currency
-        conversion or security holdings.
+        Based on recorded balances of active accounts. Archived accounts are excluded. Investment
+        accounts contribute uninvested cash. Each currency has its own total; totals do not include
+        currency conversion or security holdings.
       </p>
       {error && (
         <div className="error" role="alert">
@@ -53,12 +53,12 @@ export function NetWorthPageView({ report, loading, error, load, user }: NetWort
                 <h2>
                   {report.excludedFutureAccounts.length
                     ? "No accounts are open yet"
-                    : "Start with your first account"}
+                    : "No active accounts yet"}
                 </h2>
                 <p>
                   {report.excludedFutureAccounts.length
                     ? "Future accounts will contribute once their opening date arrives."
-                    : "Add your opening balances to see what you own and owe."}
+                    : "Add or restore an active account to see what you own and owe."}
                 </p>
                 <Link href="#/accounts">Go to Accounts</Link>
               </section>
@@ -120,7 +120,6 @@ export function NetWorthPageView({ report, loading, error, load, user }: NetWort
                       <p>
                         {account.currency} {displayAmount(account.currentBalance)}
                       </p>
-                      {!account.active && <p className="muted">Archived · included in totals</p>}
                     </article>
                   ))}
                 </div>
@@ -140,7 +139,6 @@ export function NetWorthPageView({ report, loading, error, load, user }: NetWort
                       <Link href={`#/accounts/${account.id}`}>{account.name}</Link> ·{" "}
                       {accountTypes[account.type]} · {account.currency} · Opens{" "}
                       <time dateTime={account.openingDate}>{account.openingDate}</time>
-                      {!account.active && " · Archived"}
                     </li>
                   ))}
                 </ul>
