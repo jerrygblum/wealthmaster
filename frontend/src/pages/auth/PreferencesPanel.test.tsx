@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
+import type { Preferences } from "../../types/models";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { api, ApiError } from "../../services/api";
 import { PreferencesPanel } from "./PreferencesPanel";
@@ -53,4 +55,29 @@ it("retains stale input and requires reload; handles session expiry", async () =
   vi.mocked(api.preferences).mockRejectedValue(new ApiError(401, "Expired"));
   fireEvent.click(screen.getByText("Reload currency settings"));
   await waitFor(() => expect(expired).toHaveBeenCalledOnce());
+});
+
+it("ignores a late initial response after the latest load and a currency edit", async () => {
+  let finishOldLoad!: (preferences: Preferences) => void;
+  vi.mocked(api.preferences)
+    .mockImplementationOnce(
+      () =>
+        new Promise<Preferences>((resolve) => {
+          finishOldLoad = resolve;
+        }),
+    )
+    .mockResolvedValueOnce({ defaultCurrency: "CHF", version: 2 });
+  render(
+    <StrictMode>
+      <PreferencesPanel onExpired={vi.fn()} />
+    </StrictMode>,
+  );
+  const input = await screen.findByLabelText("Default currency (ISO code)");
+  fireEvent.change(input, { target: { value: "EUR" } });
+  await act(async () => {
+    finishOldLoad({ defaultCurrency: "CHF", version: 2 });
+    await Promise.resolve();
+  });
+  expect(input).toHaveValue("EUR");
+  expect(screen.getByText("Save default currency")).toBeEnabled();
 });
