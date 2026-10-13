@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../../services/api";
 import type { Preferences } from "../../types/models";
 export function usePreferences(onExpired: () => void) {
+  const loadVersion = useRef({ version: 0 });
   const [data, setData] = useState<Preferences>();
   const [currency, setCurrency] = useState("");
   const [loading, setLoading] = useState(true);
@@ -20,21 +21,27 @@ export function usePreferences(onExpired: () => void) {
     [onExpired],
   );
   const load = useCallback(async () => {
+    const version = ++loadVersion.current.version;
     setLoading(true);
     setError("");
     setStale(false);
     try {
       const result = await api.preferences();
+      if (version !== loadVersion.current.version) return;
       setData(result);
       setCurrency(result.defaultCurrency ?? "");
     } catch (e) {
-      fail(e);
+      if (version === loadVersion.current.version) fail(e);
     } finally {
-      setLoading(false);
+      if (version === loadVersion.current.version) setLoading(false);
     }
   }, [fail]);
   useEffect(() => {
+    const requests = loadVersion.current;
     void load();
+    return () => {
+      requests.version++;
+    };
   }, [load]);
   async function save() {
     if (!data || stale) return;

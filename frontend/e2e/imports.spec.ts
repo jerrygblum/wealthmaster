@@ -23,7 +23,7 @@ test("stages a synthetic workbook without creating accounts", async ({ page }) =
   await expect(
     page.getByRole("heading", { name: "Map accounts, cards and categories" }),
   ).toBeVisible();
-  await expect(page.getByText(/Nothing is created by matching a label/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Use Uncategorized for all rows" })).toBeVisible();
 
   await openAccounts(page);
   await expect(page.getByRole("heading", { name: "Your first account starts here" })).toBeVisible();
