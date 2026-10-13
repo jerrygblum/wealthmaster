@@ -25,10 +25,9 @@ export function OriginalCategoriesView(model: OriginalCategoriesViewModel) {
       {model.notice && <p role="status">{model.notice}</p>}
       {!loading && !groups.length && !model.error && (
         <section className="panel">
-          <h2>No original categories found</h2>
+          <h2>No original categories left to map</h2>
           <p>
-            Transactions with “Original category:” in their descriptions will appear here after
-            migration.
+            Only groups with uncategorized transactions appear here. Completed groups are hidden.
           </p>
         </section>
       )}

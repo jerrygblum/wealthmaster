@@ -29,3 +29,10 @@ uploads/
 playwright-report/
 test-results/
 coverage/
+
+# Deployment lock and temporary environment files
+.deploy.lock/
+.deploy.env.*
+
+# Python test caches
+__pycache__/

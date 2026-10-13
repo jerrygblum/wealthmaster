@@ -106,6 +106,48 @@ For each manual update:
 3. Change only `WEALTHMASTER_IMAGE_TAG` in the NAS `.env` to that revision's tag.
 4. Run the same `pull`, `up -d`, and `ps` commands, then check HTTPS login and data.
 
+### Automated NAS update
+
+Copy `scripts/deploy-nas.sh` from this repository to the existing NAS deployment
+folder as `deploy-nas.sh`. After both image-publishing jobs have passed, run:
+
+```sh
+cd /volume1/docker/wealthmaster
+sudo sh ./deploy-nas.sh sha-FULL_COMMIT_SHA_FROM_CI
+```
+
+Replace `sha-FULL_COMMIT_SHA_FROM_CI` with the exact published tag. An optional
+second argument sets the deployment directory. The script uses project
+`wealthmaster` and detects standalone `docker-compose` or the Compose plugin.
+It requires an existing running backend, frontend container and PostgreSQL;
+first installations still use the steps above. Existing GHCR authentication must
+be available to the Docker account running the script.
+
+The script locks the deployment directory against overlapping updates, validates
+the existing configuration without printing secrets, and creates a private unique
+`backups/deploy-...` directory. It copies `.env`, production Compose and the old
+image references/digests. It stops the backend to prevent writes, creates a custom
+format PostgreSQL dump, and checks that `pg_restore --list` can read the archive.
+This verifies archive readability, not a full restore drill. The app is unavailable
+from backend stop until the update becomes healthy.
+
+Only after successful backup does it pull both requested application images,
+atomically update the image tag in `.env`, and start backend/frontend. It leaves
+PostgreSQL and its volume in place. It waits up to 300 seconds for PostgreSQL and
+backend health and for the frontend to serve HTTP; `DEPLOY_HEALTH_TIMEOUT` accepts
+1–3600 seconds if the NAS needs longer. On success it prints the tag and backup
+location. Check HTTPS login and your data afterward.
+
+Failures before container replacement preserve the old configuration and restart
+the old backend. Once replacement begins, a failure exits nonzero and retains the
+new configuration and backup for diagnosis. It does not roll back automatically,
+because Flyway may already have changed the schema. Interrupted runs release the
+lock on normal termination; after a power loss, inspect before removing a stale
+`.deploy.lock`. Backups are retained without automatic pruning; include this
+folder in the NAS backup strategy and restrict access because it contains secrets.
+Deployment-script tests use synthetic Docker responses in CI; on-device update
+and restore validation still require the NAS.
+
 App sessions end when the backend restarts. Flyway applies migrations automatically.
 Changing the tag back does not undo migrations: if the previous app cannot use
 the new schema, restore the pre-update backup and matching configuration before

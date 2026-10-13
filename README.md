@@ -47,7 +47,7 @@ The financial ledger is the source of truth. Dashboards, balances, budgets, port
 
 See [ARCHITECTURE.md](ARCHITECTURE.md), [docs/adr](docs/adr/), and the [OpenAPI contract](docs/api/openapi.json).
 
-Account management supports editing, confirmed deletion of unused accounts, and archive/restore. See the [investment cash/holdings design](docs/adr/006-investment-cash-and-holdings.md) for the planned transfer and stock-purchase model. See [account management operations](docs/operations/account-management.md) for migration and audit implications. The default [net-worth overview](docs/operations/net-worth.md) shows assets, liabilities and account contributions per native currency, including archived balances and investment cash. See [category operations](docs/operations/categories.md) for manual classification and lifecycle rules. [Spending](docs/operations/spending.md) shows expenses, refunds and net spending by category for a selected month or year, in separate native currencies. Expand main categories for direct and child breakdowns and open supporting transaction activity. Categories use compact CRUD rows without limits. Budgeting and reusable bank-statement imports remain deferred; V012 removes remaining limit data while preserving ledger, categories, currency preferences and audit history.
+Account management supports editing, confirmed deletion of unused accounts, and archive/restore. See the [investment cash/holdings design](docs/adr/006-investment-cash-and-holdings.md) for the planned transfer and stock-purchase model. See [account management operations](docs/operations/account-management.md) for migration and audit implications. The default [net-worth overview](docs/operations/net-worth.md) shows assets, liabilities and account contributions per native currency, including active accounts and investment cash; archived accounts are excluded. See [category operations](docs/operations/categories.md) for manual classification and lifecycle rules. [Spending](docs/operations/spending.md) shows expenses, refunds and net spending by category for a selected month or year, in separate native currencies. Expand main categories for direct and child breakdowns and open supporting transaction activity. Categories use compact CRUD rows without limits. Budgeting and reusable bank-statement imports remain deferred; V012 removes remaining limit data while preserving ledger, categories, currency preferences and audit history.
 
 ## Local development
 
@@ -124,7 +124,10 @@ Do not use `docker compose down -v` to resolve the error; it deletes the databas
 For NAS production deployment using images published by GitHub Actions, see the
 [deployment runbook](docs/operations/deployment.md). Use the standalone
 `docker-compose.prod.yml` and `.env.production.example`; the local development
-environment example is not suitable for production.
+environment example is not suitable for production. For subsequent NAS updates,
+copy `scripts/deploy-nas.sh` to the deployment directory and run it with the
+published image tag; it backs up PostgreSQL/configuration before updating and
+checks application health. See the runbook for usage and recovery.
 
 ## Repository guide
 

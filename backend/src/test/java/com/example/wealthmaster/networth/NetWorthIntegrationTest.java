@@ -90,8 +90,10 @@ class NetWorthIntegrationTest {
         ledger.transfer(owner(),null,null,new TransferInput(bank.getId(),investment.getId(),"25",ledger.today(),"Synthetic funding",null)); worth("410.12345678");
         ledger.transaction(owner(),income.id(),"\"0\"",input(bank.getId(),Kind.INCOME,"600.12345678")); worth("510.12345678");
         ledger.delete(owner(),refund.id(),"\"0\"",false); worth("500.12345678");
-        accountService.setActive(owner(),investment.getId(),"\"0\"",false); worth("500.12345678");
-        assertTrue(netWorth.current(owner()).accounts().stream().anyMatch(a->a.id().equals(investment.getId()) && !a.active()));
+        accountService.setActive(owner(),investment.getId(),"\"0\"",false); worth("475.12345678");
+        assertTrue(netWorth.current(owner()).accounts().stream().noneMatch(a->a.id().equals(investment.getId())));
+        balance(investment.getId(),"25");
+        accountService.setActive(owner(),investment.getId(),"\"1\"",true); worth("500.12345678");
         var future=accounts.saveAndFlush(new FinancialAccount(owner(),"Synthetic future",AccountType.CASH,null,"EUR",new BigDecimal("999"),ledger.today().plusDays(10)));
         worth("500.12345678"); assertEquals(future.getId(),netWorth.current(owner()).excludedFutureAccounts().getFirst().id());
     }

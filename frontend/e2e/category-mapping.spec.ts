@@ -53,10 +53,10 @@ test("reviews original category groups and assigns existing categories without c
   await page.getByRole("button", { name: "Map 2 transactions" }).click();
   await page.getByRole("button", { name: "Confirm mapping" }).click();
   await expect(page.getByText(/2 transactions categorized/)).toBeVisible();
-  await expect(page.getByText("2 transactions · 0 uncategorized")).toBeVisible();
+  await expect(page.getByText("No original categories left to map")).toBeVisible();
   await page.reload();
-  await page.getByRole("button", { name: "Review Legacy food (Spending)" }).click();
-  await expect(page.getByRole("button", { name: "Map 0 transactions" })).toBeDisabled();
+  await expect(page.getByText("No original categories left to map")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Review Legacy food (Spending)" })).toHaveCount(0);
   const activity = (await (
     await page.request.get(`/api/v1/transactions?accountId=${account.id}`)
   ).json()) as { items: Operation[] };

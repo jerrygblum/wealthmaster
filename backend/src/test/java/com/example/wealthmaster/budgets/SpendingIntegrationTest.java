@@ -174,11 +174,15 @@ class SpendingIntegrationTest {
         spend(a.getId(),child.id(),Kind.EXPENSE,"1",ledger.today());
         spend(a.getId(),child.id(),Kind.REFUND,"3",ledger.today());
         ledger.transfer(owner(),null,null,new TransferInput(a.getId(),account().getId(),"5",ledger.today(),"Synthetic excluded transfer",null));
-        var balances=accountService.detail(owner(),a.getId()).currentBalance();var worth=netWorth.current(owner()).currencies();
+        var balances=accountService.detail(owner(),a.getId()).currentBalance();
+        var worth=new BigDecimal(netWorth.current(owner()).currencies().getFirst().netWorth());
         categories.setActive(owner(),root.id(),version(current(root.id())),false);accountService.setActive(owner(),a.getId(),"\"0\"",false);
         var report=spendingReport.report(owner(),MONTH,ledger.today().withDayOfMonth(1));
         assertFalse(report.categories().stream().filter(c->c.id().equals(root.id())).findFirst().orElseThrow().available());money("-2",report.currencies().getFirst().netSpending());
-        assertEquals(balances,accountService.detail(owner(),a.getId()).currentBalance());assertEquals(worth,netWorth.current(owner()).currencies());
+        assertEquals(balances,accountService.detail(owner(),a.getId()).currentBalance());
+        var current=netWorth.current(owner());
+        money(worth.subtract(new BigDecimal(balances)).toPlainString(),current.currencies().getFirst().netWorth());
+        assertTrue(current.accounts().stream().noneMatch(contribution->contribution.id().equals(a.getId())));
     }
     @Test void currencyPreferenceChangesAreVersionedAndDoNotAffectSpending() {
         var root=categories.create(owner(),spending("Food",null));

@@ -51,10 +51,10 @@ const report: CurrentNetWorth = {
   accounts: [
     {
       id: "a",
-      name: "Synthetic archived",
+      name: "Synthetic active",
       type: "INVESTMENT",
       currency: "CHF",
-      active: false,
+      active: true,
       currentBalance: "-150.00000001",
     },
   ],
@@ -77,13 +77,13 @@ beforeEach(() => {
   vi.mocked(api.accounts).mockResolvedValue([]);
   vi.mocked(api.session).mockRejectedValue(new ApiError(401, "Please sign in."));
 });
-it("renders exact totals, signed contributions, archived status and excluded future accounts", async () => {
+it("renders exact totals, signed contributions, active contributions and excluded future accounts", async () => {
   vi.mocked(api.currentNetWorth).mockResolvedValue(report);
   render(<NetWorthPage user={user} onExpired={() => {}} />);
   await screen.findByText("CHF 199’999’999’999’999’999’868.25");
   expect(screen.getByText("CHF 150.00")).toBeVisible();
-  expect(screen.getByText("Archived · included in totals")).toBeVisible();
-  expect(screen.getByRole("link", { name: "Synthetic archived" })).toHaveAttribute(
+  expect(screen.getByText(/Archived accounts are excluded/)).toBeVisible();
+  expect(screen.getByRole("link", { name: "Synthetic active" })).toHaveAttribute(
     "href",
     "#/accounts/a",
   );
@@ -105,7 +105,7 @@ it("shows loading without fabricated zero totals, then handles an empty report",
   expect(screen.getByRole("status")).toHaveTextContent("Calculating");
   expect(screen.queryByText("Assets")).not.toBeInTheDocument();
   resolve(empty);
-  await screen.findByText("Start with your first account");
+  await screen.findByText("No active accounts yet");
 });
 it("marks failed refreshes as previous calculations and retries", async () => {
   vi.mocked(api.currentNetWorth)
@@ -117,7 +117,7 @@ it("marks failed refreshes as previous calculations and retries", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Refresh net worth" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("previous calculation");
   fireEvent.click(screen.getByText("Try again"));
-  await screen.findByText("Start with your first account");
+  await screen.findByText("No active accounts yet");
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
 it("handles future-only reports and expired sessions", async () => {
@@ -134,11 +134,11 @@ it("defaults a restored session to net worth and reloads on re-entry", async () 
   vi.mocked(api.session).mockResolvedValue({ status: "AUTHENTICATED", user });
   render(<App />);
   await screen.findByRole("heading", { name: "Net worth" });
-  await screen.findByText("Start with your first account");
+  await screen.findByText("No active accounts yet");
   fireEvent.click(screen.getByRole("link", { name: "Accounts" }));
   await screen.findByRole("heading", { name: "Accounts" });
   fireEvent.click(screen.getByRole("link", { name: "Net worth" }));
-  await screen.findByText("Start with your first account");
+  await screen.findByText("No active accounts yet");
   expect(api.currentNetWorth).toHaveBeenCalledTimes(2);
 });
 it("preserves an explicit account deep link", async () => {
@@ -177,7 +177,7 @@ it("resets the destination on intentional logout and lands an ordinary login on 
   fireEvent.change(screen.getByLabelText("Email"), { target: { value: user.email } });
   fireEvent.change(screen.getByLabelText("Password"), { target: { value: "synthetic-password" } });
   fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
-  await screen.findByText("Start with your first account");
+  await screen.findByText("No active accounts yet");
 });
 it("preserves the recovery-login redirect to settings", async () => {
   vi.mocked(api.login).mockResolvedValue({ status: "AUTHENTICATED", user, recoveryUsed: true });

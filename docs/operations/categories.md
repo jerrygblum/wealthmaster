@@ -27,7 +27,8 @@ expenses and refunds whose descriptions contain the preserved `Original category
 marker. Income and spending form separate groups even for identical source labels.
 Transfers and deleted operations are excluded. Each group exposes exact amounts,
 account links, dates, descriptions and current category assignments for review;
-transaction tables show 25 rows per page.
+transaction tables show 25 rows per page. The workspace hides groups with no
+uncategorized transactions, including immediately after a completed mapping.
 
 Users select an existing available category of the matching type. Uncategorized
 transactions are selected by default; replacing existing assignments requires an
