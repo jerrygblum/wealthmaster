@@ -112,6 +112,29 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
         jdbc.update("UPDATE ledger_operations SET deleted=TRUE,version=version+1 WHERE id=?",id);
         audit(owner,id,"LEDGER_DELETED",before,null);
     }
+    /** Category-only edits preserve amounts, dates, movements and source descriptions, including on archived accounts. */
+    @Transactional
+    public int assignCategories(UUID owner,List<CategoryChange> changes,UUID categoryId,long categoryVersion) {
+        if(changes==null || changes.isEmpty() || categoryId==null)throw new IllegalArgumentException("Choose transactions and an existing category.");
+        var sorted=new TreeMap<UUID,Long>();
+        for(var change:changes)if(sorted.put(change.id(),change.version())!=null)throw new IllegalArgumentException("Duplicate transaction.");
+        var before=new ArrayList<Operation>();
+        for(var change:sorted.entrySet())before.add(owned(owner,change.getKey(),"\""+change.getValue()+"\"",false));
+        categories.lock(owner);
+        var target=categories.list(owner).items().stream().filter(c->c.id().equals(categoryId)).findFirst().orElseThrow(()->new AccountFailure(404,"Category not found."));
+        if(target.version()!=categoryVersion)throw new AccountFailure(412,"The selected category changed. Refresh and review again.");
+        if(!target.available())throw new AccountFailure(409,"Choose an available category.");
+        int updated=0;
+        for(var op:before) {
+            categories.validateAssignment(owner,categoryId,op.categoryId(),op.kind()==Kind.INCOME);
+            if(categoryId.equals(op.categoryId()))continue;
+            jdbc.update("UPDATE ledger_operations SET category_id=?,version=version+1 WHERE id=? AND owner_id=?",categoryId,op.id(),owner);
+            categories.remember(op.id(),categoryId);
+            var after=jdbc.queryForObject("SELECT * FROM ledger_operations WHERE id=?",this::row,op.id());
+            audit(owner,op.id(),"LEDGER_UPDATED",op,after);updated++;
+        }
+        return updated;
+    }
     private record Change(Operation before,Operation after) {}
     private void audit(UUID owner,UUID id,String event,Operation before,Operation after) {
         jdbc.update("INSERT INTO audit_events(id,actor_id,event_type,resource_id,details) VALUES(?,?,?,?,CAST(? AS jsonb))",UUID.randomUUID(),owner,event,id,mapper.writeValueAsString(new Change(before,after)));

@@ -1,3 +1,4 @@
+import type { OriginalCategoryGroup, OriginalCategoryMapping } from "../types/originalCategories";
 import type {
   ImportBatch,
   ImportSummary,
@@ -119,6 +120,10 @@ async function ledgerMutation<T>(
 }
 
 export const api = {
+  originalCategoryGroups: () => request<OriginalCategoryGroup[]>("/imports/original-categories"),
+  mapOriginalCategory: (mapping: OriginalCategoryMapping) =>
+    ledgerMutation<{ updated: number }>("/imports/original-categories", "POST", mapping),
+
   imports: () => request<ImportSummary[]>("/imports"),
   importBatch: (id: string) => request<ImportBatch>(`/imports/${id}`),
   deleteImportDraft: (batch: ImportBatch) =>

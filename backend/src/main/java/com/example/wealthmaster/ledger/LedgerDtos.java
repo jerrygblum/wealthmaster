@@ -22,5 +22,6 @@ public final class LedgerDtos {
     public record Operation(UUID id, Kind kind, UUID accountId, UUID destinationAccountId,
         String amount, String currency, LocalDate transactionDate, LocalDate valueDate,
         String payee, String description, String notes, Instant createdAt, long version, UUID categoryId, com.example.wealthmaster.budgets.CategoryDtos.Assignment category) {}
+    public record CategoryChange(@NotNull UUID id, @Min(0) long version) {}
     public record ActivityPage(List<Operation> items, int page, boolean hasMore) {}
 }

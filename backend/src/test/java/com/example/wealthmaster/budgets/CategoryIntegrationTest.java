@@ -148,7 +148,15 @@ class CategoryIntegrationTest {
     }
     UUID aId() { return categories.list(owner()).items().stream().filter(c->c.name().equals("Unused")).findFirst().orElseThrow().id(); }
     @Test void starterSetIsAtomicOptionalAndOnlyInstalledOnce() {
-        assertTrue(categories.list(owner()).starterSetAvailable());var installed=categories.starterSet(owner());assertEquals(14,installed.items().size());assertFalse(installed.starterSetAvailable());
+        assertTrue(categories.list(owner()).starterSetAvailable());var installed=categories.starterSet(owner());assertEquals(76,installed.items().size());assertFalse(installed.starterSetAvailable());
+        assertEquals(14,installed.items().stream().filter(c->c.type()==Type.SPENDING && c.parentId()==null).count());
+        assertEquals(60,installed.items().stream().filter(c->c.type()==Type.SPENDING && c.parentId()!=null).count());
+        assertEquals(java.util.Set.of("Salary","Other income"),installed.items().stream().filter(c->c.type()==Type.INCOME).map(Category::name).collect(java.util.stream.Collectors.toSet()));
+        var parents=installed.items().stream().filter(c->c.parentId()==null).collect(java.util.stream.Collectors.toMap(Category::id,Category::name));
+        var children=installed.items().stream().filter(c->c.parentId()!=null).toList();
+        assertTrue(children.stream().allMatch(c->c.type()==Type.SPENDING && parents.containsKey(c.parentId())));
+        assertTrue(children.stream().anyMatch(c->c.name().equals("Toys, books & games") && parents.get(c.parentId()).equals("Children & Education")));
+        assertEquals(2,children.stream().filter(c->c.name().equals("Vehicle taxes")).count());
         assertThrows(CategoryFailure.class,()->categories.starterSet(owner()));
         for(var c:installed.items().stream().filter(c->c.parentId()!=null).toList()) categories.delete(owner(),c.id(),version(c));
         for(var c:installed.items().stream().filter(c->c.parentId()==null).toList()) categories.delete(owner(),c.id(),version(c));
@@ -169,7 +177,7 @@ class CategoryIntegrationTest {
         assertEquals(404,assertThrows(CategoryFailure.class,()->ledger.transaction(owner(),null,null,entry(a.getId(),Kind.EXPENSE,foreign.id()))).status());
     }
     @Test void auditFailureRollsBackCategoryAndStarterCreation() {
-        jdbc.execute("ALTER TABLE audit_events ADD CONSTRAINT synthetic_category_audit_failure CHECK(event_type <> 'CATEGORY_CREATED' OR details->'after'->>'name' <> 'Groceries') NOT VALID");
+        jdbc.execute("ALTER TABLE audit_events ADD CONSTRAINT synthetic_category_audit_failure CHECK(event_type <> 'CATEGORY_CREATED' OR details->'after'->>'name' <> 'Groceries & food') NOT VALID");
         try {assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->categories.starterSet(owner()));assertTrue(categories.list(owner()).items().isEmpty());assertTrue(categories.list(owner()).starterSetAvailable());}
         finally {jdbc.execute("ALTER TABLE audit_events DROP CONSTRAINT synthetic_category_audit_failure");}
     }
@@ -183,7 +191,7 @@ class CategoryIntegrationTest {
         var owner=owner();try(var executor=java.util.concurrent.Executors.newFixedThreadPool(2)) {
             var gate=new java.util.concurrent.CountDownLatch(1);
             java.util.concurrent.Callable<Boolean> install=()->{gate.await();try{categories.starterSet(owner);return true;}catch(CategoryFailure e){assertEquals(409,e.status());return false;}};
-            var first=executor.submit(install);var second=executor.submit(install);gate.countDown();assertNotEquals(first.get(),second.get());assertEquals(14,categories.list(owner).items().size());
+            var first=executor.submit(install);var second=executor.submit(install);gate.countDown();assertNotEquals(first.get(),second.get());assertEquals(76,categories.list(owner).items().size());
         }
     }
     @Test void assignmentSerializesWithCategoryArchiveAndDeletion() throws Exception {

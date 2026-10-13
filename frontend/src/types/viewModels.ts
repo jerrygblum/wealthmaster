@@ -39,3 +39,7 @@ export type RegistrationFormViewModel = ReturnType<
 export type RegistrationPanelViewModel = ReturnType<
   typeof import("../hooks/auth/useRegistrationManagement").useRegistrationManagement
 >;
+
+export type OriginalCategoriesViewModel = ReturnType<
+  typeof import("../hooks/imports/useOriginalCategories").useOriginalCategories
+>;

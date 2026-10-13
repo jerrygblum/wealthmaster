@@ -5,6 +5,7 @@ import type { Session } from "../../types/models";
 
 function currentPage() {
   const hash = window.location.hash;
+  if (hash === "#/category-mapping") return "category-mapping";
   if (hash === "#/imports") return "imports";
   if (hash === "#/register") return "register";
   if (hash === "#/expected") return "expected";

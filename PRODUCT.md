@@ -243,3 +243,11 @@ Outcome: a user can trust and explain the current value and understand how it ch
 - Security updates/dependency maintenance considered part of product ownership.
 
 Spending uses `#/spending`; `#/planning` remains a compatibility alias. Net worth remains the landing page. Month/year selection controls the activity period. Compact category tables show exact expense/refund/net calculations rounded to two decimals for display, with expandable inclusive parents and transaction drill-down. Budgeting and charts are deferred.
+
+### Review original categories after migration
+
+A Category mapping workspace groups migrated transaction descriptions by their
+preserved original category and income/spending context. Users review counts and
+transaction details, choose an existing compatible category, and explicitly apply
+a mapping to uncategorized transactions or opt in to replace existing assignments.
+Mapping preserves source descriptions and balances and rejects stale reviewed data.

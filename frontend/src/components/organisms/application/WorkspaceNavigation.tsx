@@ -9,6 +9,7 @@ export function WorkspaceNavigation({ page }: { page: string }) {
         { id: "expected", name: "Expected" },
         { id: "categories", name: "Categories" },
         { id: "imports", name: "Migration" },
+        { id: "category-mapping", name: "Category mapping" },
         { id: "settings", name: "Settings" },
       ].map((item) => (
         <Link

@@ -17,8 +17,9 @@ A self-hosted personal finance and net-worth application designed to replace an 
 - Multiple bank, cash, credit-card, and investment accounts
 - Income, expenses, transfers, transaction splits, and categories
 - Guided XLSX/XLSM legacy-workbook migration with Visa/account mapping, reviewable
-  two-level category proposals, an editable ledger preview, monthly card settlements,
+  uncategorized transactions with original labels preserved, an editable ledger preview, monthly card settlements,
   duplicate review, balance preview and guarded rollback
+- Category mapping workspace: review original-category groups and their transactions, then apply an existing compatible category in bulk
 - Reusable CSV/XLSX bank-statement imports later
 - PDF statement imports later through the same generic import pipeline
 - Monthly/yearly budgets and expected recurring costs/income
