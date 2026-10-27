@@ -171,7 +171,7 @@ Dates use `LocalDate`; today uses `APP_BUSINESS_TIME_ZONE` (default `Europe/Zuri
 
 `networth` exposes owner-scoped `GET /api/v1/net-worth/current`. Its read-only repeatable-read transaction calls `AccountService` so opening balances and ledger movements share one PostgreSQL snapshot, including during concurrent transfers or account edits. No cached balances, persisted report rows, audit writes or schema changes are needed.
 
-Positive signed balances contribute to assets; absolute negative balances contribute to liabilities. Totals and account-type breakdowns use `BigDecimal` and decimal-string DTOs, without imposing input digit limits on aggregates. Archived accounts are excluded from totals and account contributions; active accounts opening after the business date appear separately (ADR 007). Investment valuation currently covers cash only. Currencies are never combined without FX data.
+Positive signed balances contribute to assets; absolute negative balances contribute to liabilities. Totals and account-type breakdowns use `BigDecimal` and decimal-string DTOs, without imposing input digit limits on aggregates. Archived accounts are excluded from totals and account contributions; active accounts opening after the business date appear separately (ADR 007). Investment valuation covers cash plus priced holdings converted into account currency using saved FX. Missing/stale quotes are surfaced; cash account currencies remain separate.
 
 Shared injectable `BusinessTime` derives business dates from the application `Clock` and `APP_BUSINESS_TIME_ZONE` (default `Europe/Zurich`); calculation timestamps remain UTC instants. The API disables HTTP caching. The frontend defaults to `#/net-worth`, reloads the report on entry, and links each contribution to its account activity.
 
@@ -284,3 +284,19 @@ type, availability and optimistic versions, and retains category history and aud
 snapshots. No ledger movement is rewritten; archived-account history can be
 categorized. Transfers are excluded. New rows outside the reviewed snapshot remain
 for subsequent review. Existing tables suffice; no Flyway migration is needed.
+
+### Investment holdings and actual settlement
+
+V018 adds owner-scoped `investment_securities`, `investment_activities`, acquisition `investment_lots` and `investment_sale_allocations`. InvestmentService owns holdings, lot selection, review snapshots, cash/share timeline guards and reversals. Opening positions create lots without cash; purchases and sales atomically create dedicated linked ledger operations (`INVESTMENT_BUY`/`INVESTMENT_SELL`). Generic ledger edits cannot mutate these links. Settlement is the explicit actual amount in account currency; quantity × execution price remains in security currency and no FX rate is inferred. Fee/tax components are informational parts of the inclusive settlement.
+
+Account locks serialize reviewed commits with ledger and lifecycle changes. Input-bound snapshot tokens reject stale previews, owner-scoped request IDs make retries idempotent, and audit failure rolls back all writes. Future sale allocations reserve shares; backdated changes and reversals must preserve nonnegative holdings and sufficient cash. Quantities/prices use NUMERIC(28,12); cash costs use NUMERIC(28,8), with proportional lot cost rounding and final residual conservation. Archived holdings remain readable and excluded from current net worth. Acquisition cost never substitutes for market valuation; current net-worth DTOs report positions lacking price/FX. See [ADR 008](docs/adr/008-investment-settlement-and-lots.md) and [operations](docs/operations/investments.md).
+
+### Holdings overview and quote-based account valuation
+
+V019 adds selected market symbols and immutable, owner-scoped `market_quotes` with security/FX currencies, source, quote/fetch timestamps and daily series. YahooMarketProvider supplies keyless search/chart data through fixed bounded HTTPS requests. MarketDataService performs explicit refreshes outside long database transactions; MarketQuoteStore writes each validated result and audits listing changes. Reads use cached data only. ValuationService derives positions directly from effective investment activity, computes security values and explicit FX conversion into account currency, rounds each position to eight decimals and exposes missing/stale data. AccountService attaches valuation while retaining currentBalance as cash; net worth and account cards consume valuation.totalValue exactly once. Archive/future-account exclusion is unchanged. See ADR 009.
+
+The primary investment page is the holdings overview; detailed lot/trade/reversal workflows remain secondary. New fees/taxes use ordinary spending transactions, excluded from trade principal. Historical inclusive settlement and charge metadata remain preserved. No market-data key, new dependency or job scheduler is introduced.
+
+### Fund holdings and manual NAV
+
+V020 adds FUND securities (ISIN required and unique per owner) and manual NAV business dates/references/submission lineage to market_quotes. ManualNavService owns validation, account/security ownership and lifecycle locks, idempotent receipts, immutable corrections and atomic audit writes. Manual entries have nav_date DATE and no invented quoted_at timestamp; entry times remain UTC Instants. ValuationService selects the latest applicable NAV date and newest correction on that date, preserves all underlying rows, and derives a trend from the latest 30 distinct dates. Cash/quantity/lot derivation and FX conversion remain unchanged. Funds are entered directly without an online ticker; ordinary quote refresh does not overwrite NAVs. See ADR 010.

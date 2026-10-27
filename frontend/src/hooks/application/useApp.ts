@@ -5,6 +5,9 @@ import type { Session } from "../../types/models";
 
 function currentPage() {
   const hash = window.location.hash;
+  const investment = hash.split("?")[0].match(/^#\/accounts\/([a-f0-9-]+)\/investments$/);
+  if (investment)
+    return `${hash.includes("?activity=") ? "investment-activity" : "investments"}/${investment[1]}`;
   if (hash === "#/category-mapping") return "category-mapping";
   if (hash === "#/imports") return "imports";
   if (hash === "#/register") return "register";

@@ -1,6 +1,6 @@
 # 006 — Investment cash and holdings
 
-Status: Accepted design; transfer/trade implementation deferred.
+Status: Accepted. The first holdings/trade implementation and explicit cross-currency cash settlement extend this design in [ADR 008](008-investment-settlement-and-lots.md). The sequence below records the original decision.
 
 ## Context
 

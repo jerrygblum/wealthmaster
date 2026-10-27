@@ -186,7 +186,8 @@ export function AccountsPageView({
       ) : (
         <div className="account-grid">
           {visibleAccounts.map((account, index) => {
-            const balance = account.currentBalance ?? account.openingBalance;
+            const balance =
+              account.valuation?.totalValue ?? account.currentBalance ?? account.openingBalance;
             const owed = account.type === "CREDIT_CARD" && balance.startsWith("-");
             return (
               <article
@@ -202,8 +203,8 @@ export function AccountsPageView({
                         className="account-name-control"
                         variant="secondary"
                         onClick={() => {
-                          window.location.hash = `#/accounts/${account.id}`;
-                          setSelected(account.id);
+                          window.location.hash = `#/accounts/${account.id}${account.type === "INVESTMENT" ? "/investments" : ""}`;
+                          if (account.type !== "INVESTMENT") setSelected(account.id);
                         }}
                       >
                         {account.name}
@@ -308,13 +309,20 @@ export function AccountsPageView({
                   {owed
                     ? "amount owed"
                     : account.type === "INVESTMENT"
-                      ? "cash balance"
+                      ? "account value (cash + holdings)"
                       : "balance"}{" "}
                   ·{" "}
                   <time dateTime={account.balanceAsOf ?? account.openingDate}>
                     {account.balanceAsOf ?? account.openingDate}
                   </time>
                 </p>
+                {!!account.valuation?.unvaluedHoldings && (
+                  <p className="notice">
+                    Incomplete: {account.valuation.unvaluedHoldings} holdings need a price or FX
+                    rate.
+                  </p>
+                )}
+                {account.valuation?.stale && <p className="notice">Using older prices or NAVs.</p>}
                 {!account.active && <p className="muted">Archived</p>}
                 {account.hasActivity && (
                   <p className="help">

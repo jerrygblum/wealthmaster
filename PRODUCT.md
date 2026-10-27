@@ -142,7 +142,13 @@ Priority:
 Suggestions are explainable and user-correctable. A user correction may offer to create/update a rule.
 
 ### Investments
-Initial asset types: stocks and ETFs.
+Supported asset types: stocks, ETFs and ISIN-identified funds.
+
+Funds can be created manually using name, ISIN and currency. Existing units use the same preserved opening-lot workflow. Dated manual NAV entries, optional source references and corrections are retained with audit history. The latest applicable NAV contributes units × NAV to account value and net worth, using explicit FX where required. Fund rows show NAV date, previous NAV and collected price history. Archived accounts are read-only; missing or older NAVs are visible. Automatic fund NAV feeds remain deferred until verified.
+
+Implemented first release: owner-scoped manual securities, existing holdings with optional acquisition date/cost, purchases and sales, exact fractional quantities, reviewed FIFO or explicit lot allocations, and auditable reversal/correction. Execution currency is retained separately from actual inclusive settlement in the account cash currency (including CHF cash buying USD securities). Existing holdings never debit cash. Unknown costs remain unknown; aggregate opening positions are labelled. Trades are investment activity and excluded from spending. Archived accounts are read-only. Investment accounts now open on holdings, with optional keyless online stock/ETF lookup, latest quotes, previous close and daily trend. Current account values and net worth include priced holdings converted into account currency using explicit saved FX quotes; missing price/FX yields visibly incomplete totals. Fees/taxes for new activity are entered separately as spending and excluded from trade cash. Original inclusive settlements remain preserved. See [investment operations](docs/operations/investments.md).
+
+The following wider investment scope remains the product direction; performance, corporate actions, guaranteed live feeds and dedicated dividend handling are deferred.
 
 Investment activities:
 - Buy
@@ -179,7 +185,7 @@ Market prices may be delayed depending on provider/licensing. UI must show quote
 
 Current view includes contribution by account/asset type and drill-down to source data.
 
-The implemented cash-ledger view is the default landing page. It shows assets, liabilities and net worth separately for each native currency, including active accounts and investment cash only. Archived accounts are excluded; restoring them reinstates their contributions. Positive balances are assets and negative balances are liabilities, including bank overdrafts and credit-card overpayments. Accounts opening after the configured business date are listed separately and excluded until that date. Totals retain exact decimal precision and show their business date and calculation timestamp. No combined FX total or security valuation is available yet. Categories are available for manual assignment.
+The implemented cash-ledger view is the default landing page. It shows assets, liabilities and net worth separately for each native currency, including active accounts and investment cash plus priced security holdings. Archived accounts are excluded; restoring them reinstates their contributions. Positive balances are assets and negative balances are liabilities, including bank overdrafts and credit-card overpayments. Accounts opening after the configured business date are listed separately and excluded until that date. Totals retain exact decimal precision and show their business date and calculation timestamp. No combined FX total across cash account currencies is available. Security valuation uses latest saved quotes/FX with visible timestamps and missing/stale-data notices. Categories are available for manual assignment.
 
 Historical net-worth snapshots/views show change over time without retroactively rewriting history because of today's FX/prices.
 

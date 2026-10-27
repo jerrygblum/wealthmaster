@@ -111,3 +111,41 @@ export async function expectCompactWorkspace(page: Page) {
     true,
   );
 }
+
+// Market-price fixtures are synthetic and confined to the disposable browser database.
+export async function syntheticMarketQuotes(email: string, securityId: string) {
+  const databaseUrl = process.env.DB_URL?.replace(/^jdbc:/, "");
+  if (!databaseUrl || !new URL(databaseUrl).pathname.endsWith("_e2e"))
+    throw new Error("Market fixtures require a dedicated _e2e database.");
+  const connection = new URL(databaseUrl);
+  connection.username = process.env.DB_USER ?? "";
+  connection.password = process.env.DB_PASSWORD ?? "";
+  const client = new pg.Client({ connectionString: connection.toString() });
+  await client.connect();
+  try {
+    const owned = await client.query<{ owner_id: string }>(
+      "SELECT s.owner_id FROM investment_securities s JOIN app_users u ON u.id=s.owner_id WHERE s.id=$1 AND u.email=$2",
+      [securityId, email],
+    );
+    if (owned.rowCount !== 1) throw new Error("Synthetic security owner not found.");
+    const owner = owned.rows[0].owner_id;
+    await client.query(
+      "UPDATE investment_securities SET market_symbol='SYN' WHERE id=$1 AND owner_id=$2",
+      [securityId, owner],
+    );
+    const series = JSON.stringify([
+      { at: new Date(Date.now() - 86400000).toISOString(), close: "99" },
+      { at: new Date().toISOString(), close: "100" },
+    ]);
+    await client.query(
+      "INSERT INTO market_quotes(id,owner_id,security_id,symbol,base_currency,quote_currency,price,previous_close,quoted_at,fetched_at,source,series) VALUES($1,$2,$3,'SYN','USD','USD',100,99,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYNTHETIC',$4::jsonb)",
+      [randomUUID(), owner, securityId, series],
+    );
+    await client.query(
+      "INSERT INTO market_quotes(id,owner_id,symbol,base_currency,quote_currency,price,quoted_at,fetched_at,source) VALUES($1,$2,'USDCHF=X','USD','CHF',0.9,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYNTHETIC')",
+      [randomUUID(), owner],
+    );
+  } finally {
+    await client.end();
+  }
+}

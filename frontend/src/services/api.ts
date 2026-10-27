@@ -1,3 +1,12 @@
+import type {
+  InvestmentAccount,
+  InvestmentInput,
+  InvestmentPreview,
+  InvestmentActivity,
+  InvestmentReversal,
+  Security,
+  SecurityInput,
+} from "../types/investments";
 import type { OriginalCategoryGroup, OriginalCategoryMapping } from "../types/originalCategories";
 import type {
   ImportBatch,
@@ -120,6 +129,44 @@ async function ledgerMutation<T>(
 }
 
 export const api = {
+  navHistory: (id: string) =>
+    request<import("../types/marketdata").NavEntry[]>(`/market-data/securities/${id}/nav-history`),
+  recordNav: (id: string, input: import("../types/marketdata").NavInput) =>
+    ledgerMutation<import("../types/marketdata").NavEntry>(
+      `/market-data/securities/${id}/nav`,
+      "POST",
+      input,
+    ),
+  searchStocks: (q: string) =>
+    request<import("../types/marketdata").Listing[]>(
+      `/market-data/search?q=${encodeURIComponent(q)}`,
+    ),
+  addMarketSecurity: (symbol: string) =>
+    ledgerMutation<Security>("/market-data/securities", "POST", { symbol }),
+  linkMarketSecurity: (id: string, symbol: string) =>
+    ledgerMutation<void>(`/market-data/securities/${id}/listing`, "PUT", { symbol }),
+  refreshMarketPrices: (id: string) =>
+    ledgerMutation<{ messages: string[] }>(`/market-data/accounts/${id}/refresh`, "POST", {}),
+  investmentAccount: (id: string) => request<InvestmentAccount>(`/investments/accounts/${id}`),
+  createSecurity: (input: SecurityInput) =>
+    ledgerMutation<Security>("/investments/securities", "POST", input),
+  previewInvestment: (input: InvestmentInput) =>
+    ledgerMutation<InvestmentPreview>("/investments/preview", "POST", input),
+  commitInvestment: (input: InvestmentInput, token: string) =>
+    ledgerMutation<InvestmentActivity>("/investments/activities", "POST", {
+      input,
+      token,
+      approved: true,
+    }),
+  previewInvestmentReversal: (id: string) =>
+    request<InvestmentReversal>(`/investments/activities/${id}/reversal-preview`),
+  reverseInvestment: (activity: InvestmentActivity, token: string) =>
+    ledgerMutation<InvestmentActivity>(`/investments/activities/${activity.id}/reverse`, "POST", {
+      version: activity.version,
+      token,
+      approved: true,
+    }),
+
   originalCategoryGroups: () => request<OriginalCategoryGroup[]>("/imports/original-categories"),
   mapOriginalCategory: (mapping: OriginalCategoryMapping) =>
     ledgerMutation<{ updated: number }>("/imports/original-categories", "POST", mapping),

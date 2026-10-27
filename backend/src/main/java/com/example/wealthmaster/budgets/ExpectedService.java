@@ -110,7 +110,7 @@ public class ExpectedService implements AccountUsagePolicy.ActivitySource {
         var rows=jdbc.query("SELECT * FROM ledger_operations WHERE owner_id=? AND id=? AND NOT deleted"+(locking?" FOR UPDATE":""),(r,n)->new LedgerDtos.Operation(
             r.getObject("id",UUID.class),LedgerDtos.Kind.valueOf(r.getString("kind")),r.getObject("account_id",UUID.class),r.getObject("destination_id",UUID.class),
             r.getBigDecimal("amount").toPlainString(),r.getString("currency"),r.getObject("transaction_date",LocalDate.class),r.getObject("value_date",LocalDate.class),
-            r.getString("payee"),r.getString("description"),r.getString("notes"),r.getTimestamp("created_at").toInstant(),r.getLong("version"),r.getObject("category_id",UUID.class),categories.assignment(r.getObject("category_id",UUID.class))),owner,id);
+            r.getString("payee"),r.getString("description"),r.getString("notes"),r.getTimestamp("created_at").toInstant(),r.getLong("version"),r.getObject("category_id",UUID.class),categories.assignment(r.getObject("category_id",UUID.class)),null),owner,id);
         return rows.isEmpty()?null:rows.getFirst();
     }
     private Occurrence occurrence(UUID owner,Definition d,LocalDate month) {

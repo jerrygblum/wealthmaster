@@ -1,3 +1,5 @@
+import { InvestmentActivityPage } from "../investments/InvestmentActivityPage";
+import { InvestmentsPage } from "../investments/InvestmentsPage";
 import { OriginalCategoriesPage } from "../imports/OriginalCategoriesPage";
 import { ActionIcon } from "../../components/atoms/ActionIcon";
 import { Button, LoadingIndicator } from "../../components/atoms/Controls";
@@ -34,7 +36,11 @@ export default function App() {
   } = model;
   return (
     <ApplicationLayout
-      page={page}
+      page={
+        page.startsWith("investments/") || page.startsWith("investment-activity/")
+          ? "accounts"
+          : page
+      }
       authenticated={session?.status === "AUTHENTICATED"}
       recoveryUsed={session?.status === "AUTHENTICATED" && !!session.recoveryUsed}
       headerActions={
@@ -76,6 +82,18 @@ export default function App() {
           user={session.user}
           requiredSetup={session.status === "MFA_SETUP_REQUIRED"}
           onSession={acceptSession}
+          onExpired={expire}
+        />
+      ) : session?.status === "AUTHENTICATED" && page.startsWith("investment-activity/") ? (
+        <InvestmentActivityPage
+          key={page}
+          accountId={page.slice("investment-activity/".length)}
+          onExpired={expire}
+        />
+      ) : session?.status === "AUTHENTICATED" && page.startsWith("investments/") ? (
+        <InvestmentsPage
+          key={page}
+          accountId={page.slice("investments/".length)}
           onExpired={expire}
         />
       ) : session?.status === "AUTHENTICATED" && page === "category-mapping" ? (

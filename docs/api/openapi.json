@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Wealth Master API",
-    "version": "0.11.1",
-    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording. Guided legacy-workbook migration stages private XLSX/XLSM data, requires explicit mappings and approvals, previews duplicates/balances, commits atomically and supports guarded reversal."
+    "version": "0.13.0",
+    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording. Guided legacy-workbook migration stages private XLSX/XLSM data, requires explicit mappings and approvals, previews duplicates/balances, commits atomically and supports guarded reversal. Manual investment holdings, opening lots, purchases/sales with explicit account-currency cash settlement, reviewed lot allocation and guarded reversals; market valuation is deferred. Holdings-first investment accounts, keyless stock/ETF lookup, timestamped market prices and explicit FX valuation into account currency. Missing/stale market data is visible; fees can be entered separately as spending. ISIN-identified funds with exact dated manual NAV entry, preserved correction history and account/net-worth valuation."
   },
   "servers": [
     {
@@ -4040,6 +4040,703 @@
           }
         }
       }
+    },
+    "/investments/securities": {
+      "get": {
+        "summary": "List owned securities",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "Owner-scoped investment result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvestmentSecurity"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid exact decimal, date or request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA/CSRF required"
+          },
+          "404": {
+            "description": "Owned resource not found"
+          },
+          "409": {
+            "description": "Archived account, insufficient cash/shares, dependency or conflicting submission"
+          },
+          "412": {
+            "description": "Stale preview or version; review again"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create stock or ETF listing",
+        "description": "",
+        "responses": {
+          "201": {
+            "description": "Owner-scoped investment result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentSecurity"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid exact decimal, date or request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA/CSRF required"
+          },
+          "404": {
+            "description": "Owned resource not found"
+          },
+          "409": {
+            "description": "Archived account, insufficient cash/shares, dependency or conflicting submission"
+          },
+          "412": {
+            "description": "Stale preview or version; review again"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked CSRF token; authenticated MFA-complete session required."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestmentSecurityInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/investments/accounts/{id}": {
+      "get": {
+        "summary": "Read cash, holdings, remaining lots and investment activity",
+        "description": "As of business date; includes future/reversed activity history. Archived accounts are readable. No market valuation.",
+        "responses": {
+          "200": {
+            "description": "Owner-scoped investment result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentAccount"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid exact decimal, date or request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA/CSRF required"
+          },
+          "404": {
+            "description": "Owned resource not found"
+          },
+          "409": {
+            "description": "Archived account, insufficient cash/shares, dependency or conflicting submission"
+          },
+          "412": {
+            "description": "Stale preview or version; review again"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/investments/preview": {
+      "post": {
+        "summary": "Review investment cash and lot allocations",
+        "description": "Read-only preview; errors block commit. Token binds exact input and account/cash/investment state. Confirm cash-only setup and inclusive settlement.",
+        "responses": {
+          "200": {
+            "description": "Owner-scoped investment result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid exact decimal, date or request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA/CSRF required"
+          },
+          "404": {
+            "description": "Owned resource not found"
+          },
+          "409": {
+            "description": "Archived account, insufficient cash/shares, dependency or conflicting submission"
+          },
+          "412": {
+            "description": "Stale preview or version; review again"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked CSRF token; authenticated MFA-complete session required."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestmentInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/investments/activities": {
+      "post": {
+        "summary": "Commit reviewed opening holding, purchase or sale",
+        "description": "Atomic activity/lot/allocation/cash/audit commit. Explicit approval and current token required. Identical owner-scoped requestId/input returns original receipt; different input conflicts.",
+        "responses": {
+          "201": {
+            "description": "Owner-scoped investment result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentActivity"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid exact decimal, date or request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA/CSRF required"
+          },
+          "404": {
+            "description": "Owned resource not found"
+          },
+          "409": {
+            "description": "Archived account, insufficient cash/shares, dependency or conflicting submission"
+          },
+          "412": {
+            "description": "Stale preview or version; review again"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked CSRF token; authenticated MFA-complete session required."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestmentCommit"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/investments/activities/{id}/reversal-preview": {
+      "get": {
+        "summary": "Review reversal and dependent sales/cash constraints",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "Owner-scoped investment result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentReversalPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid exact decimal, date or request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA/CSRF required"
+          },
+          "404": {
+            "description": "Owned resource not found"
+          },
+          "409": {
+            "description": "Archived account, insufficient cash/shares, dependency or conflicting submission"
+          },
+          "412": {
+            "description": "Stale preview or version; review again"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/investments/activities/{id}/reverse": {
+      "post": {
+        "summary": "Reverse investment activity and linked cash atomically",
+        "description": "Preserves all history. Reverse dependent sales first; cash and holdings must remain valid. Correction is a separate replacement commit.",
+        "responses": {
+          "200": {
+            "description": "Owner-scoped investment result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentActivity"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid exact decimal, date or request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA/CSRF required"
+          },
+          "404": {
+            "description": "Owned resource not found"
+          },
+          "409": {
+            "description": "Archived account, insufficient cash/shares, dependency or conflicting submission"
+          },
+          "412": {
+            "description": "Stale preview or version; review again"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Fresh masked CSRF token; authenticated MFA-complete session required."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestmentReversal"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/market-data/search": {
+      "get": {
+        "summary": "Find stock/ETF listings without registration",
+        "description": "Read-only online search; does not create any security or holding. Sends search text only to Yahoo Finance; requires authenticated MFA-complete session.",
+        "responses": {
+          "200": {
+            "description": "Owner-scoped result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MarketListing"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unsupported symbol, listing, currency or input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Owned resource not found"
+          },
+          "409": {
+            "description": "Listing conflict or archived account"
+          },
+          "502": {
+            "description": "Market source unavailable, limited or unsupported; saved quotes retained"
+          }
+        },
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            }
+          }
+        ]
+      }
+    },
+    "/market-data/securities": {
+      "post": {
+        "summary": "Create or reuse an explicitly selected online security",
+        "description": "Fetches listing metadata and initial quote; creates an owner-private stock/ETF security only. No shares or cash are changed.",
+        "responses": {
+          "201": {
+            "description": "Owner-scoped result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentSecurity"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unsupported symbol, listing, currency or input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Owned resource not found"
+          },
+          "409": {
+            "description": "Listing conflict or archived account"
+          },
+          "502": {
+            "description": "Market source unavailable, limited or unsupported; saved quotes retained"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketSymbolInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/market-data/securities/{id}/listing": {
+      "put": {
+        "summary": "Link an existing security to its selected online listing",
+        "description": "Type and currency must match. Audits the choice and preserves previous listing quote history. Current valuation uses only the newly selected listing.",
+        "responses": {
+          "204": {
+            "description": "Owner-scoped result"
+          },
+          "400": {
+            "description": "Unsupported symbol, listing, currency or input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Owned resource not found"
+          },
+          "409": {
+            "description": "Listing conflict or archived account"
+          },
+          "502": {
+            "description": "Market source unavailable, limited or unsupported; saved quotes retained"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketSymbolInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/market-data/accounts/{id}/refresh": {
+      "post": {
+        "summary": "Refresh owned investment holding prices and required FX",
+        "description": "Active accounts only. Successful quotes reused for fifteen minutes; maximum twenty upstream requests per refresh. Failures are returned in messages and retain last successful prices. Normal account/net-worth reads never contact the provider. Manual fund NAVs are retained and never sent to the stock quote provider; required fund-to-account FX may still refresh.",
+        "responses": {
+          "200": {
+            "description": "Owner-scoped result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketRefresh"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unsupported symbol, listing, currency or input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA or CSRF required"
+          },
+          "404": {
+            "description": "Owned resource not found"
+          },
+          "409": {
+            "description": "Listing conflict or archived account"
+          },
+          "502": {
+            "description": "Market source unavailable, limited or unsupported; saved quotes retained"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/market-data/securities/{id}/nav-history": {
+      "get": {
+        "summary": "Read fund NAV history including corrections",
+        "description": "Read-only, no-store. Latest 100 entries ordered by valuation date then recorded time, newest first. Archived account histories remain readable. All rows remain preserved in the database.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner-scoped fund NAV result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ManualNavEntry"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid NAV precision/amount/date, missing fund ISIN or non-fund security"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA/CSRF required"
+          },
+          "404": {
+            "description": "Owned fund/account reference not found"
+          },
+          "409": {
+            "description": "Archived account or submission ID reused with different input"
+          }
+        }
+      }
+    },
+    "/market-data/securities/{id}/nav": {
+      "post": {
+        "summary": "Record a dated manual fund NAV atomically with its audit",
+        "description": "No change to cash, units or lots. The NAV is shared across this owner's holdings of the same fund. No external request is made. Date-only valuation date is separate from UTC recordedAt. Repeated identical submission returns its original receipt.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Owner-scoped fund NAV result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualNavEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid NAV precision/amount/date, missing fund ISIN or non-fund security"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA/CSRF required"
+          },
+          "404": {
+            "description": "Owned fund/account reference not found"
+          },
+          "409": {
+            "description": "Archived account or submission ID reused with different input"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualNavInput"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4269,7 +4966,8 @@
             "description": "Locks financial setup and prevents deletion when history exists."
           },
           "currentBalance": {
-            "type": "string"
+            "type": "string",
+            "description": "Ledger-derived cash. For investment accounts use valuation.totalValue for cash plus priced holdings."
           },
           "balanceAsOf": {
             "type": "string",
@@ -4282,6 +4980,16 @@
           },
           "accent": {
             "$ref": "#/components/schemas/AccountAccent"
+          },
+          "valuation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentValuation"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -4557,7 +5265,9 @@
               "INCOME",
               "EXPENSE",
               "REFUND",
-              "TRANSFER"
+              "TRANSFER",
+              "INVESTMENT_BUY",
+              "INVESTMENT_SELL"
             ]
           },
           "amount": {
@@ -4626,6 +5336,13 @@
           },
           "category": {
             "$ref": "#/components/schemas/CategoryAssignment"
+          },
+          "investmentActivityId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           }
         },
         "required": [
@@ -4763,7 +5480,17 @@
           "currentBalance": {
             "type": "string",
             "pattern": "^-?[0-9]+(\\.[0-9]{1,8})?$",
-            "description": "Exact decimal string; aggregate integer digits are not limited to input precision."
+            "description": "Net-worth contribution: cash plus priced holdings for investment accounts, cash for other accounts."
+          },
+          "valuation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentValuation"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -4816,7 +5543,8 @@
           "calculatedAt",
           "currencies",
           "accounts",
-          "excludedFutureAccounts"
+          "excludedFutureAccounts",
+          "unvaluedHoldings"
         ],
         "properties": {
           "balanceAsOf": {
@@ -4844,6 +5572,11 @@
             "items": {
               "$ref": "#/components/schemas/NetWorthFutureAccount"
             }
+          },
+          "unvaluedHoldings": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Positive active account/security positions missing a price or required FX quote; excluded from incomplete totals."
           }
         }
       },
@@ -6241,6 +6974,1061 @@
             }
           }
         }
+      },
+      "InvestmentSecurityInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "symbol": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "exchange": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "isin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 12
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "STOCK",
+              "ETF",
+              "FUND"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "[A-Z]{3}"
+          }
+        },
+        "required": [
+          "name",
+          "symbol",
+          "exchange",
+          "type",
+          "currency"
+        ],
+        "description": "STOCK/ETF listings or manually entered FUND. FUND requires a check-digit-validated ISIN, unique per owner, and explicit currency; symbol/exchange are canonically stored as ISIN/NAV.",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "FUND"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "required": [
+                "isin"
+              ],
+              "properties": {
+                "isin": {
+                  "type": "string",
+                  "pattern": "[A-Z]{2}[A-Z0-9]{9}[0-9]"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "InvestmentSecurity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "symbol": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "exchange": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "isin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 12
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "STOCK",
+              "ETF",
+              "FUND"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "[A-Z]{3}"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "symbol",
+          "exchange",
+          "isin",
+          "type",
+          "currency"
+        ],
+        "description": "STOCK/ETF listings or manually entered FUND. FUND requires a check-digit-validated ISIN, unique per owner, and explicit currency; symbol/exchange are canonically stored as ISIN/NAV."
+      },
+      "InvestmentCharge": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "FEE",
+              "TAX"
+            ]
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "[0-9]{1,20}(\\.[0-9]{1,8})?"
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "amount",
+          "currency"
+        ]
+      },
+      "InvestmentAllocationInput": {
+        "type": "object",
+        "properties": {
+          "lotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "string",
+            "pattern": "[0-9]{1,16}(\\.[0-9]{1,12})?",
+            "description": "Exact decimal string. Quantity and execution price must be positive for trades."
+          }
+        },
+        "required": [
+          "lotId",
+          "quantity"
+        ]
+      },
+      "InvestmentAllocation": {
+        "type": "object",
+        "properties": {
+          "lotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "cashCost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "lotId",
+          "quantity",
+          "cashCost"
+        ]
+      },
+      "InvestmentInput": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "securityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "OPENING",
+              "BUY",
+              "SELL"
+            ]
+          },
+          "quantity": {
+            "type": "string",
+            "pattern": "[0-9]{1,16}(\\.[0-9]{1,12})?",
+            "description": "Exact decimal string. Quantity and execution price must be positive for trades."
+          },
+          "unitPrice": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tradeDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "cashDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "acquiredOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "settlement": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "acquisitionCost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "aggregateOpening": {
+            "type": "boolean"
+          },
+          "charges": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/InvestmentCharge"
+            },
+            "maxItems": 20
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "cashOnlyConfirmed": {
+            "type": "boolean"
+          },
+          "allocations": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/InvestmentAllocationInput"
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "requestId",
+          "accountId",
+          "securityId",
+          "kind",
+          "quantity",
+          "tradeDate",
+          "cashOnlyConfirmed"
+        ],
+        "description": "OPENING creates shares without cash, permitting unknown acquisition date/cost. BUY/SELL require positive execution price, actual inclusive settlement and cashDate. CHF settlement can accompany USD execution; no FX is inferred. Allocations omitted means reviewed FIFO; explicit allocations must exactly equal sold quantity. New UI trade cash excludes fees/taxes separately recorded as spending; original inclusive-settlement records remain supported for correction."
+      },
+      "InvestmentCommit": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/InvestmentInput"
+          },
+          "token": {
+            "type": "string"
+          },
+          "approved": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "input",
+          "token",
+          "approved"
+        ]
+      },
+      "InvestmentActivity": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "securityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "OPENING",
+              "BUY",
+              "SELL"
+            ]
+          },
+          "quantity": {
+            "type": "string",
+            "pattern": "[0-9]{1,16}(\\.[0-9]{1,12})?",
+            "description": "Exact decimal string. Quantity and execution price must be positive for trades."
+          },
+          "unitPrice": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tradeDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "cashDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "acquiredOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "settlement": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "acquisitionCost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "aggregateOpening": {
+            "type": "boolean"
+          },
+          "charges": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/InvestmentCharge"
+            },
+            "maxItems": 20
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gross": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cashCurrency": {
+            "type": "string"
+          },
+          "tradeCurrency": {
+            "type": "string"
+          },
+          "cashOperationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reversed": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvestmentAllocation"
+            }
+          }
+        },
+        "required": [
+          "accountId",
+          "securityId",
+          "kind",
+          "quantity",
+          "unitPrice",
+          "tradeDate",
+          "cashDate",
+          "acquiredOn",
+          "settlement",
+          "acquisitionCost",
+          "aggregateOpening",
+          "charges",
+          "reference",
+          "notes",
+          "id",
+          "gross",
+          "cashCurrency",
+          "tradeCurrency",
+          "cashOperationId",
+          "version",
+          "reversed",
+          "createdAt",
+          "allocations"
+        ]
+      },
+      "InvestmentLot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "activityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "securityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "acquiredOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "aggregateOpening": {
+            "type": "boolean"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "remaining": {
+            "type": "string"
+          },
+          "remainingCost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "activityId",
+          "securityId",
+          "date",
+          "acquiredOn",
+          "aggregateOpening",
+          "quantity",
+          "remaining",
+          "remainingCost"
+        ]
+      },
+      "InvestmentHolding": {
+        "type": "object",
+        "properties": {
+          "security": {
+            "$ref": "#/components/schemas/InvestmentSecurity"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "knownCost": {
+            "type": "string"
+          },
+          "costComplete": {
+            "type": "boolean"
+          },
+          "averageCost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvestmentLot"
+            }
+          }
+        },
+        "required": [
+          "security",
+          "quantity",
+          "knownCost",
+          "costComplete",
+          "averageCost",
+          "lots"
+        ]
+      },
+      "InvestmentAccount": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cashCurrency": {
+            "type": "string"
+          },
+          "cashBalance": {
+            "type": "string"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "securities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvestmentSecurity"
+            }
+          },
+          "holdings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvestmentHolding"
+            }
+          },
+          "activities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvestmentActivity"
+            }
+          }
+        },
+        "required": [
+          "accountId",
+          "cashCurrency",
+          "cashBalance",
+          "asOf",
+          "active",
+          "securities",
+          "holdings",
+          "activities"
+        ]
+      },
+      "InvestmentPreview": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "gross": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cashMovement": {
+            "type": "string"
+          },
+          "cashCurrency": {
+            "type": "string"
+          },
+          "tradeCurrency": {
+            "type": "string"
+          },
+          "availableLots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvestmentLot"
+            }
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvestmentAllocation"
+            }
+          }
+        },
+        "required": [
+          "token",
+          "errors",
+          "warnings",
+          "gross",
+          "cashMovement",
+          "cashCurrency",
+          "tradeCurrency",
+          "availableLots",
+          "allocations"
+        ]
+      },
+      "InvestmentReversalPreview": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cashMovement": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "errors",
+          "cashMovement"
+        ]
+      },
+      "InvestmentReversal": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "token": {
+            "type": "string"
+          },
+          "approved": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "version",
+          "token",
+          "approved"
+        ]
+      },
+      "MarketListing": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "exchange": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "name",
+          "exchange",
+          "type"
+        ]
+      },
+      "MarketSymbolInput": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      },
+      "MarketPoint": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "close": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "close"
+        ]
+      },
+      "HoldingValuation": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "securityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "price": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "previousClose": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "changePercent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nativeValue": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fxRate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accountValue": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quotedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "fetchedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "fxQuotedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MarketPoint"
+            }
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "navDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "navHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NavPoint"
+            }
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "symbol",
+          "quantity",
+          "currency",
+          "securityId",
+          "price",
+          "previousClose",
+          "changePercent",
+          "source",
+          "nativeValue",
+          "fxRate",
+          "accountValue",
+          "quotedAt",
+          "fetchedAt",
+          "fxQuotedAt",
+          "series",
+          "stale",
+          "navDate",
+          "navHistory",
+          "reference"
+        ],
+        "description": "Funds use source MANUAL_NAV, a date-only navDate and null quotedAt. navHistory contains the newest correction per valuation date for the latest thirty distinct dates, in ascending date order. PreviousClose/changePercent mean the preceding distinct dated NAV and its change for funds. Source reference is user-entered. Stocks/ETFs retain automatic quote/series behavior."
+      },
+      "InvestmentValuation": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "cash": {
+            "type": "string"
+          },
+          "holdingsValue": {
+            "type": "string"
+          },
+          "totalValue": {
+            "type": "string"
+          },
+          "unvaluedHoldings": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "holdings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HoldingValuation"
+            }
+          }
+        },
+        "required": [
+          "currency",
+          "cash",
+          "holdingsValue",
+          "totalValue",
+          "unvaluedHoldings",
+          "stale",
+          "holdings"
+        ],
+        "description": "Ledger cash plus exact quantity \u00d7 latest security quote \u00d7 explicit FX in account currency; each holding rounded HALF_UP to eight decimals. Missing price/FX excluded and counted, never valued at cost. Source/quote/fetch timestamps retained. Older means fetched over one day ago or quoted over seven days ago. Daily change compares latest quote to previous daily close; series is price history, not performance. Funds use the latest applicable manual NAV date, then latest correction on that date. A manual NAV older than seven calendar days relative to the app business date is marked older; entry time never substitutes for valuation date."
+      },
+      "MarketRefresh": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "messages"
+        ]
+      },
+      "ManualNavInput": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "nav": {
+            "type": "string",
+            "pattern": "[0-9]{1,26}(\\.[0-9]{1,12})?",
+            "description": "Strictly positive exact NAV per unit; no rounding of entered values."
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "requestId",
+          "accountId",
+          "date",
+          "nav"
+        ],
+        "description": "Published NAV business date on or before today; explicit active owned investment account with a retained reference to the owned fund. Currency follows the fund. Same-date entries are preserved corrections; older dates do not displace newer valuation dates. Identical owner/security/requestId/input retries return the original receipt."
+      },
+      "ManualNavEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "securityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "nav": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "securityId",
+          "date",
+          "nav",
+          "currency",
+          "recordedAt",
+          "reference"
+        ]
+      },
+      "NavPoint": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "nav": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "nav"
+        ]
       }
     }
   }

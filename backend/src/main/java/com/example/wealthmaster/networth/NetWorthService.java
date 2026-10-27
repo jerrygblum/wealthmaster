@@ -13,7 +13,8 @@ import static com.example.wealthmaster.networth.NetWorthDtos.*;
 public class NetWorthService {
     private final AccountService accounts;
     private final BusinessTime time;
-    public NetWorthService(AccountService accounts, BusinessTime time) { this.accounts = accounts; this.time = time; }
+    private final com.example.wealthmaster.investments.InvestmentService investments;
+    public NetWorthService(AccountService accounts, BusinessTime time,com.example.wealthmaster.investments.InvestmentService investments) { this.accounts = accounts; this.time = time; this.investments=investments; }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public CurrentNetWorth current(UUID owner) {
@@ -29,7 +30,7 @@ public class NetWorthService {
             if (account.openingDate().isAfter(date)) {
                 future.add(new FutureAccount(account.id(), account.name(), account.type(), account.currency(), account.active(), account.openingDate()));
             } else {
-                included.add(new AccountContribution(account.id(), account.name(), account.type(), account.currency(), account.active(), account.currentBalance()));
+                included.add(new AccountContribution(account.id(), account.name(), account.type(), account.currency(), account.active(), balance(account),account.valuation()));
                 groups.computeIfAbsent(account.currency(), ignored -> new ArrayList<>()).add(account);
             }
         }
@@ -45,8 +46,9 @@ public class NetWorthService {
             });
             currencies.add(new CurrencyTotal(currency, totals.assets().toPlainString(), totals.liabilities().toPlainString(), totals.netWorth().toPlainString(), List.copyOf(breakdown)));
         });
-        return new CurrentNetWorth(date, calculatedAt, List.copyOf(currencies), List.copyOf(included), List.copyOf(future));
+        return new CurrentNetWorth(date, calculatedAt, List.copyOf(currencies), List.copyOf(included), List.copyOf(future),included.stream().mapToInt(a->a.valuation()==null?0:a.valuation().unvaluedHoldings()).sum());
     }
+    private String balance(AccountResponse a){return a.valuation()==null?a.currentBalance():a.valuation().totalValue();}
     private record Totals(BigDecimal assets, BigDecimal liabilities) {
         BigDecimal netWorth() { return assets.subtract(liabilities); }
     }
@@ -54,7 +56,7 @@ public class NetWorthService {
         var assets = BigDecimal.ZERO;
         var liabilities = BigDecimal.ZERO;
         for (var entry : entries) {
-            var amount = new BigDecimal(entry.currentBalance());
+            var amount = new BigDecimal(balance(entry));
             if (amount.signum() < 0) liabilities = liabilities.add(amount.negate());
             else assets = assets.add(amount);
         }

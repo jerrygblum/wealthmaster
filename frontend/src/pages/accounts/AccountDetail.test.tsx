@@ -254,3 +254,20 @@ it("keeps an archived assignment on unrelated edits and permits clearing", async
     ),
   );
 });
+
+it("links investment cash to its trade and disables ordinary edits and deletion", async () => {
+  vi.mocked(api.account).mockResolvedValue({ ...account, type: "INVESTMENT" });
+  vi.mocked(api.activity).mockResolvedValue({
+    items: [{ ...entry, kind: "INVESTMENT_BUY", investmentActivityId: "trade" }],
+    page: 0,
+    hasMore: false,
+  });
+  render(<AccountDetail id="a" onBack={() => {}} onExpired={() => {}} />);
+  expect(await screen.findByText("Investment purchase")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Edit entry" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Delete entry" })).toBeDisabled();
+  expect(screen.getByRole("link", { name: "Investment activity" })).toHaveAttribute(
+    "href",
+    "#/accounts/a/investments?activity=trade",
+  );
+});

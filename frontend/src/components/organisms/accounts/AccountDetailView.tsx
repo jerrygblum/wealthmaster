@@ -91,6 +91,12 @@ export function AccountDetailView({
               Archived activity is read-only. Restore this account from Accounts to make changes.
             </p>
           )}
+          {account.type === "INVESTMENT" && (
+            <nav className="form-actions" aria-label="Investment account views">
+              <Link href={`#/accounts/${id}/investments`}>Holdings and investment activity</Link>
+              <span aria-current="page">Cash activity</span>
+            </nav>
+          )}
           <ActionGroup className="form-actions workspace-toolbar">
             <Button disabled={!account.active || pending} onClick={() => start("EXPENSE")}>
               Add transaction

@@ -25,7 +25,7 @@ Goal: represent financial accounts and trustworthy manual activity.
 - [x] Opening balances
 - [x] Account editing, unused-account deletion, archive/restore, version checks, and audit snapshots
 - [x] Saved account ordering and card accent colors, with owner isolation and version checks
-- [x] Investment cash/holdings architecture documented (implementation deferred)
+- [x] Investment cash/holdings architecture documented (first release implemented)
 - [x] Manual income/expense/refund transactions, corrections, soft deletion and audit snapshots
 - [x] Same-currency paired transfers
 - [x] Two-level income/spending categories, manual assignment, lifecycle history and optional starters
@@ -63,16 +63,18 @@ Goal: understand actual spending and expected monthly activity. Reusable bank-st
 ## 0.4 — Wealth / Investments
 Goal: represent investment wealth accurately.
 
-- Investment accounts
-- Securities (stocks/ETFs)
-- Buy/sell/dividend/fee/tax activity
-- Acquisition lots
-- Holdings/cost basis
-- Market-price provider abstraction
-- FX provider abstraction
-- Current portfolio value
+- [x] Investment accounts
+- [x] Manual securities (stocks/ETFs)
+- [x] ISIN-identified funds, dated manual NAVs and preserved correction history
+- [x] Existing holdings, purchases and sales with actual cash settlement
+- [x] Reviewed acquisition lots, FIFO/explicit sale allocation and guarded reversal/correction
+- [x] Holdings and known/unknown acquisition cost
+- [ ] Dedicated dividend/interest activity and fee/tax reporting
+- [x] Keyless stock/ETF lookup, cached prices and daily trends
+- [x] Explicit saved FX for holding-to-account-currency valuation
+- [x] Current portfolio value with missing/stale quote notices
 - Realized/unrealized gain/loss
-- Investment contribution to net worth
+- [x] Investment contribution to net worth
 
 ## 0.5 — Automation
 Goal: reduce manual intervention.

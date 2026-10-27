@@ -21,7 +21,13 @@ public final class AccountDtos {
             @NotNull BalanceMeaning balanceMeaning,
             @NotNull LocalDate openingDate) {}
     public record AccountResponse(UUID id, String name, AccountType type, String institution,
-            String currency, String openingBalance, LocalDate openingDate, boolean active, Instant createdAt, long version, boolean hasActivity, String currentBalance, LocalDate balanceAsOf, long displayOrder, Accent accent) {
+            String currency, String openingBalance, LocalDate openingDate, boolean active, Instant createdAt, long version, boolean hasActivity, String currentBalance, LocalDate balanceAsOf, long displayOrder, Accent accent, com.example.wealthmaster.marketdata.MarketDtos.Valuation valuation) {
+        public AccountResponse(UUID id,String name,AccountType type,String institution,String currency,String openingBalance,LocalDate openingDate,boolean active,Instant createdAt,long version,boolean hasActivity,String currentBalance,LocalDate balanceAsOf,long displayOrder,Accent accent) {
+            this(id,name,type,institution,currency,openingBalance,openingDate,active,createdAt,version,hasActivity,currentBalance,balanceAsOf,displayOrder,accent,null);
+        }
+        public AccountResponse withValuation(com.example.wealthmaster.marketdata.MarketDtos.Valuation value) {
+            return new AccountResponse(id,name,type,institution,currency,openingBalance,openingDate,active,createdAt,version,hasActivity,currentBalance,balanceAsOf,displayOrder,accent,value);
+        }
         public AccountResponse withActivity(boolean activity) {
             return new AccountResponse(id, name, type, institution, currency, openingBalance, openingDate, active, createdAt, version, activity, currentBalance, balanceAsOf, displayOrder, accent);
         }

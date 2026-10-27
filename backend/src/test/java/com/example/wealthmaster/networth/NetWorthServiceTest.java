@@ -14,7 +14,7 @@ class NetWorthServiceTest {
     final AccountService accounts = mock(AccountService.class);
     final Instant instant = Instant.parse("2026-10-04T22:30:00Z");
     final BusinessTime time = new BusinessTime(Clock.fixed(instant, ZoneOffset.UTC), "Europe/Zurich");
-    final NetWorthService service = new NetWorthService(accounts, time);
+    final NetWorthService service = new NetWorthService(accounts, time, mock(com.example.wealthmaster.investments.InvestmentService.class));
     AccountResponse account(String name, AccountType type, String currency, String balance, boolean active, LocalDate date) {
         return new AccountResponse(UUID.randomUUID(), name, type, null, currency, balance, date, active, instant,
                 0, false, balance, time.today(), 0, AccountDtos.Accent.DEFAULT);

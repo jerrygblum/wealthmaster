@@ -23,7 +23,7 @@ class AccountServiceTest {
         var ledger = mock(com.example.wealthmaster.ledger.LedgerService.class);
         when(ledger.movements(any())).thenReturn(java.math.BigDecimal.ZERO);
         when(ledger.today()).thenReturn(LocalDate.of(2026, 10, 4));
-        service = new AccountService(accounts, audit, usage, ledger);
+        service = new AccountService(accounts, audit, usage, ledger, mock(com.example.wealthmaster.marketdata.ValuationService.class));
         when(accounts.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
     private CreateAccount input(AccountType type, String amount, BalanceMeaning meaning, String currency) {

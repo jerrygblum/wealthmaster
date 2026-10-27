@@ -15,8 +15,9 @@ public class AccountService {
     private final AuditService audit;
     private final AccountUsagePolicy usage;
     private final com.example.wealthmaster.ledger.LedgerService ledger;
-    public AccountService(AccountRepository accounts, AuditService audit, AccountUsagePolicy usage, com.example.wealthmaster.ledger.LedgerService ledger) {
-        this.accounts = accounts; this.audit = audit; this.usage = usage; this.ledger = ledger;
+    private final com.example.wealthmaster.marketdata.ValuationService valuations;
+    public AccountService(AccountRepository accounts, AuditService audit, AccountUsagePolicy usage, com.example.wealthmaster.ledger.LedgerService ledger, com.example.wealthmaster.marketdata.ValuationService valuations) {
+        this.accounts = accounts; this.audit = audit; this.usage = usage; this.ledger = ledger; this.valuations=valuations;
     }
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public List<AccountResponse> list(UUID ownerId) {
@@ -27,7 +28,9 @@ public class AccountService {
         return response(accounts.findById(id).filter(a -> a.getOwnerId().equals(owner)).orElseThrow(() -> new AccountFailure(404, "Account not found.")));
     }
     private AccountResponse response(FinancialAccount account) {
-        return AccountResponse.from(account).withActivity(usage.hasActivity(account.getId())).withBalance(account.getOpeningBalance().add(ledger.movements(account.getId())).toPlainString(), ledger.today());
+        var cash=account.getOpeningBalance().add(ledger.movements(account.getId()));
+        var response=AccountResponse.from(account).withActivity(usage.hasActivity(account.getId())).withBalance(cash.toPlainString(), ledger.today());
+        return account.getType()==AccountType.INVESTMENT?response.withValuation(valuations.value(account.getOwnerId(),account.getId(),account.getCurrency(),cash,ledger.today())):response;
     }
     @Transactional
     public AccountResponse appearance(UUID owner, UUID id, String match, Appearance input) {

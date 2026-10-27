@@ -43,3 +43,11 @@ export type RegistrationPanelViewModel = ReturnType<
 export type OriginalCategoriesViewModel = ReturnType<
   typeof import("../hooks/imports/useOriginalCategories").useOriginalCategories
 >;
+
+export type InvestmentsViewModel = ReturnType<
+  typeof import("../hooks/investments/useInvestments").useInvestments
+>;
+
+export type PortfolioViewModel = ReturnType<
+  typeof import("../hooks/investments/usePortfolio").usePortfolio
+>;
