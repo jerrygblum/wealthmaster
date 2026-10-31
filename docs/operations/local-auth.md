@@ -47,7 +47,7 @@ Browser tests use a separate disposable database with `DB_URL`, `DB_USER`, and `
 
 Credit-card opening debt is entered as a positive amount and stored as a negative balance. An overpayment uses “In credit” and stays positive. Other account types use signed opening balances. Values are opening balances, not investment market valuations or ledger-derived current balances. Dates remain date-only.
 
-Authenticator 2FA and security settings are implemented. Enrollment is optional only with the `dev` profile and required in production; enabled MFA is enforced in both. See [setup and recovery](mfa.md). Account management, ledger activity and current cash net worth are implemented. The default landing page shows net worth separately by native currency; see [current net worth](net-worth.md). Invitation-only registration is implemented; password reset remains deferred.
+Authenticator 2FA and security settings are implemented. Enrollment is optional only with the `dev` profile and required in production; enabled MFA is enforced in both. See [setup and recovery](mfa.md). Account management, ledger activity and current net worth including cash and priced investment holdings are implemented. The default landing page shows net worth separately by native currency; see [current net worth](net-worth.md). Invitation-only registration is implemented; password reset remains deferred.
 
 ## Invited registration
 

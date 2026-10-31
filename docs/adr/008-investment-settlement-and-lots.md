@@ -38,6 +38,8 @@ current net worth under ADR 007.
 
 ## Valuation
 
+This section records the original V018 scope. ADR 009 adds stock/ETF quote and FX valuation; [ADR 010](010-fund-holdings-and-manual-nav.md) adds ISIN-identified funds and manual NAVs. Current net worth includes priced holdings; missing price/FX still produces an incomplete total.
+
 Acquisition cost is not market value. The first release adds no market prices or
 FX feed. Current net worth includes cash only and exposes a prominent warning and
 count for unvalued active security positions. Trade date controls shares; cash

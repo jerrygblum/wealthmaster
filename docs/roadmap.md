@@ -73,7 +73,7 @@ Goal: represent investment wealth accurately.
 - [x] Keyless stock/ETF lookup, cached prices and daily trends
 - [x] Explicit saved FX for holding-to-account-currency valuation
 - [x] Current portfolio value with missing/stale quote notices
-- Realized/unrealized gain/loss
+- [ ] Realized/unrealized gain/loss
 - [x] Investment contribution to net worth
 
 ## 0.5 — Automation

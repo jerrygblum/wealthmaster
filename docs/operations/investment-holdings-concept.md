@@ -1,6 +1,6 @@
 # Investment holdings — implementation plan
 
-Status: Approved and implemented as the first investment release; see ADR 008 and investment operations.
+Status: Historical implementation plan for the first investment release (V018), implemented under [ADR 008](../adr/008-investment-settlement-and-lots.md). Its manual-only entry, inclusive-charge and cash-only valuation descriptions record that original scope. [ADR 009](../adr/009-holdings-first-market-valuation.md) and [ADR 010](../adr/010-fund-holdings-and-manual-nav.md) extend it with holdings-first navigation, stock/ETF lookup, quote/FX valuation, separately recorded spending costs and manual fund NAVs. Use [investment operations](investments.md) for current behavior and instructions.
 
 ## Confirmed scope
 

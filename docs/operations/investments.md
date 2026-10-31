@@ -1,10 +1,10 @@
 # Investment holdings
 
-Current entry point: the holdings overview and market valuation workflow in the V019 section below. The earlier detailed activity model remains available in Manage investment activity; its original inclusive-charge behavior is retained for historical corrections. New fees/taxes are recorded separately as spending.
+Current entry point: the holdings overview, stock/ETF market valuation and manual fund NAV workflows described below (V019–V020). The earlier detailed activity model remains available in Manage investment activity; its original inclusive-charge behavior is retained for historical corrections. New fees/taxes are recorded separately as spending.
 
-Open an investment account and choose **Holdings and investment activity**. Account opening balance is uninvested cash only. If an existing balance includes securities, reconcile it before confirming an opening holding or trade. This release provides manual entry, not broker import or live prices.
+Open an investment account to see its holdings and account value. Choose **Manage investment activity** for opening lots, purchases, sales and corrections, or **Cash activity / record costs** for cash movements and separately recorded fees/taxes. Account opening balance is uninvested cash only. If an existing balance includes securities, reconcile it before confirming an opening holding or trade. Activity is entered manually; stock/ETF quotes refresh on request and funds use dated manual NAVs. Broker imports and guaranteed live prices remain deferred.
 
-Create a stock/ETF with its listing name, symbol, exchange and ISO currency; optionally retain its ISIN. Securities are private to the signed-in owner and can be reused across their investment accounts.
+Create a stock/ETF with its listing name, symbol, exchange and ISO currency; optionally retain its ISIN. Online lookup can create a selected stock/ETF listing, while **Add fund by ISIN** creates a fund without a market ticker. Securities are private to the signed-in owner and can be reused across their investment accounts.
 
 ## Existing holdings
 
@@ -12,7 +12,7 @@ Use **Add existing holding** to enter a quantity effective on a snapshot date. E
 
 ## Purchases and sales
 
-Enter quantity and execution price in security currency, trade date, cash date and actual settlement in account currency. For CHF cash buying USD stock, retain the USD execution price and enter the broker's actual CHF debit. Sale settlement is the actual net cash credit. Included fee/tax components may be recorded in their explicit currencies but never create a second debit. Settlement already includes all charges; no FX conversion is guessed.
+Enter quantity and execution price in security currency, trade date, cash date and trade cash amount in account currency. For CHF cash buying USD stock, retain the USD execution price and the actual CHF principal. For new purchases/sales, record fees and taxes separately as spending and exclude those costs from the trade cash amount so the combined entries reconcile to the broker's actual debit or credit. No settlement FX conversion is guessed. Historical inclusive-settlement records and their explicit-currency charge components remain preserved for corrections; do not also record those included charges as spending.
 
 Build and review the preview, including cash movement and warnings, then explicitly confirm. Sales propose FIFO by acquisition date, with warnings for unknown dates. Edit per-lot quantities, then rebuild the preview before confirming; all selected quantities must total the sale quantity. Future sales reserve their allocated shares. Changes in cash or activity require a fresh preview. A retried identical submission returns its original receipt.
 
@@ -22,11 +22,11 @@ Holdings show remaining quantity, known acquisition cost, cost completeness and 
 
 Cash activity links back to the investment record. Correct it through Investment activity: review a reversal, then optionally enter a replacement. Reversal and replacement are separate explicit commits; cancelling the replacement leaves the original reversed. Dependent sales must be reversed first. Shares may never become negative; purchases and sale reversals must retain sufficient cash through later recorded cash movements. Original activities, lots, allocations and audit records remain preserved. Archived accounts retain readable history and cannot accept changes.
 
-Trades do not count as income or spending. Current net worth still covers cash only: security positions trigger a prominent incomplete-valuation notice. Acquisition cost is not market value. Prices/FX, realized/unrealized performance, dividends and corporate actions remain deferred.
+Trade principal does not count as income or spending. Current account values and net worth include cash plus holdings valued with saved stock/ETF quotes or manual fund NAVs and explicit FX where required. Missing prices/FX leave positions excluded and totals visibly incomplete; older quotes/NAVs are marked. Acquisition cost never substitutes for market value. Realized/unrealized gains, dedicated dividend/interest activity, fee/tax reporting, portfolio performance, corporate actions and historical net worth remain deferred.
 
 ## Deployment and verification
 
-Deploy both images together using the normal backup/update process. Flyway applies V018 automatically; Hibernate does not alter schemas. Backups must include the new investment tables and audit history. The pre-release backup is required for a whole-database rollback; do not revert the application image across this migration without restoring the matching database. No new environment variables or dependencies are needed.
+Deploy both images together using the normal backup/update process. Flyway applies pending migrations through V020 automatically; Hibernate does not alter schemas. Full PostgreSQL backups must include investment activity, lots, allocations, stock/ETF and FX quotes, manual fund NAVs/corrections and audit history. The pre-release backup is required for a whole-database rollback; do not revert the application image across this migration without restoring the matching database. No new environment variables or dependencies are needed.
 
 Integration tests exercise owner/MFA/CSRF enforcement, atomic audit/cash writes, exact fractional cost allocation, actual cross-currency settlement, chronological guards, stale previews, concurrent submissions and reversals. Browser journeys cover opening holdings, purchases, edited sale allocations, cash links, net-worth warnings and guarded corrections on desktop and mobile. All browser data is synthetic and isolated from normal local and NAS data.
 

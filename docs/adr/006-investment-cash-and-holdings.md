@@ -1,6 +1,6 @@
 # 006 — Investment cash and holdings
 
-Status: Accepted. The first holdings/trade implementation and explicit cross-currency cash settlement extend this design in [ADR 008](008-investment-settlement-and-lots.md). The sequence below records the original decision.
+Status: Accepted. The first holdings/trade implementation and explicit cross-currency cash settlement extend this design in [ADR 008](008-investment-settlement-and-lots.md). The sequence below records the original decision. [ADR 009](009-holdings-first-market-valuation.md) and [ADR 010](010-fund-holdings-and-manual-nav.md) subsequently add quote/FX valuation, separate spending costs and manual fund NAVs; see [investment operations](../operations/investments.md) for current usage.
 
 ## Context
 
