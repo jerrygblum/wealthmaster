@@ -34,6 +34,8 @@ class AuthenticationTest {
     @Configuration @EnableWebMvc @EnableWebSecurity
     @Import({SecurityConfig.class, AuthController.class, MfaController.class, MfaSessions.class, AccountController.class, ApiErrors.class})
     static class TestConfig {
+        @Bean DemoConfig demoConfig() { return mock(DemoConfig.class); }
+        @Bean DemoInstallation demoInstallation() { return mock(DemoInstallation.class); }
         @Bean UserRepository users() { return mock(UserRepository.class); }
         @Bean AccountService accounts() { return mock(AccountService.class); }
         @Bean MfaService mfa() { return mock(MfaService.class); }

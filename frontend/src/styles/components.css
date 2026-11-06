@@ -1410,3 +1410,15 @@ button.compact-action-delete {
   max-width: 20rem;
   overflow-wrap: anywhere;
 }
+
+.demo-landing {
+  grid-column: 1 / -1;
+  max-width: 52rem;
+  margin: 2rem auto;
+}
+.demo-landing h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+.demo-landing button {
+  min-height: 44px;
+}

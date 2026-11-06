@@ -159,3 +159,5 @@ MIT — see [LICENSE](LICENSE).
 See [frontend development and atomic design](frontend/README.md) for linting, formatting, editor setup and component conventions.
 
 For short development cycles, run frontend `npm run test:related -- <changed-source-files>` or watch mode and focused backend unit tests. Run local lint/format/type checks before completion; full browser journeys remain in CI by default. See [frontend development](frontend/README.md#fast-development-checks).
+
+For a public portfolio sandbox, use the [separate shared demo deployment](docs/operations/public-demo.md). It has password-free guest entry, synthetic data, restricted editing and a daily reset; it does not share the private production database.

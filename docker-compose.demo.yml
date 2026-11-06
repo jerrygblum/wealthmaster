@@ -1,0 +1,55 @@
+# Standalone public demo. Always use: -p wealthmaster-demo -f docker-compose.demo.yml
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: wealthmaster_demo
+      POSTGRES_USER: wealthmaster_demo
+      POSTGRES_PASSWORD: ${DEMO_POSTGRES_PASSWORD:?Set a unique demo database password}
+    volumes:
+      - demo_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wealthmaster_demo -d wealthmaster_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    image: ${WEALTHMASTER_IMAGE_PREFIX:?Set WEALTHMASTER_IMAGE_PREFIX}-backend:${WEALTHMASTER_IMAGE_TAG:?Set an immutable image tag}
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/wealthmaster_demo
+      DB_USER: wealthmaster_demo
+      DB_PASSWORD: ${DEMO_POSTGRES_PASSWORD:?Set a unique demo database password}
+      SPRING_PROFILES_ACTIVE: prod
+      APP_DEMO_ENABLED: "true"
+      APP_DEMO_PUBLIC_ORIGIN: ${DEMO_PUBLIC_ORIGIN:?Set the public HTTPS demo origin without a trailing slash}
+      MFA_ENCRYPTION_PASSWORD: ${DEMO_MFA_ENCRYPTION_PASSWORD:?Set an independent encryption password}
+      MFA_ENCRYPTION_SALT: ${DEMO_MFA_ENCRYPTION_SALT:?Set an independent encryption salt}
+      APP_BUSINESS_TIME_ZONE: Europe/Zurich
+      SESSION_COOKIE_SECURE: "true"
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65
+    mem_limit: 768m
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 90s
+    restart: unless-stopped
+
+  frontend:
+    image: ${WEALTHMASTER_IMAGE_PREFIX:?Set WEALTHMASTER_IMAGE_PREFIX}-frontend:${WEALTHMASTER_IMAGE_TAG:?Set an immutable image tag}
+    command: ["sh", "-c", "cp /etc/nginx/demo.conf /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
+    ports:
+      - "127.0.0.1:8089:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  demo_postgres_data:

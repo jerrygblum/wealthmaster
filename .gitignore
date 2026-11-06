@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 !.env.production.example
+!.env.demo.example
 
 # Java / Maven
 backend/target/
@@ -32,6 +33,7 @@ coverage/
 
 # Deployment lock and temporary environment files
 .deploy.lock/
+.demo-operation.lock/
 .deploy.env.*
 
 # Python test caches

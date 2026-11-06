@@ -37,7 +37,7 @@ Expand this document with concrete abuse cases as authentication and imports are
 
 ## Login, MFA, and user settings
 
-Production and all profiles other than explicit development require MFA enrollment before financial access. Production wins if `prod` and `dev` are both selected. Development allows users without MFA to use passwords alone; enabled MFA is always enforced. Registration and password-reset flows remain deferred.
+Production and all profiles other than explicit development require MFA enrollment before financial access. Production wins if `prod` and `dev` are both selected. Development allows users without MFA to use passwords alone; enabled MFA is always enforced. Invitation-only registration is implemented; password reset remains deferred.
 
 Password login creates a restricted session for users with MFA or required enrollment. The server checks the session identity, authority, expiry, and persisted security version on protected requests. Financial endpoints require fully completed authentication. Activation/replacement/regeneration advance the security version and revoke other sessions, while rotating and preserving the initiating verified session. A second-factor login challenge expires after five minutes.
 
@@ -48,3 +48,9 @@ TOTP uses a standard library with six digits, 30-second steps, and one-step cloc
 CSRF is enforced on mutations, session cookies are HttpOnly/SameSite=Lax and Secure by default in production, and security responses are not cacheable. No secrets, codes, setup URIs, password hashes, or sensitive financial payloads are logged. QR generation stays in the browser. Audit events record activation, replacement, regeneration, and recovery-code use without secret data.
 
 Remaining production work includes deployment validation, backup/restore drills, operational monitoring, and security review. There is no email/SMS notification, trusted-device bypass, MFA disable action, or support-based factor reset. Losing both the authenticator and all recovery codes has no self-service recovery path.
+
+## Public demo boundary
+
+[ADR 011](../adr/011-isolated-public-demo.md) explicitly permits credential-free guest sessions only on a dedicated synthetic demo installation. Normal user MFA policy is unchanged. Startup guards reject ordinary users/owner credentials and the wrong database; the demo session is server-bound to a singleton MEMBER and generation. Guests receive ROLE_DEMO rather than ROLE_USER. Explicit method/path authorization blocks unknown APIs, user administration, MFA management, uploads/imports and provider requests, including direct requests outside the UI. CSRF/session rotation, origin checks, no-store responses, global Nginx limits and a durable mutation budget constrain the public surface.
+
+The demo is shared: anyone can alter or delete its fictional financial activity, consume its quotas or enter publicly visible text. The banner warns visitors to use fictional information. Daily resets intentionally discard this disposable dataset, while private deployment history remains untouched. Separate secrets, networks and volumes limit exposure; the NAS host and its finite resources remain shared. Reset/update scripts verify the actual demo installation before destructive operations, coordinate through one lock and fail unavailable rather than falling back to another database.

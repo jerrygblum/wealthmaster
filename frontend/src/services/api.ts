@@ -130,6 +130,14 @@ async function ledgerMutation<T>(
 }
 
 export const api = {
+  demoAvailability: () =>
+    request<{
+      enabled: boolean;
+      nextResetAt: string | null;
+      resetZone: string | null;
+      datasetVersion: number | null;
+    }>("/auth/demo"),
+  enterDemo: () => post<Session>("/auth/demo/session"),
   trendOptions: () => request<TrendOptions>("/net-worth/trend/options"),
   netWorthTrend: (filters: TrendFilters) => {
     const query = new URLSearchParams({

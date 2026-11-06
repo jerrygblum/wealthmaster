@@ -106,7 +106,7 @@ Goal: confidently replace the spreadsheet long-term.
 - Security review/threat model
 - Dependency update process
 - Data export/backup portability
-- Synthetic demo account/data
+- [x] Separate public shared editable demo, twelve-month synthetic dataset, guest capability restrictions and operator-scheduled daily reset
 - Public portfolio documentation/screenshots
 - Known limitations documented
 

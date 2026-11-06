@@ -1,5 +1,5 @@
 import { Link } from "../../atoms/Controls";
-export function WorkspaceNavigation({ page }: { page: string }) {
+export function WorkspaceNavigation({ page, demo = false }: { page: string; demo?: boolean }) {
   return (
     <nav className="workspace-nav" aria-label="Workspace">
       {[
@@ -11,16 +11,18 @@ export function WorkspaceNavigation({ page }: { page: string }) {
         { id: "categories", name: "Categories" },
         { id: "imports", name: "Migration" },
         { id: "category-mapping", name: "Category mapping" },
-        { id: "settings", name: "Settings" },
-      ].map((item) => (
-        <Link
-          key={item.id}
-          href={"#/" + item.id}
-          aria-current={page === item.id ? "page" : undefined}
-        >
-          {item.name}
-        </Link>
-      ))}
+        { id: "settings", name: demo ? "Preferences" : "Settings" },
+      ]
+        .filter((item) => !demo || !["imports", "category-mapping"].includes(item.id))
+        .map((item) => (
+          <Link
+            key={item.id}
+            href={"#/" + item.id}
+            aria-current={page === item.id ? "page" : undefined}
+          >
+            {item.name}
+          </Link>
+        ))}
     </nav>
   );
 }

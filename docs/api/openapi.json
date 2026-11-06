@@ -3,7 +3,7 @@
   "info": {
     "title": "Wealth Master API",
     "version": "0.13.0",
-    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording. Guided legacy-workbook migration stages private XLSX/XLSM data, requires explicit mappings and approvals, previews duplicates/balances, commits atomically and supports guarded reversal. Manual investment holdings, opening lots, purchases/sales with explicit account-currency cash settlement, reviewed lot allocation and guarded reversals. Holdings-first investment accounts, keyless stock/ETF lookup, timestamped market prices and explicit FX valuation into account currency. Missing/stale market data is visible; fees can be entered separately as spending. ISIN-identified funds with exact dated manual NAV entry, preserved correction history and account/net-worth valuation. Reconstructed net-worth trends for selectable account groups, inclusive date ranges and closing buckets, with separate currency totals, historical price/FX provenance and explicit valuation gaps."
+    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording. Guided legacy-workbook migration stages private XLSX/XLSM data, requires explicit mappings and approvals, previews duplicates/balances, commits atomically and supports guarded reversal. Manual investment holdings, opening lots, purchases/sales with explicit account-currency cash settlement, reviewed lot allocation and guarded reversals. Holdings-first investment accounts, keyless stock/ETF lookup, timestamped market prices and explicit FX valuation into account currency. Missing/stale market data is visible; fees can be entered separately as spending. ISIN-identified funds with exact dated manual NAV entry, preserved correction history and account/net-worth valuation. Reconstructed net-worth trends for selectable account groups, inclusive date ranges and closing buckets, with separate currency totals, historical price/FX provenance and explicit valuation gaps. A separate optional shared demo deployment supports CSRF-protected anonymous guest entry, explicitly restricted financial editing, a durable mutation quota and operator-scheduled daily reset. Normal production MFA remains mandatory."
   },
   "servers": [
     {
@@ -4845,6 +4845,57 @@
           }
         ]
       }
+    },
+    "/auth/demo": {
+      "get": {
+        "summary": "Read public demo availability",
+        "description": "No-store. Disabled normal deployments return enabled=false and null metadata. Dedicated demo reports the scheduled daily reset, Europe/Zurich timezone and retained dataset version.",
+        "responses": {
+          "200": {
+            "description": "Demo availability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoAvailability"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Demo migration/seeding or reset in progress; Retry-After supplied"
+          }
+        }
+      }
+    },
+    "/auth/demo/session": {
+      "post": {
+        "summary": "Enter the shared editable demo without credentials",
+        "description": "Requires CSRF token and an Origin matching the configured public HTTPS origin when present. Available only on an explicit, recognised isolated demo installation. The server chooses the shared MEMBER identity; no frontend identity is accepted. Rotates session ID and CSRF; creates ROLE_DEMO bound to the installation generation, never ROLE_USER or a normal MFA exemption. Guest capabilities are explicitly allowlisted. Requests are subject to global entry limits.",
+        "responses": {
+          "200": {
+            "description": "Demo session; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid CSRF or origin"
+          },
+          "404": {
+            "description": "Demo entry disabled"
+          },
+          "429": {
+            "description": "Entry limit exceeded; Retry-After supplied"
+          },
+          "503": {
+            "description": "Demo being restored; Retry-After supplied"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4933,11 +4984,23 @@
           },
           "recoveryUsed": {
             "type": "boolean"
+          },
+          "demo": {
+            "type": "boolean",
+            "description": "True only for the dedicated shared demo session authority. Normal production MFA is unchanged."
+          },
+          "nextResetAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Scheduled daily demo reset at 03:00 Europe/Zurich; null for normal sessions."
           }
         },
         "required": [
           "status",
-          "user"
+          "user",
+          "demo",
+          "nextResetAt"
         ]
       },
       "Csrf": {
@@ -8414,6 +8477,33 @@
           "points"
         ],
         "description": "Reconstructed corrected history, never immutable snapshots. Null complete values identify unavailable valuation or not-yet-open accounts. Known subtotals remain explicitly incomplete. Prices/FX carry forward with historical freshness flags; later-dated observations never value earlier points. Monetary values are exact decimal strings; per-holding conversion is rounded HALF_UP to eight decimals."
+      },
+      "DemoAvailability": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "nextResetAt",
+          "resetZone",
+          "datasetVersion"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "nextResetAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "resetZone": {
+            "type": "string",
+            "nullable": true
+          },
+          "datasetVersion": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
       }
     }
   }

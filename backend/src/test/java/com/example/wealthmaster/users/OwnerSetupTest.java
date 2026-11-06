@@ -13,7 +13,7 @@ class OwnerSetupTest {
         var users = mock(UserRepository.class);
         var encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
         try (var factory = Validation.buildDefaultValidatorFactory()) {
-            new OwnerSetup(users, encoder, factory.getValidator(), " OWNER@EXAMPLE.TEST ", "synthetic-password").run(new DefaultApplicationArguments());
+            new OwnerSetup(users, encoder, factory.getValidator(), org.mockito.Mockito.mock(DemoConfig.class), " OWNER@EXAMPLE.TEST ", "synthetic-password").run(new DefaultApplicationArguments());
         }
         var capture = ArgumentCaptor.forClass(AppUser.class);
         verify(users).save(capture.capture());
@@ -26,7 +26,7 @@ class OwnerSetupTest {
         var users = mock(UserRepository.class); when(users.count()).thenReturn(1L);
         var encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
         try (var factory = Validation.buildDefaultValidatorFactory()) {
-            new OwnerSetup(users, encoder, factory.getValidator(), "", "").run(new DefaultApplicationArguments());
+            new OwnerSetup(users, encoder, factory.getValidator(), org.mockito.Mockito.mock(DemoConfig.class), "", "").run(new DefaultApplicationArguments());
         }
         verify(users).count(); verifyNoMoreInteractions(users);
     }
@@ -36,7 +36,7 @@ class OwnerSetupTest {
         try (var factory = Validation.buildDefaultValidatorFactory()) {
             for (String[] credentials : new String[][]{{"", ""}, {"invalid", "synthetic-password"},
                     {"owner@example.test", "short"}, {"owner@example.test", "é".repeat(37)}}) {
-                var setup = new OwnerSetup(users, encoder, factory.getValidator(), credentials[0], credentials[1]);
+                var setup = new OwnerSetup(users, encoder, factory.getValidator(), org.mockito.Mockito.mock(DemoConfig.class), credentials[0], credentials[1]);
                 var error = assertThrows(IllegalStateException.class, () -> setup.run(new DefaultApplicationArguments()));
                 if (!credentials[1].isEmpty()) assertFalse(error.getMessage().contains(credentials[1]));
             }

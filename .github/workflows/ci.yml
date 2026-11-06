@@ -104,6 +104,8 @@ jobs:
       - name: Validate NAS update script
         run: |
           sh -n scripts/deploy-nas.sh
+          sh -n scripts/demo-nas.sh
+          sh -n scripts/verify-demo.sh
           python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
       - name: Validate with synthetic configuration
         env:
@@ -113,9 +115,32 @@ jobs:
           MFA_ENCRYPTION_SALT: 0123456789abcdef0123456789abcdef
         run: docker compose --env-file .env.production.example -f docker-compose.prod.yml config --quiet
 
+      - name: Validate isolated demo Compose
+        env:
+          WEALTHMASTER_IMAGE_TAG: sha-validation
+          DEMO_POSTGRES_PASSWORD: synthetic-demo-validation-password
+          DEMO_MFA_ENCRYPTION_PASSWORD: synthetic-demo-validation-key-not-for-production
+          DEMO_MFA_ENCRYPTION_SALT: 0123456789abcdef0123456789abcdef
+          DEMO_PUBLIC_ORIGIN: https://demo.example.test
+        run: docker compose --env-file .env.demo.example -p wealthmaster-demo -f docker-compose.demo.yml config --quiet
+
+  demo:
+    name: Verify isolated public demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Browser journeys and guarded reset over HTTPS
+        run: sh scripts/verify-demo.sh
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: demo-browser-test-results
+          path: frontend/test-results/
+
   publish:
     name: Publish ${{ matrix.service }} image
-    needs: [backend, frontend, browser, deployment]
+    needs: [backend, frontend, browser, deployment, demo]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:

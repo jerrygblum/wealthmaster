@@ -35,7 +35,7 @@ function Trend({
     </svg>
   );
 }
-export function PortfolioView(m: PortfolioViewModel) {
+export function PortfolioView(m: PortfolioViewModel & { demo?: boolean }) {
   const { account, data, pending, loading } = m;
   const value = account?.valuation;
   const busy = pending || loading;
@@ -105,13 +105,15 @@ export function PortfolioView(m: PortfolioViewModel) {
             >
               Add fund by ISIN
             </Button>
-            <Button
-              variant="secondary"
-              disabled={busy || !data.active}
-              onClick={() => void m.refresh()}
-            >
-              Refresh prices
-            </Button>
+            {!m.demo && (
+              <Button
+                variant="secondary"
+                disabled={busy || !data.active}
+                onClick={() => void m.refresh()}
+              >
+                Refresh prices
+              </Button>
+            )}
             <Button variant="secondary" disabled={busy} onClick={() => void m.load()}>
               Reload holdings
             </Button>
@@ -174,7 +176,8 @@ export function PortfolioView(m: PortfolioViewModel) {
                   </fieldset>
                 </form>
               )}
-              {!m.fundForm &&
+              {!m.demo &&
+                !m.fundForm &&
                 data.securities.find((s) => s.id === m.securityId)?.type !== "FUND" && (
                   <form
                     onSubmit={(e) => {
@@ -227,7 +230,11 @@ export function PortfolioView(m: PortfolioViewModel) {
                         value={m.securityId}
                         onChange={(e) => m.setSecurityId(e.target.value)}
                       >
-                        <option value="">Search online or choose an existing security</option>
+                        <option value="">
+                          {m.demo
+                            ? "Choose an existing security"
+                            : "Search online or choose an existing security"}
+                        </option>
                         {data.securities.map((s) => (
                           <option key={s.id} value={s.id}>
                             {s.name} · {s.symbol} · {s.exchange} · {s.currency}
@@ -377,7 +384,7 @@ export function PortfolioView(m: PortfolioViewModel) {
                               >
                                 {data.active ? "Update NAV / history" : "NAV history"}
                               </Button>
-                            ) : (
+                            ) : !m.demo ? (
                               <Button
                                 variant="secondary"
                                 disabled={busy || !data.active}
@@ -385,7 +392,7 @@ export function PortfolioView(m: PortfolioViewModel) {
                               >
                                 {q?.price ? "Change online listing" : "Link online listing"}
                               </Button>
-                            )}
+                            ) : null}
                           </td>
                         </tr>
                       );
@@ -395,12 +402,19 @@ export function PortfolioView(m: PortfolioViewModel) {
               </div>
             )}
           </section>
-          <p className="help">
-            Prices and FX: Yahoo Finance, refreshed on request and reused for 15 minutes. Quotes may
-            be delayed. Funds use dated manual NAVs; their trend uses the latest 30 recorded
-            valuation dates. Trends show prices, not investment performance. Last successful quotes
-            are kept if the source is unavailable.
-          </p>
+          {m.demo ? (
+            <p className="help">
+              Prices and FX are fictional saved observations. Online requests are unavailable in the
+              demo; manual fund NAV edits remain available.
+            </p>
+          ) : (
+            <p className="help">
+              Prices and FX: Yahoo Finance, refreshed on request and reused for 15 minutes. Quotes
+              may be delayed. Funds use dated manual NAVs; their trend uses the latest 30 recorded
+              valuation dates. Trends show prices, not investment performance. Last successful
+              quotes are kept if the source is unavailable.
+            </p>
+          )}
         </>
       )}
     </>

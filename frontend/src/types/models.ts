@@ -1,6 +1,12 @@
 export type User = { id: string; email: string; role?: "OWNER" | "MEMBER" };
 export type Session =
-  | { status: "AUTHENTICATED"; user: User; recoveryUsed?: boolean }
+  | {
+      status: "AUTHENTICATED";
+      user: User;
+      recoveryUsed?: boolean;
+      demo?: boolean;
+      nextResetAt?: string | null;
+    }
   | { status: "MFA_REQUIRED"; user?: User }
   | { status: "MFA_SETUP_REQUIRED"; user: User };
 export type FactorKind = "TOTP" | "RECOVERY";

@@ -10,6 +10,8 @@ export function ApplicationLayout({
   recoveryUsed,
   headerActions,
   headerFeedback,
+  demo = false,
+  nextResetAt,
 }: {
   children: ReactNode;
   page: string;
@@ -17,6 +19,8 @@ export function ApplicationLayout({
   recoveryUsed: boolean;
   headerActions?: ReactNode;
   headerFeedback?: ReactNode;
+  demo?: boolean;
+  nextResetAt?: string | null;
 }) {
   return (
     <AppShell>
@@ -25,7 +29,22 @@ export function ApplicationLayout({
         {headerActions}
       </header>
       {headerFeedback}
-      {authenticated && <WorkspaceNavigation page={page} />}{" "}
+      {authenticated && <WorkspaceNavigation page={page} demo={demo} />}{" "}
+      {demo && (
+        <Message className="notice" role="status">
+          <strong>Shared editable demo.</strong> Use fictional information only. Everyone sees your
+          changes.
+          {nextResetAt && (
+            <>
+              {" "}
+              Scheduled reset:{" "}
+              {new Date(nextResetAt).toLocaleString(undefined, { timeZone: "Europe/Zurich" })}{" "}
+              (Europe/Zurich).
+            </>
+          )}{" "}
+          Uploads, security settings and online market requests are unavailable.
+        </Message>
+      )}
       {recoveryUsed && (
         <Message className="notice">
           You signed in with a recovery code. Review your authenticator and remaining recovery codes

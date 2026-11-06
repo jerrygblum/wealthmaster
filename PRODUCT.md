@@ -20,7 +20,7 @@ The owner, migrating from an existing Excel-based finance workflow.
 A small number of independent friends/family accounts. Each user's data is isolated. Shared household finances are not an initial requirement.
 
 ### Demo
-A portfolio/demo account containing only synthetic data.
+A separate public [shared editable demo](docs/operations/public-demo.md) deployment containing only synthetic data. Visitors enter through Try demo without credentials; core finance edits are shared and cleared daily at 03:00 Europe/Zurich. Uploads, user administration and external market requests are unavailable. Normal production user MFA remains mandatory.
 
 ## Primary success criterion
 

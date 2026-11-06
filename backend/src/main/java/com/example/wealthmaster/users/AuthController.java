@@ -28,7 +28,7 @@ public class AuthController {
     }
     public record CsrfResponse(String headerName, String token) {}
     public enum AuthenticationStatus { AUTHENTICATED, MFA_REQUIRED, MFA_SETUP_REQUIRED }
-    public record SessionResponse(AuthenticationStatus status, UserResponse user, boolean recoveryUsed) {}
+    public record SessionResponse(AuthenticationStatus status, UserResponse user, boolean recoveryUsed, boolean demo, java.time.Instant nextResetAt) {}
     public record UserResponse(UUID id, String email, AppUser.Role role) {}
     public record VerifyInput(@NotBlank @Size(max = 64) String code, @NotNull MfaService.FactorKind kind) {
         @Override public String toString() { return "VerifyInput[redacted]"; }
