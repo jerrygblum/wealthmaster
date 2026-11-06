@@ -4,6 +4,7 @@ export function WorkspaceNavigation({ page }: { page: string }) {
     <nav className="workspace-nav" aria-label="Workspace">
       {[
         { id: "net-worth", name: "Net worth" },
+        { id: "net-worth/trends", name: "Trends" },
         { id: "accounts", name: "Accounts" },
         { id: "spending", name: "Spending" },
         { id: "expected", name: "Expected" },

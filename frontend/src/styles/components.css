@@ -1254,3 +1254,159 @@ button.compact-action-delete {
 .import-controls .panel {
   margin-block: 16px;
 }
+
+.panel.trend-filter-panel {
+  padding: 16px;
+}
+.trend-filter-panel button,
+.trend-filter-panel input:not([type="checkbox"]),
+.trend-filter-panel select {
+  min-height: 44px;
+  padding: 8px 12px;
+}
+.trend-account-picker {
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 12px;
+}
+.trend-account-picker > summary {
+  min-height: 44px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+.trend-selection-count {
+  margin-inline-start: 8px;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #52665f;
+}
+.trend-selection-preview {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: #52665f;
+  margin: 4px 0 0 18px;
+}
+.trend-account-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 6px;
+  margin-block: 8px 12px;
+}
+.trend-account-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 10px;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.trend-account-list label:has(input:checked) {
+  background: #edf4f1;
+  border-color: var(--color-primary);
+}
+.trend-account-list input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+}
+.trend-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.trend-presets button {
+  flex: 1 0 auto;
+  font-size: 0.8rem;
+}
+.trend-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.85fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 12px;
+}
+.trend-filters label {
+  min-width: 0;
+  margin: 0;
+  font-size: 0.8rem;
+}
+.trend-filters input,
+.trend-filters select {
+  display: block;
+  min-width: 0;
+  margin-top: 4px;
+}
+.trend-filter-panel > p[role="status"] {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+}
+@media (max-width: 640px) {
+  .trend-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .trend-presets {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .trend-presets button {
+    padding-inline: 4px;
+  }
+}
+.trend-chart-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.trend-chart-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+}
+.trend-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 10rem;
+}
+.trend-chart text {
+  fill: currentColor;
+}
+.trend-chart circle:focus {
+  outline: 2px solid currentColor;
+  r: 6;
+}
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  padding-inline-start: 1.5rem;
+}
+.trend-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.trend-table-scroll table {
+  width: 100%;
+  min-width: 30rem;
+}
+.trend-table-scroll th,
+.trend-table-scroll td {
+  padding: 0.65rem;
+  text-align: left;
+  vertical-align: top;
+}
+.trend-table-scroll details {
+  max-width: 20rem;
+  overflow-wrap: anywhere;
+}

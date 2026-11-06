@@ -8,6 +8,7 @@ function currentPage() {
   const investment = hash.split("?")[0].match(/^#\/accounts\/([a-f0-9-]+)\/investments$/);
   if (investment)
     return `${hash.includes("?activity=") ? "investment-activity" : "investments"}/${investment[1]}`;
+  if (hash.split("?")[0] === "#/net-worth/trends") return "net-worth/trends";
   if (hash === "#/category-mapping") return "category-mapping";
   if (hash === "#/imports") return "imports";
   if (hash === "#/register") return "register";

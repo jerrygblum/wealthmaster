@@ -3,7 +3,7 @@
   "info": {
     "title": "Wealth Master API",
     "version": "0.13.0",
-    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording. Guided legacy-workbook migration stages private XLSX/XLSM data, requires explicit mappings and approvals, previews duplicates/balances, commits atomically and supports guarded reversal. Manual investment holdings, opening lots, purchases/sales with explicit account-currency cash settlement, reviewed lot allocation and guarded reversals. Holdings-first investment accounts, keyless stock/ETF lookup, timestamped market prices and explicit FX valuation into account currency. Missing/stale market data is visible; fees can be entered separately as spending. ISIN-identified funds with exact dated manual NAV entry, preserved correction history and account/net-worth valuation."
+    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording. Guided legacy-workbook migration stages private XLSX/XLSM data, requires explicit mappings and approvals, previews duplicates/balances, commits atomically and supports guarded reversal. Manual investment holdings, opening lots, purchases/sales with explicit account-currency cash settlement, reviewed lot allocation and guarded reversals. Holdings-first investment accounts, keyless stock/ETF lookup, timestamped market prices and explicit FX valuation into account currency. Missing/stale market data is visible; fees can be entered separately as spending. ISIN-identified funds with exact dated manual NAV entry, preserved correction history and account/net-worth valuation. Reconstructed net-worth trends for selectable account groups, inclusive date ranges and closing buckets, with separate currency totals, historical price/FX provenance and explicit valuation gaps."
   },
   "servers": [
     {
@@ -4737,6 +4737,114 @@
           }
         }
       }
+    },
+    "/net-worth/trend/options": {
+      "get": {
+        "summary": "List accounts available for net-worth trends",
+        "description": "Returns current owner-scoped metadata including archived accounts and the configured business date. No valuation or provider requests.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner-scoped read; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendOptions"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA authorization required"
+          }
+        }
+      }
+    },
+    "/net-worth/trend": {
+      "get": {
+        "summary": "Reconstruct net-worth history for selected accounts",
+        "description": "One read-only repeatable-read snapshot; batch loads cash movements, effective investment activity and saved dated quote/series/NAV/FX observations. Account currencies stay separate. Accounts contribute only from opening date; cash includes earlier movements. Archived accounts participate when explicitly selected without archive-history replay. Weekly buckets run Monday-Sunday; other buckets use calendar boundaries, clipped to the inclusive range. Today uses calculation time; earlier cutoffs use end of business day in APP_BUSINESS_TIME_ZONE. No provider calls, snapshots or audit writes. Maximum 2,000 periods and 100,000 account-period combinations.",
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner-scoped read; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetWorthTrend"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "MFA authorization required"
+          },
+          "400": {
+            "description": "Invalid dates, bucket, empty selection or output limit exceeded; choose coarser buckets or shorter range"
+          },
+          "404": {
+            "description": "At least one selected account is unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "accountIds",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "description": "Repeated owned account IDs. Any unavailable ID rejects the entire request."
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "bucket",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TrendBucket"
+            }
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -8029,6 +8137,283 @@
           "date",
           "nav"
         ]
+      },
+      "TrendBucket": {
+        "type": "string",
+        "enum": [
+          "DAY",
+          "WEEK",
+          "MONTH",
+          "QUARTER",
+          "YEAR"
+        ]
+      },
+      "TrendAccount": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "openingDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "currency",
+          "openingDate",
+          "active"
+        ]
+      },
+      "TrendOptions": {
+        "type": "object",
+        "properties": {
+          "businessDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrendAccount"
+            }
+          }
+        },
+        "required": [
+          "businessDate",
+          "accounts"
+        ]
+      },
+      "TrendPeriod": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "partial": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "startDate",
+          "endDate",
+          "partial"
+        ]
+      },
+      "TrendPriceSource": {
+        "type": "object",
+        "properties": {
+          "securityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "securityName": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "priceDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date"
+          },
+          "quotedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "fetchedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "missing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "securityId",
+          "securityName",
+          "currency",
+          "priceDate",
+          "quotedAt",
+          "fetchedAt",
+          "source",
+          "stale",
+          "missing"
+        ]
+      },
+      "TrendAccountValue": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "opened": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "knownSubtotal": {
+            "type": "string",
+            "nullable": true
+          },
+          "missingPositions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrendPriceSource"
+            }
+          }
+        },
+        "required": [
+          "accountId",
+          "opened",
+          "value",
+          "knownSubtotal",
+          "missingPositions",
+          "stale",
+          "sources"
+        ]
+      },
+      "TrendCurrencyTotal": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "knownSubtotal": {
+            "type": "string",
+            "nullable": true
+          },
+          "missingPositions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stale": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "currency",
+          "value",
+          "knownSubtotal",
+          "missingPositions",
+          "stale"
+        ]
+      },
+      "TrendPoint": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "$ref": "#/components/schemas/TrendPeriod"
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrendAccountValue"
+            }
+          },
+          "currencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrendCurrencyTotal"
+            }
+          }
+        },
+        "required": [
+          "period",
+          "accounts",
+          "currencies"
+        ]
+      },
+      "NetWorthTrend": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/TrendBucket"
+          },
+          "businessDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "calculatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrendAccount"
+            }
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrendPoint"
+            }
+          }
+        },
+        "required": [
+          "startDate",
+          "endDate",
+          "bucket",
+          "businessDate",
+          "calculatedAt",
+          "accounts",
+          "points"
+        ],
+        "description": "Reconstructed corrected history, never immutable snapshots. Null complete values identify unavailable valuation or not-yet-open accounts. Known subtotals remain explicitly incomplete. Prices/FX carry forward with historical freshness flags; later-dated observations never value earlier points. Monetary values are exact decimal strings; per-holding conversion is rounded HALF_UP to eight decimals."
       }
     }
   }

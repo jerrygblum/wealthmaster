@@ -9,7 +9,9 @@ export function NetWorthPageView({ report, loading, error, load, user }: NetWort
     <>
       <WorkspaceHeading title={<>Net worth</>} subtitle={<>{user.email}</>} />
       <div className="section-heading">
-        <p>What you own, less what you owe.</p>
+        <p>
+          What you own, less what you owe. <Link href="#/net-worth/trends">View trends</Link>
+        </p>
         <Button
           variant="secondary"
           className="compact-action"

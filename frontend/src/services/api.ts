@@ -1,3 +1,4 @@
+import type { NetWorthTrend, TrendFilters, TrendOptions } from "../types/netWorthTrend";
 import type {
   InvestmentAccount,
   InvestmentInput,
@@ -129,6 +130,16 @@ async function ledgerMutation<T>(
 }
 
 export const api = {
+  trendOptions: () => request<TrendOptions>("/net-worth/trend/options"),
+  netWorthTrend: (filters: TrendFilters) => {
+    const query = new URLSearchParams({
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      bucket: filters.bucket,
+    });
+    filters.accountIds.forEach((id) => query.append("accountIds", id));
+    return request<NetWorthTrend>(`/net-worth/trend?${query.toString()}`);
+  },
   navHistory: (id: string) =>
     request<import("../types/marketdata").NavEntry[]>(`/market-data/securities/${id}/nav-history`),
   recordNav: (id: string, input: import("../types/marketdata").NavInput) =>

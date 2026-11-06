@@ -1,3 +1,4 @@
+import { NetWorthTrendPage } from "../networth/NetWorthTrendPage";
 import { InvestmentActivityPage } from "../investments/InvestmentActivityPage";
 import { InvestmentsPage } from "../investments/InvestmentsPage";
 import { OriginalCategoriesPage } from "../imports/OriginalCategoriesPage";
@@ -100,6 +101,8 @@ export default function App() {
         <OriginalCategoriesPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "imports" ? (
         <ImportsPage onExpired={expire} />
+      ) : session?.status === "AUTHENTICATED" && page === "net-worth/trends" ? (
+        <NetWorthTrendPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "expected" ? (
         <ExpectedPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "spending" ? (

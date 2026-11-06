@@ -91,7 +91,7 @@ Goal: make financial correctness visible.
 
 - Reconciliation
 - Data-quality dashboard
-- Historical net-worth chart
+- [x] Reconstructed net-worth trends with selectable account groups, date ranges and closing buckets; dated saved prices/FX and visible valuation gaps
 - Spending trends
 - Savings rate
 - Portfolio performance

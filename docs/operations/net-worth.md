@@ -11,3 +11,5 @@ Investment holdings are tracked separately from cash. `unvaluedHoldings` counts 
 Every report uses one repeatable-read PostgreSQL snapshot, so paired transfer sides cannot be observed from different commits. Refresh or re-enter the overview after changes. Failed refreshes mark any previous report explicitly; expired sessions return to sign-in. Reports do not write audit records. Amounts remain decimal strings, including aggregates larger than the transaction input limit.
 
 Verification covers exact arithmetic, signed positions, refunds and deletions, transfer conservation, investment cash plus priced holdings, FX conversion, missing/stale quotes, manual NAV corrections, archived/future accounts, ownership and MFA, and concurrent transfers. Browser journeys run under development and production profiles on desktop and mobile using synthetic disposable databases.
+
+Use **View trends** for [reconstructed historical net worth](net-worth-trends.md), selectable accounts, date ranges and closing buckets. Current net worth remains the default landing page.

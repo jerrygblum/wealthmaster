@@ -22,7 +22,7 @@ Holdings show remaining quantity, known acquisition cost, cost completeness and 
 
 Cash activity links back to the investment record. Correct it through Investment activity: review a reversal, then optionally enter a replacement. Reversal and replacement are separate explicit commits; cancelling the replacement leaves the original reversed. Dependent sales must be reversed first. Shares may never become negative; purchases and sale reversals must retain sufficient cash through later recorded cash movements. Original activities, lots, allocations and audit records remain preserved. Archived accounts retain readable history and cannot accept changes.
 
-Trade principal does not count as income or spending. Current account values and net worth include cash plus holdings valued with saved stock/ETF quotes or manual fund NAVs and explicit FX where required. Missing prices/FX leave positions excluded and totals visibly incomplete; older quotes/NAVs are marked. Acquisition cost never substitutes for market value. Realized/unrealized gains, dedicated dividend/interest activity, fee/tax reporting, portfolio performance, corporate actions and historical net worth remain deferred.
+Trade principal does not count as income or spending. Current account values and net worth include cash plus holdings valued with saved stock/ETF quotes or manual fund NAVs and explicit FX where required. Missing prices/FX leave positions excluded and totals visibly incomplete; older quotes/NAVs are marked. Acquisition cost never substitutes for market value. Realized/unrealized gains, dedicated dividend/interest activity, fee/tax reporting, portfolio performance, corporate actions and immutable historical snapshots remain deferred. [Net-worth trends](net-worth-trends.md) reconstructs historical values using dated saved observations, with gaps where price/FX history is missing.
 
 ## Deployment and verification
 
@@ -42,7 +42,7 @@ The overview, account cards and net worth now include priced holdings in the acc
 
 For new purchases/sales, record the cash principal in Investment activity. Record fees and taxes separately through **Cash activity / record costs** as spending, excluding these separately entered costs from trade cash. Older inclusive-settlement records and charge metadata remain supported for corrections; do not duplicate their already included charges as spending.
 
-V019 adds market-symbol links and private quote history. No API key or additional environment variable is needed. The backend needs outbound HTTPS to query1.finance.yahoo.com; offline operation retains holdings/cash and saved quotes. Deploy both images together, include quote history in normal full PostgreSQL backups, and preserve the pre-update backup for rollback. Automatic quote schedules, guaranteed real-time feeds and historical net-worth calculations are not added.
+V019 adds market-symbol links and private quote history. No API key or additional environment variable is needed. The backend needs outbound HTTPS to query1.finance.yahoo.com; offline operation retains holdings/cash and saved quotes. Deploy both images together, include quote history in normal full PostgreSQL backups, and preserve the pre-update backup for rollback. Automatic quote schedules and guaranteed real-time feeds remain deferred. Net-worth trends uses these saved observations for historical reconstruction; quote coverage is limited to the data already retained.
 
 ## Fund holdings and manual NAV (V020)
 
