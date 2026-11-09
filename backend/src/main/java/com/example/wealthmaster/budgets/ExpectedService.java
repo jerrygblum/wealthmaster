@@ -42,6 +42,9 @@ public class ExpectedService implements AccountUsagePolicy.ActivitySource {
             r.getObject("first_month",LocalDate.class),r.getObject("last_month",LocalDate.class),r.getString("payee"),
             r.getString("notes"),r.getLong("version"),r.getBoolean("available"));
     }
+    List<Definition> projectionDefinitions(UUID owner, UUID account) {
+        return jdbc.query(SELECT+" WHERE e.owner_id=? AND NOT e.deleted AND (e.account_id=? OR e.destination_id=?) ORDER BY e.id",this::row,owner,account,account);
+    }
     private Definition owned(UUID owner,UUID id) {
         var found=jdbc.query(SELECT+" WHERE e.owner_id=? AND e.id=? AND NOT e.deleted",this::row,owner,id);
         if(found.isEmpty()) throw new CategoryFailure(404,"Expected item not found.");

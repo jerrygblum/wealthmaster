@@ -1,3 +1,4 @@
+import type { AccountBalance } from "../types/accountBalance";
 import type { NetWorthTrend, TrendFilters, TrendOptions } from "../types/netWorthTrend";
 import type {
   InvestmentAccount,
@@ -130,6 +131,10 @@ async function ledgerMutation<T>(
 }
 
 export const api = {
+  accountBalance: (id: string, date: string, includeExpected: boolean, page = 0) =>
+    request<AccountBalance>(
+      `/accounts/${id}/balance?${new URLSearchParams({ date, includeExpected: String(includeExpected), page: String(page) })}`,
+    ),
   demoAvailability: () =>
     request<{
       enabled: boolean;

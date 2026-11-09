@@ -58,7 +58,7 @@ Goal: understand actual spending and expected monthly activity. Reusable bank-st
 - [ ] Budgeting — deferred pending a simpler future design
 - [x] Expected monthly income, expenses and transfers, confirmed suggestions, skip/undo and reviewed actual recording
 - [x] Upcoming, due, overdue and needs-review expected items
-- [ ] Basic cash-flow projection
+- [x] Per-account dated cash balances with optional expected projection, confirmed-match deduplication and review/overdue warnings
 
 ## 0.4 — Wealth / Investments
 Goal: represent investment wealth accurately.

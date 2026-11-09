@@ -3,7 +3,7 @@
   "info": {
     "title": "Wealth Master API",
     "version": "0.13.0",
-    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording. Guided legacy-workbook migration stages private XLSX/XLSM data, requires explicit mappings and approvals, previews duplicates/balances, commits atomically and supports guarded reversal. Manual investment holdings, opening lots, purchases/sales with explicit account-currency cash settlement, reviewed lot allocation and guarded reversals. Holdings-first investment accounts, keyless stock/ETF lookup, timestamped market prices and explicit FX valuation into account currency. Missing/stale market data is visible; fees can be entered separately as spending. ISIN-identified funds with exact dated manual NAV entry, preserved correction history and account/net-worth valuation. Reconstructed net-worth trends for selectable account groups, inclusive date ranges and closing buckets, with separate currency totals, historical price/FX provenance and explicit valuation gaps. A separate optional shared demo deployment supports CSRF-protected anonymous guest entry, explicitly restricted financial editing, a durable mutation quota and operator-scheduled daily reset. Normal production MFA remains mandatory."
+    "description": "Session authentication, MFA, owner-scoped accounts, ledger activity, native-currency net worth and spending by category for a selected calendar month or year. Exact expense/refund/net totals, inclusive category breakdowns and supporting activity; budgeting is deferred. Monthly expected income, expenses and transfers with reviewed suggestions, skips and atomic actual recording. Guided legacy-workbook migration stages private XLSX/XLSM data, requires explicit mappings and approvals, previews duplicates/balances, commits atomically and supports guarded reversal. Manual investment holdings, opening lots, purchases/sales with explicit account-currency cash settlement, reviewed lot allocation and guarded reversals. Holdings-first investment accounts, keyless stock/ETF lookup, timestamped market prices and explicit FX valuation into account currency. Missing/stale market data is visible; fees can be entered separately as spending. ISIN-identified funds with exact dated manual NAV entry, preserved correction history and account/net-worth valuation. Reconstructed net-worth trends for selectable account groups, inclusive date ranges and closing buckets, with separate currency totals, historical price/FX provenance and explicit valuation gaps. A separate optional shared demo deployment supports CSRF-protected anonymous guest entry, explicitly restricted financial editing, a durable mutation quota and operator-scheduled daily reset. Normal production MFA remains mandatory. Account activity also provides dated closing cash balances with optional separate expected projections; confirmed ledger matches never double count, and review/overdue warnings remain explicit."
   },
   "servers": [
     {
@@ -4896,6 +4896,90 @@
           }
         }
       }
+    },
+    "/accounts/{id}/balance": {
+      "get": {
+        "summary": "Closing cash balance at a chosen date with optional expected projection",
+        "description": "Owner-scoped read-only repeatable-read snapshot. Opening cash plus nondeleted movements through the selected transaction date, including pre-opening movements on/after opening. Before opening recorded values are unavailable. Current cash remains separate; securities are excluded. Optional expected amounts cover today through the selected date inclusive, excluding skipped/deleted/unavailable items and every confirmed match (represented solely by its actual ledger date/amount). Review exclusions flag an incomplete projection; overdue unrecorded items are reminders only. Past dates ignore includeExpected. No records, matches or audit rows are created. Breakdown merges future recorded and expected contributions chronologically at 50 per page; totals are independent of pagination. Explicitly allowed to demo sessions.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "description": "Inclusive closing business date, years 1\u20139999.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "includeExpected",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dated cash balance and paginated contributions",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountBalance"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid date/page or more than 2,000 forward expected candidates; shorten the range or switch expected transactions off.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Complete required MFA before accessing financial data"
+          },
+          "404": {
+            "description": "Unknown or unowned account"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8502,6 +8586,245 @@
           "datasetVersion": {
             "type": "integer",
             "nullable": true
+          }
+        }
+      },
+      "AccountBalanceEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "description",
+          "amount",
+          "source",
+          "kind",
+          "operationId",
+          "expectationId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amount": {
+            "type": "string",
+            "description": "Exact signed decimal string, without binary floating-point conversion."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "RECORDED",
+              "EXPECTED"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "REFUND",
+              "TRANSFER",
+              "INVESTMENT_BUY",
+              "INVESTMENT_SELL"
+            ]
+          },
+          "operationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "expectationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "AccountBalanceReview": {
+        "type": "object",
+        "required": [
+          "expectationId",
+          "name",
+          "month",
+          "reason"
+        ],
+        "properties": {
+          "expectationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "month": {
+            "type": "string",
+            "format": "date"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "AccountBalanceForecast": {
+        "type": "object",
+        "required": [
+          "adjustment",
+          "balance",
+          "complete",
+          "overdueCount",
+          "reviews"
+        ],
+        "properties": {
+          "adjustment": {
+            "type": "string",
+            "description": "Exact signed decimal string, without binary floating-point conversion."
+          },
+          "balance": {
+            "type": "string",
+            "description": "Exact signed decimal string, without binary floating-point conversion."
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "overdueCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountBalanceReview"
+            }
+          }
+        }
+      },
+      "AccountBalance": {
+        "type": "object",
+        "required": [
+          "accountId",
+          "accountName",
+          "accountType",
+          "currency",
+          "active",
+          "openingDate",
+          "date",
+          "businessDate",
+          "calculatedAt",
+          "available",
+          "openingBalance",
+          "currentBalance",
+          "recordedBalance",
+          "recordedChange",
+          "forecast",
+          "entries",
+          "page",
+          "hasMore"
+        ],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountName": {
+            "type": "string"
+          },
+          "accountType": {
+            "type": "string",
+            "enum": [
+              "CHECKING",
+              "SAVINGS",
+              "CASH",
+              "CREDIT_CARD",
+              "INVESTMENT",
+              "OTHER"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "openingDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "businessDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "calculatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "openingBalance": {
+            "type": "string",
+            "description": "Exact signed decimal string, without binary floating-point conversion."
+          },
+          "currentBalance": {
+            "type": "string",
+            "description": "Exact signed decimal string, without binary floating-point conversion."
+          },
+          "recordedBalance": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Exact decimal string; null before account opening."
+          },
+          "recordedChange": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Exact decimal string; null before account opening."
+          },
+          "forecast": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AccountBalanceForecast"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entries": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/AccountBalanceEntry"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "hasMore": {
+            "type": "boolean"
           }
         }
       }

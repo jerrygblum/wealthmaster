@@ -1,3 +1,4 @@
+import { balanceFixture } from "../../test-fixtures/accountBalance";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, ApiError } from "../../services/api";
@@ -17,6 +18,7 @@ vi.mock("../../services/api", async (original) => {
       login: vi.fn(),
       logout: vi.fn(),
       accounts: vi.fn(),
+      accountBalance: vi.fn(),
       createAccount: vi.fn(),
       updateAccount: vi.fn(),
       archiveAccount: vi.fn(),
@@ -51,6 +53,9 @@ const account: FinancialAccount = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(api.accountBalance).mockImplementation((id, date, _include, page = 0) =>
+    Promise.resolve(balanceFixture({ accountId: id, date, page })),
+  );
   vi.mocked(api.preferences).mockResolvedValue({
     defaultCurrency: null,
     version: 0,

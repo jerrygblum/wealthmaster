@@ -13,7 +13,7 @@ public final class DemoAccess {
         "/expected-transactions","/investments/securities","/net-worth/current","/net-worth/trend","/net-worth/trend/options","/users/me/preferences");
     private static final Set<String> POST=Set.of("/accounts","/transactions","/transfers","/categories","/categories/starter-set",
         "/expected-transactions","/investments/securities","/investments/preview","/investments/activities");
-    private static final Pattern GET_IDS=Pattern.compile("/(accounts/"+ID+"|investments/accounts/"+ID+"|investments/activities/"+ID+"/reversal-preview|market-data/securities/"+ID+"/nav-history|expected-transactions/"+ID+"/occurrences/"+MONTH+"/candidates)");
+    private static final Pattern GET_IDS=Pattern.compile("/(accounts/"+ID+"|accounts/"+ID+"/balance|investments/accounts/"+ID+"|investments/activities/"+ID+"/reversal-preview|market-data/securities/"+ID+"/nav-history|expected-transactions/"+ID+"/occurrences/"+MONTH+"/candidates)");
     public static boolean allowed(HttpServletRequest request) { return allowed(request.getMethod(),request.getRequestURI().substring(request.getContextPath().length())); }
     public static boolean allowed(String method,String path) {
         if (!path.startsWith("/api/v1/")) return false;

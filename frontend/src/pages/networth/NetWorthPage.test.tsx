@@ -1,3 +1,4 @@
+import { balanceFixture } from "../../test-fixtures/accountBalance";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { api, ApiError } from "../../services/api";
@@ -17,6 +18,7 @@ vi.mock("../../services/api", async (original) => {
       logout: vi.fn(),
       accounts: vi.fn(),
       account: vi.fn(),
+      accountBalance: vi.fn(),
       activity: vi.fn(),
       security: vi.fn(),
     },
@@ -71,6 +73,9 @@ const report: CurrentNetWorth = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(api.accountBalance).mockImplementation((id, date, _include, page = 0) =>
+    Promise.resolve(balanceFixture({ accountId: id, date, page })),
+  );
   vi.mocked(api.categories).mockResolvedValue({ items: [], starterSetAvailable: true });
   window.location.hash = "";
   vi.mocked(api.currentNetWorth).mockResolvedValue(empty);

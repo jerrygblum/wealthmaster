@@ -26,3 +26,7 @@ PUT /api/v1/accounts/{id}/appearance accepts a named accent and account If-Match
 Both enforce ownership, versions and CSRF, and audit changes transactionally.
 Used and archived accounts remain customizable. A concurrent account change asks
 the user to reload; failed requests leave the displayed order/color unchanged.
+
+## Check cash at a chosen date
+
+The account activity page includes [Balance on date](account-balance.md) alongside current cash and the existing editable activity list. Use it to inspect recorded closing cash or a separate optional expected forecast for today/future dates. Pre-opening dates are unavailable; opening-date corrections and transaction edits recalculate history. Securities are excluded from investment cash balances. No migration or new configuration is required.

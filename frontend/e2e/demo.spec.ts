@@ -37,6 +37,17 @@ test("anonymous visitors share finance edits while administrative and external a
     await viewer.getByRole("button", { name: "Try demo", exact: true }).click();
     await viewer.getByRole("link", { name: "Accounts", exact: true }).click();
     await expect(viewer.getByRole("heading", { name: label, exact: true })).toBeVisible();
+    await page.getByRole("button", { name: label, exact: true }).click();
+    const balancePanel = page.getByRole("region", { name: "Balance on date", exact: true });
+    await balancePanel.getByRole("button", { name: "+7 days", exact: true }).click();
+    await balancePanel
+      .getByRole("switch", { name: "Include expected transactions", exact: true })
+      .check();
+    await expect(
+      balancePanel
+        .getByText("Projected balance including expected transactions", { exact: true })
+        .locator(".."),
+    ).toContainText("CHF 125.50");
     await page.getByRole("link", { name: "Net worth", exact: true }).click();
     await page.getByRole("link", { name: "Investment portfolio", exact: true }).click();
     await expect(page.getByRole("button", { name: "Refresh prices", exact: true })).toHaveCount(0);

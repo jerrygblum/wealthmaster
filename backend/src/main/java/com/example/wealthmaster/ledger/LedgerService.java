@@ -29,6 +29,25 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
     public BigDecimal movements(UUID id) {
         return jdbc.queryForObject("SELECT COALESCE(SUM(m.amount),0) FROM ledger_movements m JOIN ledger_operations o ON o.id=m.operation_id WHERE m.account_id=? AND NOT o.deleted AND o.transaction_date<=?", BigDecimal.class,id,today());
     }
+    public record CashTotals(BigDecimal throughDate, BigDecimal throughToday) {}
+    public record CashChange(UUID id, LocalDate date, String description, BigDecimal amount, String kind) {}
+    /** Owner-scoped cash only; callers may join an existing repeatable-read report snapshot. */
+    public CashTotals cashTotals(UUID owner, UUID account, LocalDate date, LocalDate today) {
+        return jdbc.queryForObject("""
+            SELECT COALESCE(SUM(CASE WHEN o.transaction_date<=? THEN m.amount ELSE 0 END),0) selected,
+                   COALESCE(SUM(CASE WHEN o.transaction_date<=? THEN m.amount ELSE 0 END),0) current
+            FROM ledger_movements m JOIN ledger_operations o ON o.id=m.operation_id
+            WHERE o.owner_id=? AND m.account_id=? AND NOT o.deleted AND o.transaction_date<=?
+            """,(r,n)->new CashTotals(r.getBigDecimal("selected"),r.getBigDecimal("current")),date,today,owner,account,date.isAfter(today)?date:today);
+    }
+    public List<CashChange> futureCashChanges(UUID owner, UUID account, LocalDate today, LocalDate date, int offset, int limit) {
+        return jdbc.query("""
+            SELECT o.id,o.transaction_date,o.description,o.kind,SUM(m.amount) amount
+            FROM ledger_movements m JOIN ledger_operations o ON o.id=m.operation_id
+            WHERE o.owner_id=? AND m.account_id=? AND NOT o.deleted AND o.transaction_date>? AND o.transaction_date<=?
+            GROUP BY o.id ORDER BY o.transaction_date,o.id LIMIT ? OFFSET ?
+            """,(r,n)->new CashChange(r.getObject("id",UUID.class),r.getObject("transaction_date",LocalDate.class),r.getString("description"),r.getBigDecimal("amount"),r.getString("kind")),owner,account,today,date,limit,offset);
+    }
     private Operation row(java.sql.ResultSet r, int n) throws java.sql.SQLException {
         return new Operation(r.getObject("id",UUID.class),Kind.valueOf(r.getString("kind")),r.getObject("account_id",UUID.class),
             r.getObject("destination_id",UUID.class),r.getBigDecimal("amount").toPlainString(),r.getString("currency"),

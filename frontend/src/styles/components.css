@@ -1422,3 +1422,94 @@ button.compact-action-delete {
 .demo-landing button {
   min-height: 44px;
 }
+
+.panel.balance-date-panel {
+  padding: 16px;
+  margin-block: 16px;
+}
+.balance-date-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+}
+.balance-date-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.balance-date-heading .help {
+  margin: 0;
+}
+.balance-date-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin-block: 12px 4px;
+}
+.balance-date-controls label {
+  flex: 0 1 12rem;
+  margin: 0;
+}
+.balance-date-controls input {
+  min-height: 44px;
+  margin-top: 4px;
+}
+.balance-date-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.balance-date-panel button,
+.balance-date-panel summary {
+  min-height: 44px;
+}
+.balance-date-shortcuts button {
+  padding: 8px 12px;
+}
+.balance-date-toggle {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  margin: 0;
+}
+.balance-date-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+}
+.balance-date-amount {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.balance-date-panel summary {
+  cursor: pointer;
+  padding-block: 10px;
+}
+.balance-date-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.balance-date-summary dd {
+  margin: 0;
+  text-align: right;
+}
+.balance-date-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.balance-date-table table {
+  width: 100%;
+  min-width: 30rem;
+}
+.balance-date-table th,
+.balance-date-table td {
+  padding: 8px;
+  text-align: left;
+}

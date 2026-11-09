@@ -51,3 +51,7 @@ export type InvestmentsViewModel = ReturnType<
 export type PortfolioViewModel = ReturnType<
   typeof import("../hooks/investments/usePortfolio").usePortfolio
 >;
+
+export type AccountBalanceViewModel = ReturnType<
+  typeof import("../hooks/accounts/useAccountBalance").useAccountBalance
+>;

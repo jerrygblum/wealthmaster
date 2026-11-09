@@ -276,4 +276,19 @@ class InvestmentIntegrationTest {
         assertEquals(1,manualNav.history(owner(),f.id()).size());assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE event_type='FUND_NAV_RECORDED'",Integer.class));
     }
 
+    @Autowired com.example.wealthmaster.accounts.AccountBalanceService datedBalances;
+    @Test void chosenDateBalancesUseActualInvestmentCashDatesAndNeverSecurityValues() {
+        var a=broker("Synthetic dated cash","1000");var s=security();var today=ledger.today();
+        save(input(a.getId(),s.id(),InvestmentDtos.Kind.OPENING,"2",null,null,today));
+        var buy=input(a.getId(),s.id(),InvestmentDtos.Kind.BUY,"1","100","90",today);
+        buy=new InvestmentDtos.Input(buy.requestId(),buy.accountId(),buy.securityId(),buy.kind(),buy.quantity(),buy.unitPrice(),today,today.plusDays(1),null,buy.settlement(),null,false,List.of(),null,null,true,null);
+        save(buy);
+        var sell=input(a.getId(),s.id(),InvestmentDtos.Kind.SELL,"1","110","95",today.plusDays(1));
+        sell=new InvestmentDtos.Input(sell.requestId(),sell.accountId(),sell.securityId(),sell.kind(),sell.quantity(),sell.unitPrice(),sell.tradeDate(),today.plusDays(2),null,sell.settlement(),null,false,List.of(),null,null,true,null);
+        save(sell);
+        assertEquals("1000",datedBalances.balance(owner(),a.getId(),today,false,0).recordedBalance());
+        assertEquals("910",datedBalances.balance(owner(),a.getId(),today.plusDays(1),false,0).recordedBalance());
+        assertEquals("1005",datedBalances.balance(owner(),a.getId(),today.plusDays(2),false,0).recordedBalance());
+    }
+
 }

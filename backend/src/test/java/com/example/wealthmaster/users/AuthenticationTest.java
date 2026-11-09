@@ -37,6 +37,7 @@ class AuthenticationTest {
         @Bean DemoConfig demoConfig() { return mock(DemoConfig.class); }
         @Bean DemoInstallation demoInstallation() { return mock(DemoInstallation.class); }
         @Bean UserRepository users() { return mock(UserRepository.class); }
+        @Bean com.example.wealthmaster.accounts.AccountBalanceService balances() { return mock(com.example.wealthmaster.accounts.AccountBalanceService.class); }
         @Bean AccountService accounts() { return mock(AccountService.class); }
         @Bean MfaService mfa() { return mock(MfaService.class); }
         @Bean AttemptLimiter limits() {

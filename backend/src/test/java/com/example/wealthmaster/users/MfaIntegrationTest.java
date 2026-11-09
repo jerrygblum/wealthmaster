@@ -122,6 +122,11 @@ class MfaIntegrationTest {
                     .andExpect(status().isForbidden());
         }
     }
+    @Test void chosenDateBalanceCannotBypassRequiredMfa() throws Exception {
+        var session=login("MFA_SETUP_REQUIRED");
+        mvc.perform(get("/api/v1/accounts/"+UUID.randomUUID()+"/balance").session(session).param("date","2026-10-04"))
+            .andExpect(status().isForbidden());
+    }
     @Test void demoEntryIsDisabledAndCannotBypassNormalMfa() throws Exception {
         var session=new MockHttpSession();
         var token=mapper.readTree(mvc.perform(get("/api/v1/auth/csrf").session(session)).andReturn().getResponse().getContentAsString()).get("token").asString();

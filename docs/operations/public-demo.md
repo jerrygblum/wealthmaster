@@ -5,7 +5,8 @@ without credentials and edit a shared fictional financial workspace. Every visit
 sees others' changes. Use fictional information only: visitor-entered text is public
 until reset. Uploads/imports, registration, MFA/security management and external
 market searches/refreshes are unavailable. Preferences, core account/ledger/category/
-expectation editing, investment trades and manual fund NAVs remain available.
+expectation editing, investment trades, manual fund NAVs, and the account Balance
+on date read/forecast remain available.
 
 The versioned dataset covers twelve calendar months through the business date:
 CHF/EUR accounts, credit-card debt/payments, savings transfers, category spending,

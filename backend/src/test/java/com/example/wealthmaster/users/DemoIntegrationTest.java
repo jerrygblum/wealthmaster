@@ -72,6 +72,7 @@ class DemoIntegrationTest {
         for(var path:List.of("/accounts","/transactions","/categories","/spending","/expected-transactions","/investments/securities","/net-worth/current","/net-worth/trend/options","/users/me/preferences"))
             mvc.perform(get("/api/v1"+path).session(session)).andExpect(status().isOk());
         var account=jdbc.queryForObject("SELECT id FROM financial_accounts WHERE type='INVESTMENT'",UUID.class);
+        mvc.perform(get("/api/v1/accounts/"+account+"/balance").session(session).param("date",java.time.LocalDate.now().plusDays(7).toString()).param("includeExpected","true")).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"));
         var fund=jdbc.queryForObject("SELECT id FROM investment_securities WHERE type='FUND'",UUID.class);
         mvc.perform(get("/api/v1/investments/accounts/"+account).session(session)).andExpect(status().isOk());
         mvc.perform(get("/api/v1/net-worth/trend").session(session).param("accountIds",account.toString()).param("startDate",java.time.LocalDate.now().minusMonths(11).withDayOfMonth(1).toString()).param("endDate",java.time.LocalDate.now().toString()).param("bucket","MONTH")).andExpect(status().isOk()).andExpect(jsonPath("$.points.length()").value(12));
