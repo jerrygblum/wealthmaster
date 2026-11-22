@@ -21,6 +21,7 @@ import type {
 } from "../types/imports";
 import type {
   AccountAccent,
+  AccountAppearance,
   RegistrationSettings,
   RegistrationInput,
   RegistrationManagement,
@@ -406,6 +407,19 @@ export const api = {
     ledgerMutation<FinancialAccount[]>("/accounts/order", "PUT", {
       accounts: accounts.map(({ id, version }) => ({ id, version })),
     }),
+  setAccountAppearance: (account: FinancialAccount, input: AccountAppearance) =>
+    ledgerMutation<FinancialAccount>(
+      `/accounts/${account.id}/${input.logoData ? "logo" : "appearance"}`,
+      "PUT",
+      input.logoData
+        ? { data: input.logoData, color: input.color }
+        : {
+            accent: "DEFAULT",
+            color: input.color,
+            ...(input.logo !== "CUSTOM" ? { logo: input.logo } : {}),
+          },
+      account.version,
+    ),
   setAccountAccent: (account: FinancialAccount, accent: AccountAccent) =>
     ledgerMutation<FinancialAccount>(
       `/accounts/${account.id}/appearance`,

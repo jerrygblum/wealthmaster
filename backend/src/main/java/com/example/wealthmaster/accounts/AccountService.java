@@ -36,10 +36,28 @@ public class AccountService {
     public AccountResponse appearance(UUID owner, UUID id, String match, Appearance input) {
         var account = owned(owner, id, match);
         var before = response(account);
+        if(input.color()!=null && !input.color().matches("#[0-9A-Fa-f]{6}"))throw new IllegalArgumentException("Choose a six-digit hexadecimal color.");
+        if(input.logo()==Logo.CUSTOM)throw new IllegalArgumentException("Use the logo upload endpoint for custom images.");
         account.setAccent(input.accent());
+        account.setColor(input.color());
+        if(input.logo()!=null)account.setLogo(input.logo(),null);
         accounts.flush();
         var after = response(account);
         if (!before.equals(after)) audit.accountChanged(owner, id, "ACCOUNT_APPEARANCE_UPDATED", before, after);
+        return after;
+    }
+    @Transactional
+    public AccountResponse uploadLogo(UUID owner, UUID id, String match, LogoUpload input) {
+        var account=owned(owner,id,match);
+        if(input.color()!=null && !input.color().matches("#[0-9A-Fa-f]{6}"))throw new IllegalArgumentException("Choose a six-digit hexadecimal color.");
+        var data=AccountLogoImage.normalize(input.data());
+        var before=response(account);
+        account.setLogo(Logo.CUSTOM,data);
+        account.setColor(input.color());
+        account.setAccent(Accent.DEFAULT);
+        accounts.flush();
+        var after=response(account);
+        if(!before.equals(after))audit.accountChanged(owner,id,"ACCOUNT_APPEARANCE_UPDATED",before,after);
         return after;
     }
     @Transactional

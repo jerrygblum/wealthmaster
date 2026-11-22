@@ -84,6 +84,9 @@ class DemoIntegrationTest {
         for(var path:List.of("/auth/register","/users/me/mfa/enrollment/start","/users/me/registration/invitations","/imports/workbooks","/market-data/securities","/market-data/accounts/"+account+"/refresh"))
             mvc.perform(post("/api/v1"+path).session(session).header("X-CSRF-TOKEN",csrf(session)).contentType("application/json").content("{}"))
                 .andExpect(status().isForbidden());
+        mvc.perform(put("/api/v1/accounts/"+account+"/logo").session(session).header("X-CSRF-TOKEN",csrf(session)).header("If-Match","\"0\"")
+            .contentType("application/json").content("{\"data\":\"data:image/png;base64,synthetic\"}"))
+            .andExpect(status().isForbidden());
         verifyNoInteractions(provider);
     }
     @Test void quotaAndGenerationAreEnforcedAndLogoutOnlyEndsItsOwnSession()throws Exception {

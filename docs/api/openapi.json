@@ -3405,8 +3405,8 @@
     },
     "/accounts/{id}/appearance": {
       "put": {
-        "summary": "Set account color",
-        "description": "Owner-scoped, versioned presentation change, allowed for archived and used accounts. Financial setup is preserved; changes are audited atomically.",
+        "summary": "Set account card color and built-in bank mark",
+        "description": "Owner-scoped, versioned presentation change, allowed for archived and used accounts. Financial setup is preserved; changes are audited atomically. Custom six-digit hex colors tint the full card. Existing accent-only requests remain valid. Named logos clear any uploaded image; omitted logo preserves it. CUSTOM is rejected here.",
         "parameters": [
           {
             "name": "id",
@@ -4980,6 +4980,80 @@
           }
         }
       }
+    },
+    "/accounts/{id}/logo": {
+      "put": {
+        "summary": "Upload an account logo",
+        "description": "Owned, CSRF-protected and versioned custom image replacement. Normal authenticated/MFA-authorized users only; public demo sessions receive 403. Accepts only bounded PNG data, validates dimensions before decoding, and strips metadata by re-encoding. Sets logo=CUSTOM and accent=DEFAULT; the custom color is replaced atomically. Image bytes are excluded from audit snapshots; presentation metadata and versions remain audited. No remote URLs, SVG or external fetches.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "Single quoted account version from the account response, e.g. \"0\".",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid details or version header"
+          },
+          "401": {
+            "description": "Sign in required"
+          },
+          "403": {
+            "description": "MFA/CSRF required, or uploads unavailable to demo sessions"
+          },
+          "404": {
+            "description": "Account missing or not owned"
+          },
+          "412": {
+            "description": "Stale version: reload"
+          },
+          "428": {
+            "description": "If-Match required"
+          },
+          "200": {
+            "description": "Updated account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountLogoUpload"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5245,6 +5319,25 @@
                 "type": "null"
               }
             ]
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "description": "Optional custom card tint. Null falls back to the legacy accent palette."
+          },
+          "logo": {
+            "$ref": "#/components/schemas/AccountLogo"
+          },
+          "logoData": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 44000,
+            "description": "Owned, normalized PNG data URL for CUSTOM, otherwise null. Never an external URL."
           }
         },
         "required": [
@@ -6646,6 +6739,18 @@
         "properties": {
           "accent": {
             "$ref": "#/components/schemas/AccountAccent"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "description": "Replacement custom color; omitted/null clears it and uses accent."
+          },
+          "logo": {
+            "$ref": "#/components/schemas/AccountLogo",
+            "description": "Optional replacement built-in mark. Omission preserves the current logo; CUSTOM must use the separate upload route."
           }
         },
         "required": [
@@ -8825,6 +8930,41 @@
           },
           "hasMore": {
             "type": "boolean"
+          }
+        }
+      },
+      "AccountLogo": {
+        "type": "string",
+        "enum": [
+          "TYPE",
+          "UBS",
+          "POSTFINANCE",
+          "RAIFFEISEN",
+          "ZKB",
+          "REVOLUT",
+          "CUSTOM"
+        ],
+        "description": "TYPE uses an account-type placeholder; named choices are bundled bank marks; CUSTOM uses an owned uploaded PNG."
+      },
+      "AccountLogoUpload": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "string",
+            "maxLength": 44000,
+            "pattern": "^data:image/png;base64,",
+            "description": "PNG up to 32 KiB decoded and 256 \u00d7 256 pixels, re-encoded server-side to remove metadata and trailing content."
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "description": "Replacement custom color; null uses default."
           }
         }
       }

@@ -16,7 +16,7 @@ public class AuditService {
                 UUID.randomUUID(), ownerId, accountId);
     }
     public void accountChanged(UUID owner, UUID id, String event, AccountResponse before, AccountResponse after) {
-        var details = new AccountChange(before, after);
+        var details = new AccountChange(before == null ? null : before.forAudit(), after == null ? null : after.forAudit());
         jdbc.update("INSERT INTO audit_events(id, actor_id, event_type, resource_id, details) VALUES (?, ?, ?, ?, CAST(? AS jsonb))",
                 UUID.randomUUID(), owner, event, id, mapper.writeValueAsString(details));
     }

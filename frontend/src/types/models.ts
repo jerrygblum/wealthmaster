@@ -28,7 +28,17 @@ export type RecoveryCodes = { recoveryCodes: string[]; expiresAt: string };
 export type AccountType = "CHECKING" | "SAVINGS" | "CASH" | "CREDIT_CARD" | "INVESTMENT" | "OTHER";
 export type BalanceMeaning = "BALANCE" | "AMOUNT_OWED" | "IN_CREDIT";
 export type AccountAccent = "DEFAULT" | "BLUE" | "TEAL" | "PURPLE" | "AMBER" | "ROSE";
+export type AccountLogo =
+  "TYPE" | "UBS" | "POSTFINANCE" | "RAIFFEISEN" | "ZKB" | "REVOLUT" | "CUSTOM";
+export type AccountAppearance = {
+  color: string | null;
+  logo: AccountLogo;
+  logoData?: string | null;
+};
 export type FinancialAccount = {
+  color?: string | null;
+  logo?: AccountLogo;
+  logoData?: string | null;
   valuation?: import("./marketdata").Valuation | null;
   displayOrder?: number;
   accent?: AccountAccent;

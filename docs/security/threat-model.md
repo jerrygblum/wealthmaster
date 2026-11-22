@@ -54,3 +54,17 @@ Remaining production work includes deployment validation, backup/restore drills,
 [ADR 011](../adr/011-isolated-public-demo.md) explicitly permits credential-free guest sessions only on a dedicated synthetic demo installation. Normal user MFA policy is unchanged. Startup guards reject ordinary users/owner credentials and the wrong database; the demo session is server-bound to a singleton MEMBER and generation. Guests receive ROLE_DEMO rather than ROLE_USER. Explicit method/path authorization blocks unknown APIs, user administration, MFA management, uploads/imports and provider requests, including direct requests outside the UI. CSRF/session rotation, origin checks, no-store responses, global Nginx limits and a durable mutation budget constrain the public surface.
 
 The demo is shared: anyone can alter or delete its fictional financial activity, consume its quotas or enter publicly visible text. The banner warns visitors to use fictional information. Daily resets intentionally discard this disposable dataset, while private deployment history remains untouched. Separate secrets, networks and volumes limit exposure; the NAS host and its finite resources remain shared. Reset/update scripts verify the actual demo installation before destructive operations, coordinate through one lock and fail unavailable rather than falling back to another database.
+
+## Account logo images
+
+Custom logos use a separate authenticated, owner-scoped, CSRF-protected and versioned
+account endpoint. The public demo allowlist excludes it. Only bounded PNG data is
+accepted (32 KiB decoded, at most 256 × 256 pixels); dimensions are checked before
+pixel decoding, and server re-encoding strips metadata and trailing content. SVG,
+external URLs and other formats are rejected. The browser can convert local
+PNG/JPEG/WebP files to small PNG thumbnails without contacting another host.
+Images live in owned account records and ordinary private database backups; no
+public asset URLs, external logo lookups or filesystem mounts are introduced.
+Audit snapshots omit image bytes. Choosing a bundled bank mark removes a custom
+image; existing backups may retain earlier database contents under the normal
+backup retention policy.

@@ -100,19 +100,70 @@ test("account order and colors survive reloads", async ({ page }) => {
     await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   }
   await expect(page.getByRole("article").first()).toContainText("Synthetic savings");
-  const move = page.getByRole("button", { name: "Move Synthetic daily up" });
+  await page.getByRole("button", { name: "Card settings", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Account card settings" });
+  const move = dialog.getByRole("button", { name: "Move Synthetic daily up" });
   await move.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("article").first()).toContainText("Synthetic daily");
-  await page.getByRole("combobox", { name: "Color for Synthetic daily" }).selectOption("PURPLE");
-  await expect(page.getByRole("article").first()).toHaveAttribute("data-accent", "PURPLE");
-  await page.reload();
-  await expect(page.getByRole("article").first()).toContainText("Synthetic daily");
-  await expect(page.getByRole("article").first()).toHaveAttribute("data-accent", "PURPLE");
-  await expect(page.getByRole("combobox", { name: "Color for Synthetic daily" })).toHaveValue(
-    "PURPLE",
+  await expect(dialog.getByRole("listitem").first()).toContainText("Synthetic daily");
+  await dialog.getByLabel("Hex color for Synthetic daily", { exact: true }).fill("#a637c8");
+  await dialog.getByRole("combobox", { name: "Bank mark for Synthetic daily" }).selectOption("UBS");
+  await dialog
+    .getByRole("button", { name: "Save appearance for Synthetic daily", exact: true })
+    .click();
+  await expect(
+    dialog.getByText("Synthetic daily appearance saved.", { exact: true }),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+  const card = page.getByRole("article").first();
+  await expect(card).toContainText("Synthetic daily");
+  expect(await card.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(
+    "rgb(255, 255, 255)",
   );
+  await page.reload();
+  await expect(card).toContainText("Synthetic daily");
+  await expect(card.getByRole("img", { name: "UBS bank mark" })).toBeVisible();
+  await page.getByRole("button", { name: "Card settings", exact: true }).click();
+  await expect(dialog.getByLabel("Hex color for Synthetic daily", { exact: true })).toHaveValue(
+    "#a637c8",
+  );
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  for (const label of ["Move Synthetic daily down", "Save appearance for Synthetic daily"]) {
+    expect(
+      (await dialog.getByRole("button", { name: label, exact: true }).boundingBox())!.height,
+    ).toBeGreaterThanOrEqual(44);
+  }
+  // Custom files are resized locally, then persisted with the account.
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 24;
+    canvas.height = 24;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#0055aa";
+    ctx.fillRect(0, 0, 24, 24);
+    return canvas.toDataURL("image/png").split(",")[1];
+  });
+  await dialog.getByLabel("Upload logo for Synthetic daily", { exact: true }).setInputFiles({
+    name: "synthetic-bank.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(png, "base64"),
+  });
+  await dialog
+    .getByRole("button", { name: "Save appearance for Synthetic daily", exact: true })
+    .click();
+  await expect(
+    dialog.getByRole("button", { name: "Save appearance for Synthetic daily", exact: true }),
+  ).toBeDisabled();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+  await page.reload();
+  await expect(card.getByAltText("Custom account logo")).toBeVisible();
+  await page.getByRole("button", { name: "Card settings", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Card settings", exact: true })).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+  await card.getByRole("button", { name: "View details for Synthetic daily", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Balance on date", exact: true })).toBeVisible();
 });

@@ -9,7 +9,7 @@ import type {
 export type AccountDetailProps = { id: string; onBack: () => void; onExpired: () => void };
 export type AppProps = Record<string, never>;
 export type LoginPageProps = { notice: string | null; onLogin: (session: Session) => void };
-export type AccountsPageProps = { user: User; onExpired: () => void };
+export type AccountsPageProps = { user: User; onExpired: () => void; demo?: boolean };
 export type AccountFormProps = {
   account?: FinancialAccount;
   onCancel: () => void;

@@ -200,6 +200,39 @@ class AccountsIntegrationTest {
                 .contentType("application/json").content("{\"accent\":\"ROSE\"}")).andExpect(status().isForbidden());
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE event_type='ACCOUNT_APPEARANCE_UPDATED'", Integer.class));
     }
+    @Test void arbitraryColorsAndBankMarksPreserveBalancesAndValidateInput() throws Exception {
+        var account=fixture();var owner=login("owner@example.test");
+        var path="/api/v1/accounts/"+account.getId()+"/appearance";
+        mvc.perform(put(path).session(owner).header("X-CSRF-TOKEN",csrf(owner)).header("If-Match","\"0\"")
+            .contentType("application/json").content("{\"accent\":\"DEFAULT\",\"color\":\"#12aBcD\",\"logo\":\"UBS\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.color").value("#12aBcD")).andExpect(jsonPath("$.logo").value("UBS"))
+            .andExpect(jsonPath("$.currentBalance").value("10.12345678"));
+        mvc.perform(get("/api/v1/accounts").session(owner)).andExpect(jsonPath("$[0].color").value("#12aBcD")).andExpect(jsonPath("$[0].logo").value("UBS"));
+        for(var input:java.util.List.of("{\"accent\":\"DEFAULT\",\"color\":\"red;url(x)\"}","{\"accent\":\"DEFAULT\",\"logo\":\"CUSTOM\"}","{\"accent\":\"DEFAULT\",\"logo\":\"UNKNOWN\"}"))
+            mvc.perform(put(path).session(owner).header("X-CSRF-TOKEN",csrf(owner)).header("If-Match","\"1\"").contentType("application/json").content(input)).andExpect(status().isBadRequest());
+    }
+    @Test void logosAreOwnedVersionedRasterOnlyAndExcludedFromAuditPayloads() throws Exception {
+        var account=fixture();var owner=login("owner@example.test");
+        users.findByEmail("second@example.test").orElseGet(()->users.save(new AppUser("second@example.test",encoder.encode("synthetic-password"))));
+        var other=login("second@example.test");
+        var bytes=new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(16,16,java.awt.image.BufferedImage.TYPE_INT_ARGB),"png",bytes);
+        var data="data:image/png;base64,"+java.util.Base64.getEncoder().encodeToString(bytes.toByteArray());
+        var body=mapper.writeValueAsString(new AccountDtos.LogoUpload(data,"#aabbcc"));
+        var path="/api/v1/accounts/"+account.getId()+"/logo";
+        mvc.perform(put(path).session(other).header("X-CSRF-TOKEN",csrf(other)).header("If-Match","\"0\"").contentType("application/json").content(body)).andExpect(status().isNotFound());
+        mvc.perform(put(path).session(owner).header("If-Match","\"0\"").contentType("application/json").content(body)).andExpect(status().isForbidden());
+        mvc.perform(put(path).session(owner).header("X-CSRF-TOKEN",csrf(owner)).header("If-Match","\"0\"").contentType("application/json").content(body))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.logo").value("CUSTOM")).andExpect(jsonPath("$.logoData").value(data)).andExpect(jsonPath("$.color").value("#aabbcc"));
+        mvc.perform(get("/api/v1/accounts").session(owner)).andExpect(jsonPath("$[0].logoData").value(data));
+        mvc.perform(put(path).session(owner).header("X-CSRF-TOKEN",csrf(owner)).header("If-Match","\"0\"").contentType("application/json").content(body)).andExpect(status().isPreconditionFailed());
+        assertFalse(jdbc.queryForObject("SELECT details::text FROM audit_events WHERE resource_id=? ORDER BY occurred_at DESC LIMIT 1",String.class,account.getId()).contains("data:image"));
+        for(var invalid:java.util.List.of("data:image/svg+xml;base64,PHN2Zy8+","data:image/png;base64,bm90IGFuIGltYWdl"))
+            mvc.perform(put(path).session(owner).header("X-CSRF-TOKEN",csrf(owner)).header("If-Match","\"1\"").contentType("application/json").content(mapper.writeValueAsString(new AccountDtos.LogoUpload(invalid,null)))).andExpect(status().isBadRequest());
+        mvc.perform(put("/api/v1/accounts/"+account.getId()+"/appearance").session(owner).header("X-CSRF-TOKEN",csrf(owner)).header("If-Match","\"1\"")
+            .contentType("application/json").content("{\"accent\":\"DEFAULT\",\"logo\":\"TYPE\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.logo").value("TYPE")).andExpect(jsonPath("$.logoData").isEmpty());
+    }
     @Test void orderIsAtomicVersionedAndIncludesArchivedAccounts() throws Exception {
         var first = fixture(); var second = fixture(); var owner = login("owner@example.test");
         jdbc.update("UPDATE financial_accounts SET active=false WHERE id=?", second.getId());

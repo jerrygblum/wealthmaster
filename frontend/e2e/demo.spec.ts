@@ -1,4 +1,17 @@
 import { test, expect } from "@playwright/test";
+import type { BrowserContext } from "@playwright/test";
+import { setTimeout as delay } from "node:timers/promises";
+// Exercise the real demo limits at their configured sustained entry rate.
+async function paceDemoEntry(context: BrowserContext) {
+  let nextEntryAt = 0;
+  await context.route(/\/api\/v1\/auth\/(csrf|demo\/session)$/, async (route) => {
+    const now = Date.now(),
+      wait = Math.max(0, nextEntryAt - now);
+    nextEntryAt = Math.max(now, nextEntryAt) + 1050;
+    if (wait) await delay(wait);
+    await route.continue();
+  });
+}
 test.skip(process.env.E2E_DEMO !== "true", "Requires the separate synthetic demo deployment.");
 test("anonymous visitors share finance edits while administrative and external actions stay unavailable", async ({
   page,
@@ -15,6 +28,7 @@ test("anonymous visitors share finance edits while administrative and external a
       await old.close();
     }
   }
+  await paceDemoEntry(page.context());
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Try the shared demo" })).toBeVisible();
   await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
@@ -30,7 +44,20 @@ test("anonymous visitors share finance edits while administrative and external a
   await page.getByLabel("Opening balance", { exact: true }).fill("125.50");
   await page.getByRole("button", { name: "Save account", exact: true }).click();
   await expect(page.getByRole("heading", { name: label, exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Card settings", exact: true }).click();
+  const cardSettings = page.getByRole("dialog", { name: "Account card settings" });
+  await expect(cardSettings.locator('input[type="file"]')).toHaveCount(0);
+  await cardSettings
+    .getByRole("combobox", { name: `Bank mark for ${label}`, exact: true })
+    .selectOption("POSTFINANCE");
+  await cardSettings.getByLabel(`Hex color for ${label}`, { exact: true }).fill("#2299dd");
+  await cardSettings
+    .getByRole("button", { name: `Save appearance for ${label}`, exact: true })
+    .click();
+  await expect(cardSettings.getByText(`${label} appearance saved.`, { exact: true })).toBeVisible();
+  await cardSettings.getByRole("button", { name: "Done", exact: true }).click();
   const other = await browser.newContext({ ignoreHTTPSErrors: true });
+  await paceDemoEntry(other);
   try {
     const viewer = await other.newPage();
     await viewer.goto(process.env.E2E_BASE_URL!);

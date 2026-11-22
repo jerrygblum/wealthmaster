@@ -132,7 +132,7 @@ export default function App() {
       ) : session?.status === "AUTHENTICATED" && (page === "net-worth" || page === "register") ? (
         <NetWorthPage user={session.user} onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" ? (
-        <AccountsPage user={session.user} onExpired={expire} />
+        <AccountsPage user={session.user} onExpired={expire} demo={!!session.demo} />
       ) : session?.status === "MFA_REQUIRED" ? (
         <MfaLogin onSession={acceptSession} onExpired={expire} onLogout={loggedOut} />
       ) : page === "register" ? (

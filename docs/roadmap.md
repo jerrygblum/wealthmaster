@@ -24,7 +24,7 @@ Goal: represent financial accounts and trustworthy manual activity.
 - [x] Financial account creation and owner-scoped listing
 - [x] Opening balances
 - [x] Account editing, unused-account deletion, archive/restore, version checks, and audit snapshots
-- [x] Saved account ordering and card accent colors, with owner isolation and version checks
+- [x] Account card settings modal: ordering, arbitrary full-card color tints, bank marks/custom logos and dedicated detail actions, with owner isolation and version checks
 - [x] Investment cash/holdings architecture documented (first release implemented)
 - [x] Manual income/expense/refund transactions, corrections, soft deletion and audit snapshots
 - [x] Same-currency paired transfers

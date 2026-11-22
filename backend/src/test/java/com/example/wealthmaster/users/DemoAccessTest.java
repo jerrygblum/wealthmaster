@@ -3,6 +3,10 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DemoAccessTest {
+    @org.junit.jupiter.api.Test void accountLogoUploadsRemainUnavailableToGuests() {
+        org.junit.jupiter.api.Assertions.assertFalse(DemoAccess.allowed("PUT","/api/v1/accounts/00000000-0000-0000-0000-000000000001/logo"));
+    }
+
     final String id="11111111-1111-4111-8111-111111111111";
     @Test void explicitlyAllowsFinancialCapabilitiesAndRejectsUnknownMethodsAndSubpaths() {
         for(var path:new String[]{"accounts","transactions","categories","spending","spending/activity","expected-transactions","investments/securities","net-worth/current","net-worth/trend","net-worth/trend/options","users/me/preferences","accounts/"+id,"accounts/"+id+"/balance","investments/accounts/"+id,"investments/activities/"+id+"/reversal-preview","market-data/securities/"+id+"/nav-history","expected-transactions/"+id+"/occurrences/2026-11-01/candidates"})

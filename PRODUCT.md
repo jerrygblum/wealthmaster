@@ -61,7 +61,7 @@ Accounts support editing, archive/restore, and confirmed permanent deletion when
 
 The account activity page supports [Balance on date](docs/operations/account-balance.md): choose a past/current/future closing cash balance, with optional separate expected projection for today onward. Recorded cash uses ledger transaction dates; expectations never change authoritative balances. Confirmed matches count solely through actual ledger entries; overdue items remain reminders, and invalid/unavailable references make forecasts visibly incomplete. Historical balances are unavailable before opening. The normal current balance and activity list stay visible; investment market values are excluded.
 
-Users can save a custom account order and choose a named card accent color on the Accounts page. These owner-scoped presentation settings persist across devices, including for archived accounts, without changing financial data. New accounts appear first.
+The Accounts page keeps balances and account information prominent, with a dedicated View details action. Card settings opens a keyboard-accessible modal listing all active and archived accounts: users reorder accounts, choose any six-digit hex color for a readable full-card tint, select bundled bank marks, or upload a custom logo. Account-type icons provide the default and failed-image fallback. Settings persist across devices without changing financial data; new accounts appear first. Custom image uploads remain unavailable in the public demo, while colors, order and bundled marks remain editable.
 
 ### Ledger transactions
 - Create/edit/delete transactions with auditability.

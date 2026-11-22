@@ -236,6 +236,11 @@ checks their versions and full-list membership, then updates positions and audit
 atomically. Appearance updates reuse account ownership and If-Match checks. Both
 settings share the account version and never change financial setup or ledger data.
 
+V022 adds optional hex colors, a constrained logo key, and small PNG data URLs to account presentation. Existing palette accents remain compatible. The existing appearance route sets colors/built-in marks; a separate owner-scoped `/accounts/{id}/logo` PUT validates and normalizes bounded raster images (32 KiB decoded, at most 256 × 256), strips metadata, and shares ownership/version/CSRF/MFA/audit rules. The guest capability allowlist deliberately excludes this upload route. Logo bytes are omitted from audit snapshots; database backups include the current image. No external image URLs/providers, filesystem mounts or dependencies are introduced.
+
+A native dialog provides focus containment, Escape dismissal and focus restoration. The feature hook holds unsaved appearance drafts; order updates persist immediately, appearance updates save per account. The overview renders full-card color tints, local bank marks or account-type SVG placeholders, with a dedicated details action. Browser uploads accept PNG/JPEG/WebP up to 2 MB, resize to 128 × 128 PNG, and send through the separate upload API. All images are embedded in owner-scoped responses, with no public asset endpoint.
+
+
 ### Guided legacy-workbook migration
 
 V016 adds owner-scoped import batches, immutable source/workbook staging and links

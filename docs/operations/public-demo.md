@@ -125,3 +125,11 @@ project/volume, builds local test images, runs HTTPS browser checks before and a
 a real guarded reset, verifies generation/session invalidation, quotas, rate limits
 and maintenance responses, then removes only its synthetic stack. CI requires this
 job to pass before publishing either application image.
+
+Backend image builds retain Maven dependencies in a BuildKit cache. Transient
+repository transfer failures (HTTP 429/502/503/504 or selected network errors)
+retry up to three attempts, waiting 15 then 30 seconds and forcing fresh artifact
+resolution. Compilation errors and missing artifacts fail immediately. Persistent
+repository failures still fail the job; inspect the build log before rerunning.
+
+Account Card settings supports order, custom colors and bundled bank marks in the demo. Custom logo upload controls are hidden and `PUT /api/v1/accounts/{id}/logo` is denied by the explicit guest capability allowlist.
