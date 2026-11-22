@@ -9,7 +9,9 @@ export function NetWorthPageView({ report, loading, error, load, user }: NetWort
     <>
       <WorkspaceHeading title={<>Net worth</>} subtitle={<>{user.email}</>} />
       <div className="section-heading">
-        <p>What you own, less what you owe.</p>
+        <p>
+          What you own, less what you owe. <Link href="#/net-worth/trends">View trends</Link>
+        </p>
         <Button
           variant="secondary"
           className="compact-action"
@@ -23,9 +25,15 @@ export function NetWorthPageView({ report, loading, error, load, user }: NetWort
       </div>
       <p className="help">
         Based on recorded balances of active accounts. Archived accounts are excluded. Investment
-        accounts contribute uninvested cash. Each currency has its own total; totals do not include
-        currency conversion or security holdings.
+        accounts contribute cash plus priced holdings, converted into the account currency. Each
+        account currency has its own total. Quote timestamps are available in the holdings view.
       </p>
+      {!!report?.unvaluedHoldings && (
+        <p role="status" className="notice">
+          Total incomplete — {report.unvaluedHoldings} security positions need a price or FX rate
+          and are excluded. Acquisition cost is not market value.
+        </p>
+      )}
       {error && (
         <div className="error" role="alert">
           <p>{error}</p>
@@ -115,8 +123,15 @@ export function NetWorthPageView({ report, loading, error, load, user }: NetWort
                     <article className="panel" key={account.id}>
                       <p className="eyebrow">{accountTypes[account.type]}</p>
                       <h3>
-                        <Link href={`#/accounts/${account.id}`}>{account.name}</Link>
+                        <Link
+                          href={`#/accounts/${account.id}${account.type === "INVESTMENT" ? "/investments" : ""}`}
+                        >
+                          {account.name}
+                        </Link>
                       </h3>
+                      {account.valuation?.stale && (
+                        <p className="notice">Using older prices or NAVs.</p>
+                      )}
                       <p>
                         {account.currency} {displayAmount(account.currentBalance)}
                       </p>
@@ -136,8 +151,12 @@ export function NetWorthPageView({ report, loading, error, load, user }: NetWort
                 <ul className="future-accounts">
                   {report.excludedFutureAccounts.map((account) => (
                     <li key={account.id}>
-                      <Link href={`#/accounts/${account.id}`}>{account.name}</Link> ·{" "}
-                      {accountTypes[account.type]} · {account.currency} · Opens{" "}
+                      <Link
+                        href={`#/accounts/${account.id}${account.type === "INVESTMENT" ? "/investments" : ""}`}
+                      >
+                        {account.name}
+                      </Link>{" "}
+                      · {accountTypes[account.type]} · {account.currency} · Opens{" "}
                       <time dateTime={account.openingDate}>{account.openingDate}</time>
                     </li>
                   ))}

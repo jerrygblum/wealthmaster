@@ -1,3 +1,4 @@
+import { AccountCardSettingsView } from "../../components/organisms/accounts/AccountCardSettingsView";
 import { AccountsPageView } from "../../components/organisms/accounts/AccountsPageView";
 import { WorkspaceLayout } from "../../components/templates/WorkspaceLayout";
 import { useAccounts } from "../../hooks/accounts/useAccounts";
@@ -21,6 +22,7 @@ export function AccountsPage(props: AccountsPageProps) {
   return (
     <WorkspaceLayout className="workspace">
       <AccountsPageView {...model} AccountForm={AccountForm} />
+      {model.settings.open && <AccountCardSettingsView {...model} />}
     </WorkspaceLayout>
   );
 }

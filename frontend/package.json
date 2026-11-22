@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:demo": "E2E_DEMO=true playwright test demo.spec.ts",
     "lint:fix": "eslint . --fix --max-warnings 0",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "format": "prettier --write .",

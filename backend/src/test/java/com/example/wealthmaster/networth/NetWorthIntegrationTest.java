@@ -129,8 +129,8 @@ class NetWorthIntegrationTest {
             finally {committed.countDown();}
             var before=reading.get(15,java.util.concurrent.TimeUnit.SECONDS);
             assertEquals(0,new BigDecimal("100").compareTo(new BigDecimal(before.currencies().getFirst().netWorth())));
-            assertEquals("0.00000000",before.accounts().stream().filter(c->c.id().equals(b.getId())).findFirst().orElseThrow().currentBalance());
-            assertEquals("25.00000000",netWorth.current(owner).accounts().stream().filter(c->c.id().equals(b.getId())).findFirst().orElseThrow().currentBalance());
+            assertEquals(0,new BigDecimal(before.accounts().stream().filter(c->c.id().equals(b.getId())).findFirst().orElseThrow().currentBalance()).compareTo(BigDecimal.ZERO));
+            assertEquals(0,new BigDecimal(netWorth.current(owner).accounts().stream().filter(c->c.id().equals(b.getId())).findFirst().orElseThrow().currentBalance()).compareTo(new BigDecimal("25")));
         }
     }
 }

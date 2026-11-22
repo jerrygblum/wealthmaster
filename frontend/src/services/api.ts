@@ -1,3 +1,14 @@
+import type { AccountBalance } from "../types/accountBalance";
+import type { NetWorthTrend, TrendFilters, TrendOptions } from "../types/netWorthTrend";
+import type {
+  InvestmentAccount,
+  InvestmentInput,
+  InvestmentPreview,
+  InvestmentActivity,
+  InvestmentReversal,
+  Security,
+  SecurityInput,
+} from "../types/investments";
 import type { OriginalCategoryGroup, OriginalCategoryMapping } from "../types/originalCategories";
 import type {
   ImportBatch,
@@ -10,6 +21,7 @@ import type {
 } from "../types/imports";
 import type {
   AccountAccent,
+  AccountAppearance,
   RegistrationSettings,
   RegistrationInput,
   RegistrationManagement,
@@ -120,6 +132,66 @@ async function ledgerMutation<T>(
 }
 
 export const api = {
+  accountBalance: (id: string, date: string, includeExpected: boolean, page = 0) =>
+    request<AccountBalance>(
+      `/accounts/${id}/balance?${new URLSearchParams({ date, includeExpected: String(includeExpected), page: String(page) })}`,
+    ),
+  demoAvailability: () =>
+    request<{
+      enabled: boolean;
+      nextResetAt: string | null;
+      resetZone: string | null;
+      datasetVersion: number | null;
+    }>("/auth/demo"),
+  enterDemo: () => post<Session>("/auth/demo/session"),
+  trendOptions: () => request<TrendOptions>("/net-worth/trend/options"),
+  netWorthTrend: (filters: TrendFilters) => {
+    const query = new URLSearchParams({
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      bucket: filters.bucket,
+    });
+    filters.accountIds.forEach((id) => query.append("accountIds", id));
+    return request<NetWorthTrend>(`/net-worth/trend?${query.toString()}`);
+  },
+  navHistory: (id: string) =>
+    request<import("../types/marketdata").NavEntry[]>(`/market-data/securities/${id}/nav-history`),
+  recordNav: (id: string, input: import("../types/marketdata").NavInput) =>
+    ledgerMutation<import("../types/marketdata").NavEntry>(
+      `/market-data/securities/${id}/nav`,
+      "POST",
+      input,
+    ),
+  searchStocks: (q: string) =>
+    request<import("../types/marketdata").Listing[]>(
+      `/market-data/search?q=${encodeURIComponent(q)}`,
+    ),
+  addMarketSecurity: (symbol: string) =>
+    ledgerMutation<Security>("/market-data/securities", "POST", { symbol }),
+  linkMarketSecurity: (id: string, symbol: string) =>
+    ledgerMutation<void>(`/market-data/securities/${id}/listing`, "PUT", { symbol }),
+  refreshMarketPrices: (id: string) =>
+    ledgerMutation<{ messages: string[] }>(`/market-data/accounts/${id}/refresh`, "POST", {}),
+  investmentAccount: (id: string) => request<InvestmentAccount>(`/investments/accounts/${id}`),
+  createSecurity: (input: SecurityInput) =>
+    ledgerMutation<Security>("/investments/securities", "POST", input),
+  previewInvestment: (input: InvestmentInput) =>
+    ledgerMutation<InvestmentPreview>("/investments/preview", "POST", input),
+  commitInvestment: (input: InvestmentInput, token: string) =>
+    ledgerMutation<InvestmentActivity>("/investments/activities", "POST", {
+      input,
+      token,
+      approved: true,
+    }),
+  previewInvestmentReversal: (id: string) =>
+    request<InvestmentReversal>(`/investments/activities/${id}/reversal-preview`),
+  reverseInvestment: (activity: InvestmentActivity, token: string) =>
+    ledgerMutation<InvestmentActivity>(`/investments/activities/${activity.id}/reverse`, "POST", {
+      version: activity.version,
+      token,
+      approved: true,
+    }),
+
   originalCategoryGroups: () => request<OriginalCategoryGroup[]>("/imports/original-categories"),
   mapOriginalCategory: (mapping: OriginalCategoryMapping) =>
     ledgerMutation<{ updated: number }>("/imports/original-categories", "POST", mapping),
@@ -335,6 +407,19 @@ export const api = {
     ledgerMutation<FinancialAccount[]>("/accounts/order", "PUT", {
       accounts: accounts.map(({ id, version }) => ({ id, version })),
     }),
+  setAccountAppearance: (account: FinancialAccount, input: AccountAppearance) =>
+    ledgerMutation<FinancialAccount>(
+      `/accounts/${account.id}/${input.logoData ? "logo" : "appearance"}`,
+      "PUT",
+      input.logoData
+        ? { data: input.logoData, color: input.color }
+        : {
+            accent: "DEFAULT",
+            color: input.color,
+            ...(input.logo !== "CUSTOM" ? { logo: input.logo } : {}),
+          },
+      account.version,
+    ),
   setAccountAccent: (account: FinancialAccount, accent: AccountAccent) =>
     ledgerMutation<FinancialAccount>(
       `/accounts/${account.id}/appearance`,

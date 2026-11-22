@@ -31,10 +31,11 @@ public class SecurityConfig {
                 .map(user -> new OwnerPrincipal(user.getId(), user.getEmail(), user.getPasswordHash()))
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid credentials"));
     }
-    @Bean AuthenticationProvider passwordAuthenticationProvider(UserDetailsService users, PasswordEncoder passwords, AttemptLimiter limits) {
+    @Bean AuthenticationProvider passwordAuthenticationProvider(UserDetailsService users, PasswordEncoder passwords, AttemptLimiter limits, DemoConfig demoConfig) {
         var delegate = new DaoAuthenticationProvider(users); delegate.setPasswordEncoder(passwords);
         return new AuthenticationProvider() {
             @Override public Authentication authenticate(Authentication input) throws AuthenticationException {
+                if (demoConfig.enabled()) throw new org.springframework.security.authentication.BadCredentialsException("Use Try demo.");
                 String email = input.getName().strip().toLowerCase(Locale.ROOT);
                 if (email.length() > 254) throw new org.springframework.security.authentication.BadCredentialsException("Invalid credentials");
                 return limits.guard("password:" + email, () -> {
@@ -48,17 +49,19 @@ public class SecurityConfig {
         };
     }
     @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper, MfaSessions sessions,
-            AuthenticationProvider provider) throws Exception {
+            AuthenticationProvider provider, DemoConfig demoConfig, DemoInstallation demo) throws Exception {
         return http.authenticationManager(new org.springframework.security.authentication.ProviderManager(provider))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/api/v1/meta/status", "/api/v1/auth/csrf", "/api/v1/auth/login", "/api/v1/auth/registration", "/api/v1/auth/register").permitAll()
-                        .requestMatchers("/api/v1/auth/session").hasAnyRole("USER", "MFA_PENDING", "MFA_SETUP")
+                        .requestMatchers("/actuator/health", "/actuator/health/readiness", "/api/v1/meta/status", "/api/v1/auth/csrf", "/api/v1/auth/login", "/api/v1/auth/registration", "/api/v1/auth/register", "/api/v1/auth/demo", "/api/v1/auth/demo/session").permitAll()
+                        .requestMatchers("/api/v1/auth/session").hasAnyRole("USER", "MFA_PENDING", "MFA_SETUP", "DEMO")
                         .requestMatchers("/api/v1/auth/mfa/verify").hasRole("MFA_PENDING")
                         .requestMatchers("/api/v1/users/me/mfa/replacement/**", "/api/v1/users/me/mfa/recovery/**").hasRole("USER")
                         .requestMatchers("/api/v1/users/me/security", "/api/v1/users/me/mfa/enrollment/**", "/api/v1/users/me/mfa/pending/cancel")
                             .hasAnyRole("USER", "MFA_SETUP")
+                        .requestMatchers(DemoAccess::allowed).hasAnyRole("USER", "DEMO")
                         .anyRequest().hasRole("USER"))
                 .addFilterBefore(new MfaSessionFilter(sessions), AuthorizationFilter.class)
+                .addFilterAfter(new DemoGateFilter(demoConfig,demo,sessions,mapper), MfaSessionFilter.class)
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, error) -> json(mapper, response, 401, Map.of("message", "Please sign in.")))
                         .accessDeniedHandler((request, response, error) -> json(mapper, response, 403,

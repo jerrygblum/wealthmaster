@@ -114,6 +114,8 @@ export function useAccountDetail({ id, onBack, onExpired }: AccountDetailProps) 
     (a) => a.id !== form?.accountId && a.currency === source?.currency,
   );
   const canChange = (op: Operation) =>
+    !op.investmentActivityId &&
+    !op.kind.startsWith("INVESTMENT_") &&
     [op.accountId, op.destinationAccountId]
       .filter(Boolean)
       .every((a) => accounts.some((x) => x.id === a && x.active));

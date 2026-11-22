@@ -20,7 +20,7 @@ The owner, migrating from an existing Excel-based finance workflow.
 A small number of independent friends/family accounts. Each user's data is isolated. Shared household finances are not an initial requirement.
 
 ### Demo
-A portfolio/demo account containing only synthetic data.
+A separate public [shared editable demo](docs/operations/public-demo.md) deployment containing only synthetic data. Visitors enter through Try demo without credentials; core finance edits are shared and cleared daily at 03:00 Europe/Zurich. Uploads, user administration and external market requests are unavailable. Normal production user MFA remains mandatory.
 
 ## Primary success criterion
 
@@ -59,7 +59,9 @@ Each account has owner, name, type, institution (optional), native currency, ope
 
 Accounts support editing, archive/restore, and confirmed permanent deletion when unused. Financial activity locks type, currency and opening amount; name, institution and opening date remain editable. Opening date corrections preserve all transactions; balances include all nondeleted movements through today, including before account opening. A nonzero opening balance alone does not block deletion. Archived accounts preserve financial history and balances but do not contribute to current net worth; future transaction/trade entry requires restoration. Changes retain audit snapshots, including after permanent deletion.
 
-Users can save a custom account order and choose a named card accent color on the Accounts page. These owner-scoped presentation settings persist across devices, including for archived accounts, without changing financial data. New accounts appear first.
+The account activity page supports [Balance on date](docs/operations/account-balance.md): choose a past/current/future closing cash balance, with optional separate expected projection for today onward. Recorded cash uses ledger transaction dates; expectations never change authoritative balances. Confirmed matches count solely through actual ledger entries; overdue items remain reminders, and invalid/unavailable references make forecasts visibly incomplete. Historical balances are unavailable before opening. The normal current balance and activity list stay visible; investment market values are excluded.
+
+The Accounts page keeps balances and account information prominent, with a dedicated View details action. Card settings opens a keyboard-accessible modal listing all active and archived accounts: users reorder accounts, choose any six-digit hex color for a readable full-card tint, select bundled bank marks, or upload a custom logo. Account-type icons provide the default and failed-image fallback. Settings persist across devices without changing financial data; new accounts appear first. Custom image uploads remain unavailable in the public demo, while colors, order and bundled marks remain editable.
 
 ### Ledger transactions
 - Create/edit/delete transactions with auditability.
@@ -142,7 +144,13 @@ Priority:
 Suggestions are explainable and user-correctable. A user correction may offer to create/update a rule.
 
 ### Investments
-Initial asset types: stocks and ETFs.
+Supported asset types: stocks, ETFs and ISIN-identified funds.
+
+Funds can be created manually using name, ISIN and currency. Existing units use the same preserved opening-lot workflow. Dated manual NAV entries, optional source references and corrections are retained with audit history. The latest applicable NAV contributes units × NAV to account value and net worth, using explicit FX where required. Fund rows show NAV date, previous NAV and collected price history. Archived accounts are read-only; missing or older NAVs are visible. Automatic fund NAV feeds remain deferred until verified.
+
+Implemented first release: owner-scoped manual securities, existing holdings with optional acquisition date/cost, purchases and sales, exact fractional quantities, reviewed FIFO or explicit lot allocations, and auditable reversal/correction. Execution currency is retained separately from explicit settlement in the account cash currency (including CHF cash buying USD securities). Existing holdings never debit cash. Unknown costs remain unknown; aggregate opening positions are labelled. Trades are investment activity and excluded from spending. Archived accounts are read-only. Investment accounts now open on holdings, with optional keyless online stock/ETF lookup, latest quotes, previous close and daily trend. Current account values and net worth include priced holdings converted into account currency using explicit saved FX quotes; missing price/FX yields visibly incomplete totals. Fees/taxes for new activity are entered separately as spending and excluded from trade cash. Original inclusive settlements remain preserved. See [investment operations](docs/operations/investments.md).
+
+The following wider investment scope remains the product direction; realized/unrealized gains, performance, corporate actions, guaranteed live feeds, dedicated dividend/interest activity and fee/tax reporting are deferred.
 
 Investment activities:
 - Buy
@@ -179,9 +187,9 @@ Market prices may be delayed depending on provider/licensing. UI must show quote
 
 Current view includes contribution by account/asset type and drill-down to source data.
 
-The implemented cash-ledger view is the default landing page. It shows assets, liabilities and net worth separately for each native currency, including active accounts and investment cash only. Archived accounts are excluded; restoring them reinstates their contributions. Positive balances are assets and negative balances are liabilities, including bank overdrafts and credit-card overpayments. Accounts opening after the configured business date are listed separately and excluded until that date. Totals retain exact decimal precision and show their business date and calculation timestamp. No combined FX total or security valuation is available yet. Categories are available for manual assignment.
+The implemented cash-ledger view is the default landing page. It shows assets, liabilities and net worth separately for each native currency, including active accounts and investment cash plus priced security holdings. Archived accounts are excluded; restoring them reinstates their contributions. Positive balances are assets and negative balances are liabilities, including bank overdrafts and credit-card overpayments. Accounts opening after the configured business date are listed separately and excluded until that date. Totals retain exact decimal precision and show their business date and calculation timestamp. No combined FX total across cash account currencies is available. Security valuation uses latest saved quotes/FX with visible timestamps and missing/stale-data notices. Categories are available for manual assignment.
 
-Historical net-worth snapshots/views show change over time without retroactively rewriting history because of today's FX/prices.
+The separate [Net-worth trends](docs/operations/net-worth-trends.md) page reconstructs history for any selected account group, with separate currency totals, optional account lines, inclusive date ranges and daily/weekly/monthly/quarterly/yearly closing buckets. Active accounts are selected initially; archived accounts are explicitly selectable. Dated saved stock/ETF observations, manual NAVs and historical FX value holdings; missing data produces gaps and labelled known subtotals, while older observations carry forward with age warnings. Corrected financial records and NAVs can change reconstructed history; today's prices never substitute for historical observations. Immutable snapshots, automatic historical-data downloads and cross-currency combined totals remain deferred.
 
 ### Reconciliation
 Later release:

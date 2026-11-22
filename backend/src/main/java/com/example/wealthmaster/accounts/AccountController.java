@@ -13,10 +13,22 @@ import static com.example.wealthmaster.accounts.AccountDtos.*;
 @RequestMapping("/api/v1/accounts")
 public class AccountController {
     private final AccountService service;
-    public AccountController(AccountService service) { this.service = service; }
+    private final AccountBalanceService balances;
+    public AccountController(AccountService service, AccountBalanceService balances) { this.service = service; this.balances=balances; }
     @GetMapping
     public List<AccountResponse> list(@AuthenticationPrincipal OwnerPrincipal owner) {
         return service.list(owner.id());
+    }
+    @GetMapping("/{id}/balance")
+    public org.springframework.http.ResponseEntity<AccountBalanceDtos.Balance> balance(@AuthenticationPrincipal OwnerPrincipal owner,
+            @PathVariable UUID id,@RequestParam java.time.LocalDate date,
+            @RequestParam(defaultValue="false") boolean includeExpected,@RequestParam(defaultValue="0") int page) {
+        return org.springframework.http.ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(balances.balance(owner.id(),id,date,includeExpected,page));
+    }
+    @PutMapping("/{id}/logo")
+    public AccountResponse logo(@AuthenticationPrincipal OwnerPrincipal owner, @PathVariable UUID id,
+            @RequestHeader(value="If-Match",required=false) String match, @Valid @RequestBody LogoUpload input) {
+        return service.uploadLogo(owner.id(),id,match,input);
     }
     @PutMapping("/order")
     public List<AccountResponse> reorder(@AuthenticationPrincipal OwnerPrincipal owner, @Valid @RequestBody AccountOrder input) {

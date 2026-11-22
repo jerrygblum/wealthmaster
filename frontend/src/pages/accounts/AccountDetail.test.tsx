@@ -1,3 +1,4 @@
+import { balanceFixture } from "../../test-fixtures/accountBalance";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { api, ApiError } from "../../services/api";
@@ -7,6 +8,7 @@ vi.mock("../../services/api", async (importOriginal) => ({
   api: {
     categories: vi.fn(),
     account: vi.fn(),
+    accountBalance: vi.fn(),
     accounts: vi.fn(),
     activity: vi.fn(),
     saveActivity: vi.fn(),
@@ -44,6 +46,9 @@ const entry = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(api.accountBalance).mockImplementation((id, date, _include, page = 0) =>
+    Promise.resolve(balanceFixture({ accountId: id, date, page })),
+  );
   vi.mocked(api.categories).mockResolvedValue({ items: [], starterSetAvailable: true });
   vi.mocked(api.account).mockResolvedValue(account);
   vi.mocked(api.accounts).mockResolvedValue([
@@ -252,5 +257,22 @@ it("keeps an archived assignment on unrelated edits and permits clearing", async
       expect.objectContaining({ categoryId: null }),
       categorized,
     ),
+  );
+});
+
+it("links investment cash to its trade and disables ordinary edits and deletion", async () => {
+  vi.mocked(api.account).mockResolvedValue({ ...account, type: "INVESTMENT" });
+  vi.mocked(api.activity).mockResolvedValue({
+    items: [{ ...entry, kind: "INVESTMENT_BUY", investmentActivityId: "trade" }],
+    page: 0,
+    hasMore: false,
+  });
+  render(<AccountDetail id="a" onBack={() => {}} onExpired={() => {}} />);
+  expect(await screen.findByText("Investment purchase")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Edit entry" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Delete entry" })).toBeDisabled();
+  expect(screen.getByRole("link", { name: "Investment activity" })).toHaveAttribute(
+    "href",
+    "#/accounts/a/investments?activity=trade",
   );
 });

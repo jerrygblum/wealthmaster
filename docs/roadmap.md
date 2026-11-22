@@ -24,8 +24,8 @@ Goal: represent financial accounts and trustworthy manual activity.
 - [x] Financial account creation and owner-scoped listing
 - [x] Opening balances
 - [x] Account editing, unused-account deletion, archive/restore, version checks, and audit snapshots
-- [x] Saved account ordering and card accent colors, with owner isolation and version checks
-- [x] Investment cash/holdings architecture documented (implementation deferred)
+- [x] Account card settings modal: ordering, arbitrary full-card color tints, bank marks/custom logos and dedicated detail actions, with owner isolation and version checks
+- [x] Investment cash/holdings architecture documented (first release implemented)
 - [x] Manual income/expense/refund transactions, corrections, soft deletion and audit snapshots
 - [x] Same-currency paired transfers
 - [x] Two-level income/spending categories, manual assignment, lifecycle history and optional starters
@@ -58,21 +58,23 @@ Goal: understand actual spending and expected monthly activity. Reusable bank-st
 - [ ] Budgeting — deferred pending a simpler future design
 - [x] Expected monthly income, expenses and transfers, confirmed suggestions, skip/undo and reviewed actual recording
 - [x] Upcoming, due, overdue and needs-review expected items
-- [ ] Basic cash-flow projection
+- [x] Per-account dated cash balances with optional expected projection, confirmed-match deduplication and review/overdue warnings
 
 ## 0.4 — Wealth / Investments
 Goal: represent investment wealth accurately.
 
-- Investment accounts
-- Securities (stocks/ETFs)
-- Buy/sell/dividend/fee/tax activity
-- Acquisition lots
-- Holdings/cost basis
-- Market-price provider abstraction
-- FX provider abstraction
-- Current portfolio value
-- Realized/unrealized gain/loss
-- Investment contribution to net worth
+- [x] Investment accounts
+- [x] Manual securities (stocks/ETFs)
+- [x] ISIN-identified funds, dated manual NAVs and preserved correction history
+- [x] Existing holdings, purchases and sales with actual cash settlement
+- [x] Reviewed acquisition lots, FIFO/explicit sale allocation and guarded reversal/correction
+- [x] Holdings and known/unknown acquisition cost
+- [ ] Dedicated dividend/interest activity and fee/tax reporting
+- [x] Keyless stock/ETF lookup, cached prices and daily trends
+- [x] Explicit saved FX for holding-to-account-currency valuation
+- [x] Current portfolio value with missing/stale quote notices
+- [ ] Realized/unrealized gain/loss
+- [x] Investment contribution to net worth
 
 ## 0.5 — Automation
 Goal: reduce manual intervention.
@@ -89,7 +91,7 @@ Goal: make financial correctness visible.
 
 - Reconciliation
 - Data-quality dashboard
-- Historical net-worth chart
+- [x] Reconstructed net-worth trends with selectable account groups, date ranges and closing buckets; dated saved prices/FX and visible valuation gaps
 - Spending trends
 - Savings rate
 - Portfolio performance
@@ -104,7 +106,7 @@ Goal: confidently replace the spreadsheet long-term.
 - Security review/threat model
 - Dependency update process
 - Data export/backup portability
-- Synthetic demo account/data
+- [x] Separate public shared editable demo, twelve-month synthetic dataset, guest capability restrictions and operator-scheduled daily reset
 - Public portfolio documentation/screenshots
 - Known limitations documented
 

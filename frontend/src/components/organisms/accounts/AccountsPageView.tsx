@@ -1,5 +1,5 @@
 import { ActionIcon } from "../../atoms/ActionIcon";
-import { Button, LoadingIndicator, Select } from "../../atoms/Controls";
+import { Button, LoadingIndicator } from "../../atoms/Controls";
 import { ActionGroup } from "../../molecules/ActionGroup";
 import { Confirmation } from "../../molecules/Confirmation";
 import { Message } from "../../molecules/Message";
@@ -7,7 +7,9 @@ import { WorkspaceHeading } from "../application/WorkspaceHeading";
 
 import { accountTypes, displayAmount } from "../../../utils/accountPresentation";
 
-import type { AccountAccent } from "../../../types/models";
+import { AccountLogo } from "../../atoms/AccountLogo";
+import { accountColor } from "../../../utils/accountVisuals";
+import type { CSSProperties } from "react";
 import type { ComponentType } from "react";
 import type { AccountFormProps } from "../../../types/componentProps";
 import type { AccountsPageViewModel } from "../../../types/viewModels";
@@ -33,7 +35,7 @@ export function AccountsPageView({
   setStale,
   visibleAccounts,
   manage,
-  personalize,
+  settings,
   notice,
   setNotice,
   load,
@@ -48,6 +50,18 @@ export function AccountsPageView({
       <WorkspaceHeading title={<>Accounts</>} subtitle={<>{user.email}</>} />
       <div className="section-heading">
         <p>Keep track of where your money lives.</p>
+        <Button
+          variant="secondary"
+          disabled={
+            showForm || actionPending || loading || !!error || !!deleting || accounts.length === 0
+          }
+          onClick={() => {
+            setActionError(null);
+            settings.show();
+          }}
+        >
+          <ActionIcon action="settings" /> Card settings
+        </Button>
         <Button
           disabled={showForm || actionPending || loading || !!error}
           onClick={() => {
@@ -82,7 +96,7 @@ export function AccountsPageView({
           {notice}
         </Message>
       )}
-      {actionError && (
+      {actionError && !settings.open && (
         <div role="alert" className="error">
           <p>{actionError}</p>
           {stale && (
@@ -185,16 +199,19 @@ export function AccountsPageView({
         </section>
       ) : (
         <div className="account-grid">
-          {visibleAccounts.map((account, index) => {
-            const balance = account.currentBalance ?? account.openingBalance;
+          {visibleAccounts.map((account) => {
+            const balance =
+              account.valuation?.totalValue ?? account.currentBalance ?? account.openingBalance;
             const owed = account.type === "CREDIT_CARD" && balance.startsWith("-");
             return (
               <article
                 className="panel account-card"
                 data-accent={account.accent ?? "DEFAULT"}
+                style={{ "--account-color": accountColor(account) } as CSSProperties}
                 key={account.id}
               >
                 <div className="account-card-heading">
+                  <AccountLogo account={account} />
                   <div className="account-card-title">
                     <p className="eyebrow">{accountTypes[account.type]}</p>
                     <h2>
@@ -202,8 +219,8 @@ export function AccountsPageView({
                         className="account-name-control"
                         variant="secondary"
                         onClick={() => {
-                          window.location.hash = `#/accounts/${account.id}`;
-                          setSelected(account.id);
+                          window.location.hash = `#/accounts/${account.id}${account.type === "INVESTMENT" ? "/investments" : ""}`;
+                          if (account.type !== "INVESTMENT") setSelected(account.id);
                         }}
                       >
                         {account.name}
@@ -255,50 +272,6 @@ export function AccountsPageView({
                     </Button>
                   </ActionGroup>
                 </div>
-                <div className="account-personalization">
-                  <div role="group" aria-label={`Order ${account.name}`}>
-                    <Button
-                      variant="secondary"
-                      aria-label={`Move ${account.name} up`}
-                      disabled={index === 0 || showForm || actionPending || !!deleting || stale}
-                      onClick={() => void personalize(account, "up")}
-                    >
-                      ↑
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      aria-label={`Move ${account.name} down`}
-                      disabled={
-                        index === visibleAccounts.length - 1 ||
-                        showForm ||
-                        actionPending ||
-                        !!deleting ||
-                        stale
-                      }
-                      onClick={() => void personalize(account, "down")}
-                    >
-                      ↓
-                    </Button>
-                  </div>
-                  <label>
-                    Color
-                    <Select
-                      aria-label={`Color for ${account.name}`}
-                      value={account.accent ?? "DEFAULT"}
-                      disabled={showForm || actionPending || !!deleting || stale}
-                      onChange={(event) =>
-                        void personalize(account, event.target.value as AccountAccent)
-                      }
-                    >
-                      <option value="DEFAULT">Default</option>
-                      <option value="BLUE">Blue</option>
-                      <option value="TEAL">Teal</option>
-                      <option value="PURPLE">Purple</option>
-                      <option value="AMBER">Amber</option>
-                      <option value="ROSE">Rose</option>
-                    </Select>
-                  </label>
-                </div>
                 {account.institution && <p className="muted">{account.institution}</p>}
                 <p className="balance">
                   {account.currency} {displayAmount(owed ? balance.slice(1) : balance)}
@@ -308,14 +281,32 @@ export function AccountsPageView({
                   {owed
                     ? "amount owed"
                     : account.type === "INVESTMENT"
-                      ? "cash balance"
+                      ? "account value (cash + holdings)"
                       : "balance"}{" "}
                   ·{" "}
                   <time dateTime={account.balanceAsOf ?? account.openingDate}>
                     {account.balanceAsOf ?? account.openingDate}
                   </time>
                 </p>
+                {!!account.valuation?.unvaluedHoldings && (
+                  <p className="notice">
+                    Incomplete: {account.valuation.unvaluedHoldings} holdings need a price or FX
+                    rate.
+                  </p>
+                )}
+                {account.valuation?.stale && <p className="notice">Using older prices or NAVs.</p>}
                 {!account.active && <p className="muted">Archived</p>}
+                <Button
+                  variant="secondary"
+                  className="account-details-action"
+                  onClick={() => {
+                    window.location.hash = `#/accounts/${account.id}${account.type === "INVESTMENT" ? "/investments" : ""}`;
+                    if (account.type !== "INVESTMENT") setSelected(account.id);
+                  }}
+                  aria-label={`View details for ${account.name}`}
+                >
+                  <ActionIcon action="activity" /> View details <span aria-hidden="true">→</span>
+                </Button>
                 {account.hasActivity && (
                   <p className="help">
                     Financial history is preserved. Archive this account instead of deleting it.

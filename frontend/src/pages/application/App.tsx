@@ -1,3 +1,8 @@
+import { PreferencesPanel } from "../auth/PreferencesPanel";
+import { WorkspaceLayout } from "../../components/templates/WorkspaceLayout";
+import { NetWorthTrendPage } from "../networth/NetWorthTrendPage";
+import { InvestmentActivityPage } from "../investments/InvestmentActivityPage";
+import { InvestmentsPage } from "../investments/InvestmentsPage";
 import { OriginalCategoriesPage } from "../imports/OriginalCategoriesPage";
 import { ActionIcon } from "../../components/atoms/ActionIcon";
 import { Button, LoadingIndicator } from "../../components/atoms/Controls";
@@ -34,7 +39,13 @@ export default function App() {
   } = model;
   return (
     <ApplicationLayout
-      page={page}
+      page={
+        page.startsWith("investments/") || page.startsWith("investment-activity/")
+          ? "accounts"
+          : page
+      }
+      demo={session?.status === "AUTHENTICATED" && !!session.demo}
+      nextResetAt={session?.status === "AUTHENTICATED" ? session.nextResetAt : undefined}
       authenticated={session?.status === "AUTHENTICATED"}
       recoveryUsed={session?.status === "AUTHENTICATED" && !!session.recoveryUsed}
       headerActions={
@@ -70,6 +81,21 @@ export default function App() {
           <p role="alert">{error}</p>
           <Button onClick={() => void restore()}>Try again</Button>
         </AuthenticationLayout>
+      ) : session?.status === "AUTHENTICATED" && session.demo && page === "settings" ? (
+        <WorkspaceLayout className="workspace">
+          <h1>Preferences</h1>
+          <PreferencesPanel onExpired={expire} />
+        </WorkspaceLayout>
+      ) : session?.status === "AUTHENTICATED" &&
+        session.demo &&
+        ["imports", "category-mapping", "register"].includes(page) ? (
+        <WorkspaceLayout className="workspace">
+          <h1>Unavailable in the demo</h1>
+          <p>
+            Uploads and user administration are unavailable. Explore the accounts, spending,
+            investments and trends through the navigation.
+          </p>
+        </WorkspaceLayout>
       ) : session?.status === "MFA_SETUP_REQUIRED" ||
         (session?.status === "AUTHENTICATED" && page === "settings") ? (
         <SecuritySettings
@@ -78,10 +104,25 @@ export default function App() {
           onSession={acceptSession}
           onExpired={expire}
         />
+      ) : session?.status === "AUTHENTICATED" && page.startsWith("investment-activity/") ? (
+        <InvestmentActivityPage
+          key={page}
+          accountId={page.slice("investment-activity/".length)}
+          onExpired={expire}
+        />
+      ) : session?.status === "AUTHENTICATED" && page.startsWith("investments/") ? (
+        <InvestmentsPage
+          demo={!!session.demo}
+          key={page}
+          accountId={page.slice("investments/".length)}
+          onExpired={expire}
+        />
       ) : session?.status === "AUTHENTICATED" && page === "category-mapping" ? (
         <OriginalCategoriesPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "imports" ? (
         <ImportsPage onExpired={expire} />
+      ) : session?.status === "AUTHENTICATED" && page === "net-worth/trends" ? (
+        <NetWorthTrendPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "expected" ? (
         <ExpectedPage onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" && page === "spending" ? (
@@ -91,7 +132,7 @@ export default function App() {
       ) : session?.status === "AUTHENTICATED" && (page === "net-worth" || page === "register") ? (
         <NetWorthPage user={session.user} onExpired={expire} />
       ) : session?.status === "AUTHENTICATED" ? (
-        <AccountsPage user={session.user} onExpired={expire} />
+        <AccountsPage user={session.user} onExpired={expire} demo={!!session.demo} />
       ) : session?.status === "MFA_REQUIRED" ? (
         <MfaLogin onSession={acceptSession} onExpired={expire} onLogout={loggedOut} />
       ) : page === "register" ? (

@@ -29,11 +29,30 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
     public BigDecimal movements(UUID id) {
         return jdbc.queryForObject("SELECT COALESCE(SUM(m.amount),0) FROM ledger_movements m JOIN ledger_operations o ON o.id=m.operation_id WHERE m.account_id=? AND NOT o.deleted AND o.transaction_date<=?", BigDecimal.class,id,today());
     }
+    public record CashTotals(BigDecimal throughDate, BigDecimal throughToday) {}
+    public record CashChange(UUID id, LocalDate date, String description, BigDecimal amount, String kind) {}
+    /** Owner-scoped cash only; callers may join an existing repeatable-read report snapshot. */
+    public CashTotals cashTotals(UUID owner, UUID account, LocalDate date, LocalDate today) {
+        return jdbc.queryForObject("""
+            SELECT COALESCE(SUM(CASE WHEN o.transaction_date<=? THEN m.amount ELSE 0 END),0) selected,
+                   COALESCE(SUM(CASE WHEN o.transaction_date<=? THEN m.amount ELSE 0 END),0) current
+            FROM ledger_movements m JOIN ledger_operations o ON o.id=m.operation_id
+            WHERE o.owner_id=? AND m.account_id=? AND NOT o.deleted AND o.transaction_date<=?
+            """,(r,n)->new CashTotals(r.getBigDecimal("selected"),r.getBigDecimal("current")),date,today,owner,account,date.isAfter(today)?date:today);
+    }
+    public List<CashChange> futureCashChanges(UUID owner, UUID account, LocalDate today, LocalDate date, int offset, int limit) {
+        return jdbc.query("""
+            SELECT o.id,o.transaction_date,o.description,o.kind,SUM(m.amount) amount
+            FROM ledger_movements m JOIN ledger_operations o ON o.id=m.operation_id
+            WHERE o.owner_id=? AND m.account_id=? AND NOT o.deleted AND o.transaction_date>? AND o.transaction_date<=?
+            GROUP BY o.id ORDER BY o.transaction_date,o.id LIMIT ? OFFSET ?
+            """,(r,n)->new CashChange(r.getObject("id",UUID.class),r.getObject("transaction_date",LocalDate.class),r.getString("description"),r.getBigDecimal("amount"),r.getString("kind")),owner,account,today,date,limit,offset);
+    }
     private Operation row(java.sql.ResultSet r, int n) throws java.sql.SQLException {
         return new Operation(r.getObject("id",UUID.class),Kind.valueOf(r.getString("kind")),r.getObject("account_id",UUID.class),
             r.getObject("destination_id",UUID.class),r.getBigDecimal("amount").toPlainString(),r.getString("currency"),
             r.getObject("transaction_date",LocalDate.class),r.getObject("value_date",LocalDate.class),r.getString("payee"),
-            r.getString("description"),r.getString("notes"),r.getTimestamp("created_at").toInstant(),r.getLong("version"),r.getObject("category_id",UUID.class),categories.assignment(r.getObject("category_id",UUID.class)));
+            r.getString("description"),r.getString("notes"),r.getTimestamp("created_at").toInstant(),r.getLong("version"),r.getObject("category_id",UUID.class),categories.assignment(r.getObject("category_id",UUID.class)),r.getObject("investment_activity_id",UUID.class));
     }
     @Transactional(readOnly=true, isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public ActivityPage list(UUID owner, UUID account, int page) {
@@ -47,6 +66,7 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
         var results=jdbc.query("SELECT * FROM ledger_operations WHERE id=? AND owner_id=? AND NOT deleted FOR UPDATE",this::row,id,owner);
         if(results.isEmpty() || (results.getFirst().kind()==Kind.TRANSFER)!=transfer) throw new AccountFailure(404,"Activity not found.");
         var op=results.getFirst();
+        if(op.kind()==Kind.INVESTMENT_BUY || op.kind()==Kind.INVESTMENT_SELL)throw new AccountFailure(409,"Use Investment activity to correct or reverse linked trade cash.");
         if(match==null) throw new AccountFailure(428,"Reload activity before making this change.");
         if(!match.matches("\"[0-9]+\"")) throw new AccountFailure(400,"If-Match must contain a quoted operation version.");
         if(!match.equals("\""+op.version()+"\"")) throw new AccountFailure(412,"This activity changed. Reload and try again.");
@@ -70,7 +90,7 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
     }
     @Transactional
     public Operation transaction(UUID owner, UUID id, String match, TransactionInput input) {
-        if(input.kind()==Kind.TRANSFER) throw new IllegalArgumentException("Use the transfer endpoint.");
+        if(!Set.of(Kind.INCOME,Kind.EXPENSE,Kind.REFUND).contains(input.kind())) throw new IllegalArgumentException("Use the transfer or investment endpoint for this activity.");
         return save(owner,id,match,input.kind(),input.accountId(),null,input.amount(),input.transactionDate(),input.valueDate(),input.payee(),input.description(),input.notes(),input.categoryId());
     }
     @Transactional
@@ -79,6 +99,9 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
         return save(owner,id,match,Kind.TRANSFER,input.sourceAccountId(),input.destinationAccountId(),input.amount(),input.transactionDate(),null,null,input.description(),input.notes(),null);
     }
     private Operation save(UUID owner,UUID id,String match,Kind kind,UUID source,UUID destination,String value,LocalDate date,LocalDate valueDate,String payee,String description,String notes,UUID categoryId) {
+        return save(owner,id,match,kind,source,destination,value,date,valueDate,payee,description,notes,categoryId,null);
+    }
+    private Operation save(UUID owner,UUID id,String match,Kind kind,UUID source,UUID destination,String value,LocalDate date,LocalDate valueDate,String payee,String description,String notes,UUID categoryId,UUID investmentId) {
         var before=id==null?null:owned(owner,id,match,kind==Kind.TRANSFER);
         var locked=lock(owner,before,source,destination); var currency=locked.get(source).getCurrency();
         if(destination!=null && !currency.equals(locked.get(destination).getCurrency())) throw new IllegalArgumentException("Transfers require matching currencies.");
@@ -90,12 +113,12 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
         }
         if(id==null) {
             id=UUID.randomUUID();
-            jdbc.update("INSERT INTO ledger_operations(id,owner_id,kind,account_id,destination_id,amount,currency,transaction_date,value_date,payee,description,notes,category_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",id,owner,kind.name(),source,destination,amount,currency,date,valueDate,payee,description.strip(),notes,categoryId);
+            jdbc.update("INSERT INTO ledger_operations(id,owner_id,kind,account_id,destination_id,amount,currency,transaction_date,value_date,payee,description,notes,category_id,investment_activity_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",id,owner,kind.name(),source,destination,amount,currency,date,valueDate,payee,description.strip(),notes,categoryId,investmentId);
         } else {
             jdbc.update("UPDATE ledger_operations SET kind=?,account_id=?,destination_id=?,amount=?,currency=?,transaction_date=?,value_date=?,payee=?,description=?,notes=?,category_id=?,version=version+1 WHERE id=?",kind.name(),source,destination,amount,currency,date,valueDate,payee,description.strip(),notes,categoryId,id);
             jdbc.update("DELETE FROM ledger_movements WHERE operation_id=?",id);
         }
-        movement(id,source,kind==Kind.EXPENSE || kind==Kind.TRANSFER?amount.negate():amount,currency);
+        movement(id,source,kind==Kind.EXPENSE || kind==Kind.TRANSFER || kind==Kind.INVESTMENT_BUY?amount.negate():amount,currency);
         if(destination!=null) movement(id,destination,amount,currency);
         categories.remember(id,categoryId);
         var after=jdbc.queryForObject("SELECT * FROM ledger_operations WHERE id=?",this::row,id);
@@ -134,6 +157,18 @@ public class LedgerService implements AccountUsagePolicy.ActivitySource {
             audit(owner,op.id(),"LEDGER_UPDATED",op,after);updated++;
         }
         return updated;
+    }
+    @Transactional
+    public Operation investmentCash(UUID owner,UUID account,UUID activityId,boolean purchase,String amount,LocalDate date,String description,String notes) {
+        return save(owner,null,null,purchase?Kind.INVESTMENT_BUY:Kind.INVESTMENT_SELL,account,null,amount,date,null,null,description,notes,null,activityId);
+    }
+    @Transactional
+    public void reverseInvestmentCash(UUID owner,UUID operationId) {
+        var op=jdbc.queryForObject("SELECT * FROM ledger_operations WHERE id=? AND owner_id=? AND NOT deleted FOR UPDATE",this::row,operationId,owner);
+        if(op==null || op.investmentActivityId()==null)throw new AccountFailure(404,"Investment cash not found.");
+        lock(owner,op,op.accountId(),null);
+        jdbc.update("UPDATE ledger_operations SET deleted=TRUE,version=version+1 WHERE id=?",operationId);
+        audit(owner,operationId,"LEDGER_DELETED",op,null);
     }
     private record Change(Operation before,Operation after) {}
     private void audit(UUID owner,UUID id,String event,Operation before,Operation after) {

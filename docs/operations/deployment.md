@@ -157,3 +157,7 @@ volume. Do not regenerate MFA encryption keys during an update.
 GitHub builds, NAS engine compatibility, HTTPS proxy behavior, persistence, and
 backup/restore still need validation on the actual installation. Record results
 here as the guided first deployment progresses.
+
+## Public demo
+
+Use the [separate demo deployment runbook](public-demo.md) for password-free public access. Its Compose project, database, secrets, network, frontend port and operation script are separate from this private deployment.

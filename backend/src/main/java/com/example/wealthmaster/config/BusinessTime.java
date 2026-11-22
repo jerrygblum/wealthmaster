@@ -14,5 +14,6 @@ public class BusinessTime {
     }
     public Instant now() { return clock.instant(); }
     public LocalDate dateAt(Instant instant) { return LocalDate.ofInstant(instant, zone); }
+    public Instant startOfDay(LocalDate date) { return date.atStartOfDay(zone).toInstant(); }
     public LocalDate today() { return dateAt(now()); }
 }

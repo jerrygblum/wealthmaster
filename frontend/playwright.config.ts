@@ -9,6 +9,7 @@ export default defineConfig({
   reporter: "list",
   use: {
     channel: process.env.E2E_BROWSER_CHANNEL,
+    ignoreHTTPSErrors: process.env.E2E_DEMO === "true",
     baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:5174",
     trace: "retain-on-failure",
   },

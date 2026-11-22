@@ -10,10 +10,10 @@ public final class NetWorthDtos {
     public record CurrencyTotal(String currency, String assets, String liabilities, String netWorth,
                                 List<TypeTotal> byAccountType) {}
     public record AccountContribution(UUID id, String name, AccountType type, String currency,
-                                      boolean active, String currentBalance) {}
+                                      boolean active, String currentBalance, com.example.wealthmaster.marketdata.MarketDtos.Valuation valuation) {}
     public record FutureAccount(UUID id, String name, AccountType type, String currency,
                                 boolean active, LocalDate openingDate) {}
     public record CurrentNetWorth(LocalDate balanceAsOf, Instant calculatedAt,
                                   List<CurrencyTotal> currencies, List<AccountContribution> accounts,
-                                  List<FutureAccount> excludedFutureAccounts) {}
+                                  List<FutureAccount> excludedFutureAccounts, int unvaluedHoldings) {}
 }

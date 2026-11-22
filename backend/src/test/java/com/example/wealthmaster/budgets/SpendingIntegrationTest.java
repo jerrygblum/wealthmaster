@@ -253,6 +253,7 @@ class SpendingIntegrationTest {
                 for(var table:List.of("app_users","financial_accounts","categories","ledger_operations","ledger_movements","ledger_account_history","ledger_category_history","user_preferences","audit_events")) {
                     var columns=switch(table) {
                         case "app_users" -> "id,email,password_hash,created_at";
+                        case "ledger_operations" -> "id,owner_id,kind,account_id,destination_id,amount,currency,transaction_date,value_date,payee,description,notes,created_at,version,deleted,category_id";
                         case "financial_accounts" -> "id,owner_id,name,type,institution,currency,opening_balance,opening_date,active,created_at,version";
                         default -> "*";
                     };
@@ -303,6 +304,7 @@ class SpendingIntegrationTest {
                 for(var entry:preserved.entrySet()) {
                     var columns=switch(entry.getKey()) {
                         case "app_users" -> "id,email,password_hash,created_at";
+                        case "ledger_operations" -> "id,owner_id,kind,account_id,destination_id,amount,currency,transaction_date,value_date,payee,description,notes,created_at,version,deleted,category_id";
                         case "financial_accounts" -> "id,owner_id,name,type,institution,currency,opening_balance,opening_date,active,created_at,version";
                         default -> "*";
                     };
@@ -324,6 +326,7 @@ class SpendingIntegrationTest {
                 for(var entry:preserved.entrySet()) {
                     var columns=switch(entry.getKey()) {
                         case "app_users" -> "id,email,password_hash,created_at";
+                        case "ledger_operations" -> "id,owner_id,kind,account_id,destination_id,amount,currency,transaction_date,value_date,payee,description,notes,created_at,version,deleted,category_id";
                         case "financial_accounts" -> "id,owner_id,name,type,institution,currency,opening_balance,opening_date,active,created_at,version";
                         default -> "*";
                     };

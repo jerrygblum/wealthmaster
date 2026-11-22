@@ -11,3 +11,5 @@ Archived activity is readable. Restore every currently affected account before a
 Writes require a fresh CSRF token and authenticated, MFA-authorized session. Edits/deletions require a quoted operation version in `If-Match`; 412 means reload, 428 means supply a version, 409 means restore affected accounts. Missing and foreign resources both return 404. Do not blindly retry a create after an ambiguous connection loss; reload activity first to avoid duplicates. No idempotency keys or duplicate detection are implemented in this slice.
 
 Verification uses synthetic, disposable databases. Backend integration tests accept `-Dtest.database.url`, `-Dtest.database.username`, and `-Dtest.database.password` when Docker is unavailable. Browser fixtures require a database name ending `_e2e`; set `DB_URL`, `DB_USER`, `DB_PASSWORD`, and run `npm run test:e2e` with `E2E_PROFILE=dev`, then `prod`. Never target a production database with these tests.
+
+Use [Balance on date](account-balance.md) on an account activity page for dated closing cash and an optional separate expected projection. The current-balance API and normal activity list retain their existing behavior.

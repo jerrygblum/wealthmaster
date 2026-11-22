@@ -4,6 +4,8 @@ import { Message } from "../../molecules/Message";
 import type { LoginPageViewModel } from "../../../types/viewModels";
 
 export function LoginPageView({
+  demo,
+  enterDemo,
   registrationEnabled,
   email,
   setEmail,
@@ -14,6 +16,45 @@ export function LoginPageView({
   submit,
   notice,
 }: LoginPageViewModel) {
+  if (demo.enabled)
+    return (
+      <section className="panel demo-landing" aria-labelledby="demo-heading">
+        <p className="eyebrow">Explore Wealth Master</p>
+        <h1 id="demo-heading">Try the shared demo</h1>
+        <p>
+          Explore twelve months of fictional accounts, spending, investments and net-worth history.
+          Edit the data and try the workflows.
+        </p>
+        <p className="notice">
+          Everyone sees the same editable sandbox. Use fictional information only. Changes are
+          cleared daily at 03:00 Europe/Zurich.
+        </p>
+        {demo.nextResetAt && (
+          <p>
+            Scheduled reset:{" "}
+            {new Date(demo.nextResetAt).toLocaleString(undefined, { timeZone: "Europe/Zurich" })}{" "}
+            (Europe/Zurich)
+          </p>
+        )}
+        <p>
+          Uploads, user administration and online market requests are unavailable in this public
+          demo.
+        </p>
+        {notice && (
+          <Message role="status" className="notice">
+            {notice}
+          </Message>
+        )}
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+        <Button disabled={pending} onClick={() => void enterDemo()}>
+          {pending ? "Opening demo…" : "Try demo"}
+        </Button>
+      </section>
+    );
   return (
     <>
       <section className="login-intro">

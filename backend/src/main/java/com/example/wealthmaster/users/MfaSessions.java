@@ -23,20 +23,27 @@ public class MfaSessions {
     private final MfaService mfa;
     private final Clock clock;
     private final UserRepository users;
-    public MfaSessions(MfaService mfa, Clock clock, UserRepository users) { this.mfa = mfa; this.clock = clock; this.users=users; }
+    private final DemoInstallation demo;
+    private final DemoConfig demoConfig;
+    public MfaSessions(MfaService mfa, Clock clock, UserRepository users, DemoInstallation demo, DemoConfig demoConfig) { this.mfa = mfa; this.clock = clock; this.users=users; this.demo=demo; this.demoConfig=demoConfig; }
     public AuthController.SessionResponse passwordAccepted(OwnerPrincipal owner, HttpServletRequest request, HttpServletResponse response) {
         var snapshot = mfa.snapshot(owner.id());
         var status = snapshot.enabled() ? MFA_REQUIRED : snapshot.required() ? MFA_SETUP_REQUIRED : AUTHENTICATED;
         var state = new SessionState(owner.id(), owner.email(), status, snapshot.version(),
-                status == MFA_REQUIRED ? clock.instant().plusSeconds(300) : null, null, false);
+                status == MFA_REQUIRED ? clock.instant().plusSeconds(300) : null, null, false, null);
         save(state, request, response);
         return response(state);
     }
     public AuthController.SessionResponse verified(MfaService.Snapshot snapshot, HttpServletRequest request, HttpServletResponse response) {
         var previous = require(request);
         var state = new SessionState(previous.userId(), previous.email(), AUTHENTICATED, snapshot.version(), null,
-                snapshot.verifiedAt(), snapshot.recoveryUsed());
+                snapshot.verifiedAt(), snapshot.recoveryUsed(), null);
         save(state, request, response);
+        return response(state);
+    }
+    public AuthController.SessionResponse demo(DemoInstallation.Marker marker, HttpServletRequest request, HttpServletResponse response) {
+        var state=new SessionState(marker.userId(),DemoInstallation.EMAIL,AUTHENTICATED,0,null,null,false,marker.generation());
+        save(state,request,response);
         return response(state);
     }
     public SessionState require(HttpServletRequest request) {
@@ -60,6 +67,10 @@ public class MfaSessions {
             var state = require(request);
             var authentication = SecurityContextHolder.getContext().getAuthentication();
             if (!(authentication.getPrincipal() instanceof OwnerPrincipal owner) || !owner.id().equals(state.userId())) return false;
+            if(state.demoGeneration()!=null) return state.status()==AUTHENTICATED
+                && authentication.getAuthorities().stream().anyMatch(a->a.getAuthority().equals("ROLE_DEMO"))
+                && demo.valid(state.userId(),state.demoGeneration());
+            if(demoConfig.enabled()) return false;
             String expectedRole = switch (state.status()) {
                 case AUTHENTICATED -> "ROLE_USER"; case MFA_REQUIRED -> "ROLE_MFA_PENDING"; case MFA_SETUP_REQUIRED -> "ROLE_MFA_SETUP";
             };
@@ -77,7 +88,7 @@ public class MfaSessions {
     private void save(SessionState state, HttpServletRequest request, HttpServletResponse response) {
         HttpSession session = request.getSession(); request.changeSessionId();
         session.setAttribute(STATE, state);
-        String role = switch (state.status()) {
+        String role = state.demoGeneration()!=null ? "ROLE_DEMO" : switch (state.status()) {
             case AUTHENTICATED -> "ROLE_USER"; case MFA_REQUIRED -> "ROLE_MFA_PENDING"; case MFA_SETUP_REQUIRED -> "ROLE_MFA_SETUP";
         };
         var context = SecurityContextHolder.createEmptyContext();
@@ -88,8 +99,8 @@ public class MfaSessions {
         new HttpSessionCsrfTokenRepository().saveToken(null, request, response);
     }
     private AuthController.SessionResponse response(SessionState state) {
-        return new AuthController.SessionResponse(state.status(), new AuthController.UserResponse(state.userId(), state.email(), users.findById(state.userId()).orElseThrow(() -> new SecurityFailure(401,"Please sign in.")).getRole()), state.recoveryUsed());
+        return new AuthController.SessionResponse(state.status(), new AuthController.UserResponse(state.userId(), state.email(), users.findById(state.userId()).orElseThrow(() -> new SecurityFailure(401,"Please sign in.")).getRole()), state.recoveryUsed(), state.demoGeneration()!=null, state.demoGeneration()!=null ? demo.availability().nextResetAt() : null);
     }
     public record SessionState(UUID userId, String email, AuthController.AuthenticationStatus status, long version,
-            Instant expiresAt, Instant verifiedAt, boolean recoveryUsed) implements Serializable {}
+            Instant expiresAt, Instant verifiedAt, boolean recoveryUsed, UUID demoGeneration) implements Serializable {}
 }

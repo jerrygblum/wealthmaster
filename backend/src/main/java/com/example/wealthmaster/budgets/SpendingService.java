@@ -73,7 +73,7 @@ public class SpendingService {
             AND o.transaction_date>=? AND o.transaction_date<?
             AND ((?::uuid IS NULL AND o.category_id IS NULL) OR o.category_id=? OR c.parent_id=?)
             ORDER BY o.transaction_date DESC,o.created_at DESC,o.id LIMIT 51 OFFSET ?
-            """,(r,n)->new LedgerDtos.Operation(r.getObject("id",UUID.class),LedgerDtos.Kind.valueOf(r.getString("kind")),r.getObject("account_id",UUID.class),null,r.getBigDecimal("amount").toPlainString(),r.getString("currency"),r.getObject("transaction_date",LocalDate.class),r.getObject("value_date",LocalDate.class),r.getString("payee"),r.getString("description"),r.getString("notes"),r.getTimestamp("created_at").toInstant(),r.getLong("version"),r.getObject("category_id",UUID.class),categories.assignment(r.getObject("category_id",UUID.class))),owner,currency,start,cutoff,category,category,category,page*50);
+            """,(r,n)->new LedgerDtos.Operation(r.getObject("id",UUID.class),LedgerDtos.Kind.valueOf(r.getString("kind")),r.getObject("account_id",UUID.class),null,r.getBigDecimal("amount").toPlainString(),r.getString("currency"),r.getObject("transaction_date",LocalDate.class),r.getObject("value_date",LocalDate.class),r.getString("payee"),r.getString("description"),r.getString("notes"),r.getTimestamp("created_at").toInstant(),r.getLong("version"),r.getObject("category_id",UUID.class),categories.assignment(r.getObject("category_id",UUID.class)),null),owner,currency,start,cutoff,category,category,category,page*50);
         return new LedgerDtos.ActivityPage(items.stream().limit(50).toList(),page,items.size()>50);
     }
 }

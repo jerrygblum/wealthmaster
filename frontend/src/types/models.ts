@@ -1,6 +1,12 @@
 export type User = { id: string; email: string; role?: "OWNER" | "MEMBER" };
 export type Session =
-  | { status: "AUTHENTICATED"; user: User; recoveryUsed?: boolean }
+  | {
+      status: "AUTHENTICATED";
+      user: User;
+      recoveryUsed?: boolean;
+      demo?: boolean;
+      nextResetAt?: string | null;
+    }
   | { status: "MFA_REQUIRED"; user?: User }
   | { status: "MFA_SETUP_REQUIRED"; user: User };
 export type FactorKind = "TOTP" | "RECOVERY";
@@ -22,7 +28,18 @@ export type RecoveryCodes = { recoveryCodes: string[]; expiresAt: string };
 export type AccountType = "CHECKING" | "SAVINGS" | "CASH" | "CREDIT_CARD" | "INVESTMENT" | "OTHER";
 export type BalanceMeaning = "BALANCE" | "AMOUNT_OWED" | "IN_CREDIT";
 export type AccountAccent = "DEFAULT" | "BLUE" | "TEAL" | "PURPLE" | "AMBER" | "ROSE";
+export type AccountLogo =
+  "TYPE" | "UBS" | "POSTFINANCE" | "RAIFFEISEN" | "ZKB" | "REVOLUT" | "CUSTOM";
+export type AccountAppearance = {
+  color: string | null;
+  logo: AccountLogo;
+  logoData?: string | null;
+};
 export type FinancialAccount = {
+  color?: string | null;
+  logo?: AccountLogo;
+  logoData?: string | null;
+  valuation?: import("./marketdata").Valuation | null;
   displayOrder?: number;
   accent?: AccountAccent;
   id: string;
@@ -64,7 +81,8 @@ export type Category = CategoryInput & {
   available: boolean;
 };
 export type CategoryList = { items: Category[]; starterSetAvailable: boolean };
-export type LedgerKind = "INCOME" | "EXPENSE" | "REFUND" | "TRANSFER";
+export type LedgerKind =
+  "INCOME" | "EXPENSE" | "REFUND" | "TRANSFER" | "INVESTMENT_BUY" | "INVESTMENT_SELL";
 export type LedgerInput = {
   accountId: string;
   kind: LedgerKind;
@@ -78,6 +96,7 @@ export type LedgerInput = {
   categoryId?: string | null;
 };
 export type Operation = LedgerInput & {
+  investmentActivityId?: string | null;
   id: string;
   currency: string;
   version: number;
@@ -86,6 +105,7 @@ export type Operation = LedgerInput & {
 };
 export type NetWorthTotals = { assets: string; liabilities: string; netWorth: string };
 export type CurrentNetWorth = {
+  unvaluedHoldings?: number;
   balanceAsOf: string;
   calculatedAt: string;
   currencies: (NetWorthTotals & {
@@ -94,6 +114,7 @@ export type CurrentNetWorth = {
   })[];
   accounts: (Pick<FinancialAccount, "id" | "name" | "type" | "currency" | "active"> & {
     currentBalance: string;
+    valuation?: import("./marketdata").Valuation | null;
   })[];
   excludedFutureAccounts: Pick<
     FinancialAccount,

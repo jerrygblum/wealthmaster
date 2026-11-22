@@ -1130,50 +1130,6 @@ button.compact-action-delete {
   gap: 12px;
 }
 
-.account-card[data-accent] {
-  border-top: 5px solid var(--account-accent, #64748b);
-}
-.account-card[data-accent="BLUE"] {
-  --account-accent: #2563eb;
-}
-.account-card[data-accent="TEAL"] {
-  --account-accent: #0f766e;
-}
-.account-card[data-accent="PURPLE"] {
-  --account-accent: #7c3aed;
-}
-.account-card[data-accent="AMBER"] {
-  --account-accent: #b45309;
-}
-.account-card[data-accent="ROSE"] {
-  --account-accent: #be185d;
-}
-.account-personalization {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-block: 16px;
-}
-.account-personalization [role="group"] {
-  display: flex;
-  gap: 6px;
-}
-.account-personalization button {
-  min-width: 44px;
-  min-height: 44px;
-}
-.account-personalization label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.account-personalization select {
-  width: auto;
-  min-height: 44px;
-}
-
 .import-controls {
   border: 0;
   padding: 0;
@@ -1253,4 +1209,465 @@ button.compact-action-delete {
 }
 .import-controls .panel {
   margin-block: 16px;
+}
+
+.panel.trend-filter-panel {
+  padding: 16px;
+}
+.trend-filter-panel button,
+.trend-filter-panel input:not([type="checkbox"]),
+.trend-filter-panel select {
+  min-height: 44px;
+  padding: 8px 12px;
+}
+.trend-account-picker {
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 12px;
+}
+.trend-account-picker > summary {
+  min-height: 44px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+.trend-selection-count {
+  margin-inline-start: 8px;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #52665f;
+}
+.trend-selection-preview {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: #52665f;
+  margin: 4px 0 0 18px;
+}
+.trend-account-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 6px;
+  margin-block: 8px 12px;
+}
+.trend-account-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 10px;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.trend-account-list label:has(input:checked) {
+  background: #edf4f1;
+  border-color: var(--color-primary);
+}
+.trend-account-list input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+}
+.trend-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.trend-presets button {
+  flex: 1 0 auto;
+  font-size: 0.8rem;
+}
+.trend-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.85fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 12px;
+}
+.trend-filters label {
+  min-width: 0;
+  margin: 0;
+  font-size: 0.8rem;
+}
+.trend-filters input,
+.trend-filters select {
+  display: block;
+  min-width: 0;
+  margin-top: 4px;
+}
+.trend-filter-panel > p[role="status"] {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+}
+@media (max-width: 640px) {
+  .trend-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .trend-presets {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .trend-presets button {
+    padding-inline: 4px;
+  }
+}
+.trend-chart-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.trend-chart-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+}
+.trend-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 10rem;
+}
+.trend-chart text {
+  fill: currentColor;
+}
+.trend-chart circle:focus {
+  outline: 2px solid currentColor;
+  r: 6;
+}
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  padding-inline-start: 1.5rem;
+}
+.trend-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.trend-table-scroll table {
+  width: 100%;
+  min-width: 30rem;
+}
+.trend-table-scroll th,
+.trend-table-scroll td {
+  padding: 0.65rem;
+  text-align: left;
+  vertical-align: top;
+}
+.trend-table-scroll details {
+  max-width: 20rem;
+  overflow-wrap: anywhere;
+}
+
+.demo-landing {
+  grid-column: 1 / -1;
+  max-width: 52rem;
+  margin: 2rem auto;
+}
+.demo-landing h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+.demo-landing button {
+  min-height: 44px;
+}
+
+.panel.balance-date-panel {
+  padding: 16px;
+  margin-block: 16px;
+}
+.balance-date-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+}
+.balance-date-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.balance-date-heading .help {
+  margin: 0;
+}
+.balance-date-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin-block: 12px 4px;
+}
+.balance-date-controls label {
+  flex: 0 1 12rem;
+  margin: 0;
+}
+.balance-date-controls input {
+  min-height: 44px;
+  margin-top: 4px;
+}
+.balance-date-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.balance-date-panel button,
+.balance-date-panel summary {
+  min-height: 44px;
+}
+.balance-date-shortcuts button {
+  padding: 8px 12px;
+}
+.balance-date-toggle {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  margin: 0;
+}
+.balance-date-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+}
+.balance-date-amount {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.balance-date-panel summary {
+  cursor: pointer;
+  padding-block: 10px;
+}
+.balance-date-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.balance-date-summary dd {
+  margin: 0;
+  text-align: right;
+}
+.balance-date-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.balance-date-table table {
+  width: 100%;
+  min-width: 30rem;
+}
+.balance-date-table th,
+.balance-date-table td {
+  padding: 8px;
+  text-align: left;
+}
+
+/* Account visuals stay readable regardless of the chosen color. */
+.panel.account-card {
+  --account-color: #64748b;
+  background: color-mix(in srgb, var(--account-color) 13%, white);
+  border: 1px solid color-mix(in srgb, var(--account-color) 35%, white);
+}
+.account-card-heading {
+  flex-wrap: nowrap;
+}
+.account-card-title {
+  flex: 1 1 0;
+}
+.account-card .account-card-actions {
+  gap: 2px;
+}
+.account-card .account-details-action {
+  margin-top: 12px;
+  min-height: 44px;
+}
+.account-logo {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: #334155;
+  border: 1px solid #dbe1e8;
+  overflow: hidden;
+}
+.account-logo svg {
+  width: 29px;
+  height: 29px;
+}
+.account-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.bank-mark {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.7px;
+}
+.bank-mark[data-bank="POSTFINANCE"] {
+  background: #ffdc00;
+  color: #111;
+  font-style: italic;
+}
+.bank-mark[data-bank="RAIFFEISEN"] {
+  color: #b5121b;
+  font-size: 29px;
+}
+.bank-mark[data-bank="ZKB"] {
+  color: #0057a8;
+}
+.bank-mark[data-bank="UBS"] {
+  color: #b11c25;
+}
+.bank-mark[data-bank="REVOLUT"] {
+  background: #17181c;
+  color: #fff;
+}
+.settings-modal {
+  width: min(760px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: #fff;
+  color: #17212f;
+  padding: 20px;
+  overflow-y: auto;
+  box-shadow: 0 20px 70px #0f172a40;
+}
+.settings-modal::backdrop {
+  background: #0f172a88;
+}
+.settings-modal-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.settings-modal-heading h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+.settings-modal button,
+.settings-modal input,
+.settings-modal select {
+  min-height: 44px;
+}
+.account-settings-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.account-settings-list > li {
+  border: 1px solid #dbe1e8;
+  border-radius: 12px;
+  padding: 14px;
+  min-width: 0;
+}
+.account-settings-row-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.account-settings-preview {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  padding: 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--account-color) 13%, white);
+}
+.account-settings-preview > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.account-settings-preview .help {
+  display: block;
+  margin: 4px 0 0;
+}
+.account-settings-order {
+  display: flex;
+  gap: 4px;
+}
+.account-settings-order button {
+  min-width: 44px;
+  padding: 8px;
+}
+.account-settings-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+  border: 0;
+  padding: 14px 0 0;
+  margin: 0;
+  min-width: 0;
+}
+.account-settings-fields label {
+  min-width: 0;
+  margin: 0;
+}
+.account-settings-fields input,
+.account-settings-fields select {
+  margin: 4px 0 0;
+}
+.account-settings-color {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.account-settings-color input[type="color"] {
+  width: 64px;
+  padding: 4px;
+  cursor: pointer;
+}
+.account-settings-color input:not([type="color"]) {
+  width: 120px;
+}
+.account-settings-upload {
+  grid-column: 1 / -1;
+}
+.account-settings-upload input {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 480px) {
+  .account-card-heading {
+    flex-wrap: wrap;
+  }
+  .account-card .account-card-actions {
+    margin-left: auto;
+  }
+  .settings-modal {
+    padding: 14px;
+  }
+  .account-settings-list > li {
+    padding: 10px;
+  }
+  .account-settings-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .account-settings-color,
+  .account-settings-upload {
+    grid-column: auto;
+  }
 }

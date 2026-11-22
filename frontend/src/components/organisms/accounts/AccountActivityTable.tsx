@@ -48,6 +48,7 @@ export function AccountActivityTable({
         <tbody>
           {items.map((op) => {
             const transfer = op.kind === "TRANSFER";
+            const investment = op.kind.startsWith("INVESTMENT_");
             const counterpart = transfer
               ? op.accountId === id
                 ? op.destinationAccountId
@@ -57,9 +58,13 @@ export function AccountActivityTable({
               ? op.accountId === id
                 ? "Transfer out"
                 : "Transfer in"
-              : { INCOME: "Income", EXPENSE: "Expense", REFUND: "Refund" }[
-                  op.kind as "INCOME" | "EXPENSE" | "REFUND"
-                ];
+              : {
+                  INCOME: "Income",
+                  EXPENSE: "Expense",
+                  REFUND: "Refund",
+                  INVESTMENT_BUY: "Investment purchase",
+                  INVESTMENT_SELL: "Investment sale",
+                }[op.kind as Exclude<typeof op.kind, "TRANSFER">];
             const disabled = !canChange(op) || pending || !!form || !!deleting;
             return (
               <tr key={op.id}>
@@ -86,12 +91,20 @@ export function AccountActivityTable({
                   )}
                   {!canChange(op) && (
                     <span className="activity-meta">
-                      Read-only; restore affected accounts to edit.
+                      {investment
+                        ? "Linked trade cash; correct it in Investment activity."
+                        : "Read-only; restore affected accounts to edit."}
                     </span>
                   )}
                 </th>
                 <td className="activity-category" data-label="Category / transfer">
-                  {transfer ? (
+                  {investment ? (
+                    <Link
+                      href={`#/accounts/${id}/investments?activity=${op.investmentActivityId ?? ""}`}
+                    >
+                      Investment activity
+                    </Link>
+                  ) : transfer ? (
                     <>
                       {op.accountId === id ? "To" : "From"}{" "}
                       <Link href={`#/accounts/${counterpart}`}>

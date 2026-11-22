@@ -18,16 +18,19 @@ public class OwnerSetup implements ApplicationRunner {
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final Validator validator;
+    private final DemoConfig demo;
     private final String email;
     private final String password;
-    public OwnerSetup(UserRepository users, PasswordEncoder encoder, Validator validator,
+    public OwnerSetup(UserRepository users, PasswordEncoder encoder, Validator validator, DemoConfig demo,
             @Value("${app.initial-owner.email:}") String email,
             @Value("${app.initial-owner.password:}") String password) {
+        this.demo=demo;
         this.users = users; this.encoder = encoder; this.validator = validator;
         this.email = email; this.password = password;
     }
     @Override @Transactional
     public void run(ApplicationArguments args) {
+        if (demo.enabled()) return;
         if (users.count() != 0) return;
         var credentials = new InitialCredentials(email.strip().toLowerCase(Locale.ROOT), password);
         if (!validator.validate(credentials).isEmpty()

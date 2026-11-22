@@ -15,8 +15,9 @@ public class AccountService {
     private final AuditService audit;
     private final AccountUsagePolicy usage;
     private final com.example.wealthmaster.ledger.LedgerService ledger;
-    public AccountService(AccountRepository accounts, AuditService audit, AccountUsagePolicy usage, com.example.wealthmaster.ledger.LedgerService ledger) {
-        this.accounts = accounts; this.audit = audit; this.usage = usage; this.ledger = ledger;
+    private final com.example.wealthmaster.marketdata.ValuationService valuations;
+    public AccountService(AccountRepository accounts, AuditService audit, AccountUsagePolicy usage, com.example.wealthmaster.ledger.LedgerService ledger, com.example.wealthmaster.marketdata.ValuationService valuations) {
+        this.accounts = accounts; this.audit = audit; this.usage = usage; this.ledger = ledger; this.valuations=valuations;
     }
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public List<AccountResponse> list(UUID ownerId) {
@@ -27,16 +28,36 @@ public class AccountService {
         return response(accounts.findById(id).filter(a -> a.getOwnerId().equals(owner)).orElseThrow(() -> new AccountFailure(404, "Account not found.")));
     }
     private AccountResponse response(FinancialAccount account) {
-        return AccountResponse.from(account).withActivity(usage.hasActivity(account.getId())).withBalance(account.getOpeningBalance().add(ledger.movements(account.getId())).toPlainString(), ledger.today());
+        var cash=account.getOpeningBalance().add(ledger.movements(account.getId()));
+        var response=AccountResponse.from(account).withActivity(usage.hasActivity(account.getId())).withBalance(cash.toPlainString(), ledger.today());
+        return account.getType()==AccountType.INVESTMENT?response.withValuation(valuations.value(account.getOwnerId(),account.getId(),account.getCurrency(),cash,ledger.today())):response;
     }
     @Transactional
     public AccountResponse appearance(UUID owner, UUID id, String match, Appearance input) {
         var account = owned(owner, id, match);
         var before = response(account);
+        if(input.color()!=null && !input.color().matches("#[0-9A-Fa-f]{6}"))throw new IllegalArgumentException("Choose a six-digit hexadecimal color.");
+        if(input.logo()==Logo.CUSTOM)throw new IllegalArgumentException("Use the logo upload endpoint for custom images.");
         account.setAccent(input.accent());
+        account.setColor(input.color());
+        if(input.logo()!=null)account.setLogo(input.logo(),null);
         accounts.flush();
         var after = response(account);
         if (!before.equals(after)) audit.accountChanged(owner, id, "ACCOUNT_APPEARANCE_UPDATED", before, after);
+        return after;
+    }
+    @Transactional
+    public AccountResponse uploadLogo(UUID owner, UUID id, String match, LogoUpload input) {
+        var account=owned(owner,id,match);
+        if(input.color()!=null && !input.color().matches("#[0-9A-Fa-f]{6}"))throw new IllegalArgumentException("Choose a six-digit hexadecimal color.");
+        var data=AccountLogoImage.normalize(input.data());
+        var before=response(account);
+        account.setLogo(Logo.CUSTOM,data);
+        account.setColor(input.color());
+        account.setAccent(Accent.DEFAULT);
+        accounts.flush();
+        var after=response(account);
+        if(!before.equals(after))audit.accountChanged(owner,id,"ACCOUNT_APPEARANCE_UPDATED",before,after);
         return after;
     }
     @Transactional

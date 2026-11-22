@@ -1,3 +1,4 @@
+import { balanceFixture } from "../../test-fixtures/accountBalance";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { api, ApiError } from "../../services/api";
@@ -17,6 +18,7 @@ vi.mock("../../services/api", async (original) => {
       logout: vi.fn(),
       accounts: vi.fn(),
       account: vi.fn(),
+      accountBalance: vi.fn(),
       activity: vi.fn(),
       security: vi.fn(),
     },
@@ -71,6 +73,9 @@ const report: CurrentNetWorth = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(api.accountBalance).mockImplementation((id, date, _include, page = 0) =>
+    Promise.resolve(balanceFixture({ accountId: id, date, page })),
+  );
   vi.mocked(api.categories).mockResolvedValue({ items: [], starterSetAvailable: true });
   window.location.hash = "";
   vi.mocked(api.currentNetWorth).mockResolvedValue(empty);
@@ -85,7 +90,7 @@ it("renders exact totals, signed contributions, active contributions and exclude
   expect(screen.getByText(/Archived accounts are excluded/)).toBeVisible();
   expect(screen.getByRole("link", { name: "Synthetic active" })).toHaveAttribute(
     "href",
-    "#/accounts/a",
+    "#/accounts/a/investments",
   );
   expect(screen.getByRole("link", { name: "Synthetic future" })).toHaveAttribute(
     "href",
@@ -204,4 +209,10 @@ it("reloads net worth when returning after activity changes in another tab", asy
   fireEvent.focus(window);
   await screen.findByText("CHF 199’999’999’999’999’999’868.25");
   expect(api.currentNetWorth).toHaveBeenCalledTimes(2);
+});
+
+it("marks cash-only totals as incomplete when securities are unvalued", async () => {
+  vi.mocked(api.currentNetWorth).mockResolvedValue({ ...report, unvaluedHoldings: 2 });
+  render(<NetWorthPage user={user} onExpired={() => {}} />);
+  expect(await screen.findByText(/Total incomplete — 2 security positions/)).toBeVisible();
 });

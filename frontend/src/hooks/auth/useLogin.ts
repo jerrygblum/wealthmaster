@@ -10,6 +10,10 @@ function errorMessage(error: unknown) {
 }
 
 export function useLogin({ notice, onLogin }: LoginPageProps) {
+  const [demo, setDemo] = useState<{ enabled: boolean; nextResetAt: string | null }>({
+    enabled: false,
+    nextResetAt: null,
+  });
   const [registrationEnabled, setRegistrationEnabled] = useState(false);
   useEffect(() => {
     let active = true;
@@ -21,6 +25,15 @@ export function useLogin({ notice, onLogin }: LoginPageProps) {
         /* Registration availability must not block login. */
       }
     }
+    async function loadDemo() {
+      try {
+        const result = await api.demoAvailability();
+        if (active) setDemo(result);
+      } catch {
+        /* An unavailable demo must not block normal sign-in. */
+      }
+    }
+    void loadDemo();
     void loadPolicy();
     return () => {
       active = false;
@@ -44,7 +57,20 @@ export function useLogin({ notice, onLogin }: LoginPageProps) {
     }
   }
 
+  async function enterDemo() {
+    setPending(true);
+    setError(null);
+    try {
+      onLogin(await api.enterDemo());
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setPending(false);
+    }
+  }
   return {
+    demo,
+    enterDemo,
     registrationEnabled,
     email,
     setEmail,

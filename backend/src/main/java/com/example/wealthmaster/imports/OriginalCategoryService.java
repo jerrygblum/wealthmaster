@@ -40,7 +40,7 @@ public class OriginalCategoryService {
         var rows=db.query("""
             SELECT o.*,a.name AS account_name FROM ledger_operations o
             JOIN financial_accounts a ON a.id=o.account_id AND a.owner_id=o.owner_id
-            WHERE o.owner_id=? AND NOT o.deleted AND o.kind<>'TRANSFER'
+            WHERE o.owner_id=? AND NOT o.deleted AND o.kind IN ('INCOME','EXPENSE','REFUND')
             AND o.description LIKE '%Original category:%'
             ORDER BY o.transaction_date DESC,o.id
             """,(r,n)-> {
@@ -69,7 +69,7 @@ public class OriginalCategoryService {
             var found=db.queryForList("SELECT description,kind,category_id FROM ledger_operations WHERE id=? AND owner_id=? AND NOT deleted FOR UPDATE",id,owner);
             if(found.isEmpty())throw new AccountFailure(404,"Transaction not found. Refresh the groups.");
             var row=found.getFirst();String kind=(String)row.get("kind");
-            if(kind.equals("TRANSFER") || !original((String)row.get("description")).equals(mapping.originalCategory())
+            if(!Set.of("INCOME","EXPENSE","REFUND").contains(kind) || !original((String)row.get("description")).equals(mapping.originalCategory())
                 || (kind.equals("INCOME")?CategoryDtos.Type.INCOME:CategoryDtos.Type.SPENDING)!=mapping.type())
                 throw new AccountFailure(412,"A transaction no longer belongs to this group. Refresh and review again.");
             if(!mapping.includeCategorized() && row.get("category_id")!=null)

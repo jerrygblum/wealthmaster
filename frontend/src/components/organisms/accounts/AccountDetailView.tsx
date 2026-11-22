@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { displayAmount } from "../../../utils/accountPresentation";
 import type { LedgerKind } from "../../../types/models";
 import type { AccountDetailViewModel } from "../../../types/viewModels";
@@ -40,7 +41,8 @@ export function AccountDetailView({
   balance,
   id,
   onBack,
-}: AccountDetailViewModel) {
+  balancePanel,
+}: AccountDetailViewModel & { balancePanel?: ReactNode }) {
   return (
     <>
       <WorkspaceHeading
@@ -86,10 +88,17 @@ export function AccountDetailView({
               today, including entries before the opening date.
             </p>
           </div>
+          {balancePanel}
           {!account.active && (
             <p className="notice">
               Archived activity is read-only. Restore this account from Accounts to make changes.
             </p>
+          )}
+          {account.type === "INVESTMENT" && (
+            <nav className="form-actions" aria-label="Investment account views">
+              <Link href={`#/accounts/${id}/investments`}>Holdings and investment activity</Link>
+              <span aria-current="page">Cash activity</span>
+            </nav>
           )}
           <ActionGroup className="form-actions workspace-toolbar">
             <Button disabled={!account.active || pending} onClick={() => start("EXPENSE")}>
